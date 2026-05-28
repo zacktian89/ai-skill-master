@@ -7,7 +7,7 @@ Date: 2026-05-28
 | Task | Status | Commit | Verification |
 | --- | --- | --- | --- |
 | Task 1: Bootstrap Tauri + Vue | Done | `ad7fccf` | `npm run build`; `cargo test` |
-| Task 2: Define Rust Models and State Store | Not started | - | - |
+| Task 2: Define Rust Models and State Store | Done | `b96b7eb` | `cargo fmt --check`; `cargo test state_store`; `cargo test` |
 | Task 3: Add App Paths and Skill Library Operations | Not started | - | - |
 | Task 4: Add Effective State and Project Rules | Not started | - | - |
 | Task 5: Add Codex Sync Planning and Link Ownership | Not started | - | - |
@@ -20,5 +20,6 @@ Date: 2026-05-28
 ## Notes
 
 - Task 1 completed the Tauri 2 + Vue 3 scaffold.
+- Task 2 added persisted Rust state models, the shared error type, and state store save/load/create helpers.
 - Visual Studio Build Tools were installed locally so Rust MSVC builds can link on this machine.
 - The generated scaffold required `tsconfig.node.json` and `public/` assets in addition to the original task file list.
