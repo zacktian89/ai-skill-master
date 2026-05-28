@@ -26,24 +26,33 @@ async function run(action: () => Promise<AppSnapshot>) {
 }
 
 async function chooseCodexPath() {
-  const selected = await open({ directory: true, multiple: false });
-  if (typeof selected === "string") {
-    await run(() => api.setCodexPath(selected));
+  try {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      await run(() => api.setCodexPath(selected));
+    }
+  } catch (cause) {
+    emit("error", String(cause));
   }
 }
 
 async function chooseLibraryTarget() {
-  const selected = await open({ directory: true, multiple: false });
-  if (typeof selected === "string") {
-    await run(() => api.migrateLibrary(selected));
+  try {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      await run(() => api.migrateLibrary(selected));
+    }
+  } catch (cause) {
+    emit("error", String(cause));
   }
 }
 </script>
 
 <template>
   <div class="settings-grid">
-    <section class="settings-section">
+    <section class="settings-section panel-card">
       <h2>技能库</h2>
+      <p class="panel-copy">管理本地技能库的位置，并在需要时迁移目录。</p>
       <dl class="meta-list">
         <dt>位置</dt>
         <dd>{{ snapshot.state.skillLibraryPath }}</dd>
@@ -56,8 +65,9 @@ async function chooseLibraryTarget() {
       </div>
     </section>
 
-    <section class="settings-section">
+    <section class="settings-section panel-card">
       <h2>Codex 连接</h2>
+      <p class="panel-copy">设置 Codex 的 skills 目录并执行同步。</p>
       <dl class="meta-list">
         <dt>状态</dt>
         <dd>{{ snapshot.codexConnected ? "已连接" : "未连接" }}</dd>
@@ -76,8 +86,9 @@ async function chooseLibraryTarget() {
       </div>
     </section>
 
-    <section class="settings-section">
+    <section class="settings-section panel-card">
       <h2>诊断</h2>
+      <p class="panel-copy">这里列出当前需要处理的连接或配置问题。</p>
       <ul class="diagnostics">
         <li v-for="item in snapshot.diagnostics" :key="item">{{ item }}</li>
         <li v-if="!snapshot.diagnostics.length">没有需要处理的问题。</li>

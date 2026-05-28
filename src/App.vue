@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { AlertCircle } from "lucide-vue-next";
+import { AlertCircle, FolderKanban, Library, Link2, ShieldAlert } from "lucide-vue-next";
 import * as api from "./api";
 import Sidebar from "./components/Sidebar.vue";
 import SkillsView from "./components/SkillsView.vue";
@@ -21,6 +21,52 @@ const title = computed(() => {
   if (activeSection.value === "projects") return "Projects";
   if (activeSection.value === "settings") return "Settings";
   return "Skills";
+});
+
+const description = computed(() => {
+  if (activeSection.value === "projects") return "按项目覆盖默认规则，确保技能只在需要的工作区里生效。";
+  if (activeSection.value === "settings") return "管理技能库位置、Codex 连接状态和当前诊断信息。";
+  return "集中维护本地技能库，控制默认启用状态，并同步到 Codex。";
+});
+
+const statusItems = computed(() => {
+  if (!snapshot.value) return [];
+  const currentSnapshot = snapshot.value;
+  const currentProject =
+    currentSnapshot.state.projects.find((project) => project.id === currentSnapshot.state.currentProjectId) ?? null;
+
+  return [
+    {
+      key: "skills",
+      icon: Library,
+      label: `${currentSnapshot.state.skills.length} skills`,
+      tone: "neutral",
+    },
+    {
+      key: "projects",
+      icon: FolderKanban,
+      label: `${currentSnapshot.state.projects.length} projects`,
+      tone: "neutral",
+    },
+    {
+      key: "codex",
+      icon: Link2,
+      label: currentSnapshot.codexConnected ? "Codex connected" : "Codex offline",
+      tone: currentSnapshot.codexConnected ? "success" : "warning",
+    },
+    {
+      key: "current-project",
+      icon: FolderKanban,
+      label: currentProject ? `Current: ${currentProject.name}` : "No active project",
+      tone: currentProject ? "neutral" : "muted",
+    },
+    {
+      key: "diagnostics",
+      icon: ShieldAlert,
+      label: `${currentSnapshot.diagnostics.length} diagnostics`,
+      tone: currentSnapshot.diagnostics.length ? "danger" : "success",
+    },
+  ];
 });
 
 async function refresh() {
@@ -49,11 +95,21 @@ onMounted(refresh);
     <Sidebar v-model:active-section="activeSection" :snapshot="snapshot" />
     <main class="main-pane">
       <header class="topbar">
-        <div>
+        <div class="topbar-copy">
+          <p class="eyebrow">Local Skill Workspace</p>
           <h1>{{ title }}</h1>
-          <p v-if="snapshot && !snapshot.codexConnected" class="topbar-note">
-            Codex 未连接，可在 Settings 中设置目录。
-          </p>
+          <p class="topbar-note">{{ description }}</p>
+        </div>
+        <div v-if="statusItems.length" class="status-strip">
+          <div
+            v-for="item in statusItems"
+            :key="item.key"
+            class="status-pill"
+            :class="`status-pill--${item.tone}`"
+          >
+            <component :is="item.icon" :size="14" />
+            <span>{{ item.label }}</span>
+          </div>
         </div>
       </header>
 
@@ -62,32 +118,34 @@ onMounted(refresh);
         <span>{{ error }}</span>
       </div>
 
-      <section v-if="loading" class="content-empty">正在加载 SkillMaster</section>
+      <section class="content-stage">
+        <section v-if="loading" class="content-empty content-empty--hero">正在加载 SkillMaster</section>
 
-      <SkillsView
-        v-else-if="activeSection === 'skills' && snapshot"
-        :snapshot="snapshot"
-        :selected-skill-id="selectedSkillId"
-        @select-skill="selectedSkillId = $event"
-        @snapshot="applySnapshot"
-        @error="error = $event"
-      />
+        <SkillsView
+          v-else-if="activeSection === 'skills' && snapshot"
+          :snapshot="snapshot"
+          :selected-skill-id="selectedSkillId"
+          @select-skill="selectedSkillId = $event"
+          @snapshot="applySnapshot"
+          @error="error = $event"
+        />
 
-      <ProjectsView
-        v-else-if="activeSection === 'projects' && snapshot"
-        :snapshot="snapshot"
-        :selected-project-id="selectedProjectId"
-        @select-project="selectedProjectId = $event"
-        @snapshot="applySnapshot"
-        @error="error = $event"
-      />
+        <ProjectsView
+          v-else-if="activeSection === 'projects' && snapshot"
+          :snapshot="snapshot"
+          :selected-project-id="selectedProjectId"
+          @select-project="selectedProjectId = $event"
+          @snapshot="applySnapshot"
+          @error="error = $event"
+        />
 
-      <SettingsView
-        v-else-if="activeSection === 'settings' && snapshot"
-        :snapshot="snapshot"
-        @snapshot="applySnapshot"
-        @error="error = $event"
-      />
+        <SettingsView
+          v-else-if="activeSection === 'settings' && snapshot"
+          :snapshot="snapshot"
+          @snapshot="applySnapshot"
+          @error="error = $event"
+        />
+      </section>
     </main>
   </div>
 </template>

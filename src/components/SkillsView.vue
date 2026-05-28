@@ -43,16 +43,29 @@ async function run(action: () => Promise<AppSnapshot>) {
 }
 
 async function importSkill() {
-  const selected = await open({ directory: true, multiple: false });
-  if (typeof selected === "string") {
-    await run(() => api.importSkill(selected));
+  try {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      await run(() => api.importSkill(selected));
+    }
+  } catch (cause) {
+    emit("error", String(cause));
   }
 }
 </script>
 
 <template>
   <div class="split-content">
-    <section class="list-panel">
+    <section class="list-panel panel-card">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Library</p>
+          <h2>技能列表</h2>
+          <p class="panel-copy">搜索、导入并同步你当前的 skill 库。</p>
+        </div>
+        <span class="panel-count">{{ skills.length }}</span>
+      </div>
+
       <div class="toolbar">
         <input v-model="query" class="search-input" placeholder="搜索 skills" />
         <button class="icon-button" title="导入 skill" :disabled="busy" @click="importSkill">
@@ -63,24 +76,26 @@ async function importSkill() {
         </button>
       </div>
 
-      <button
-        v-for="skill in skills"
-        :key="skill.id"
-        class="row-item"
-        :class="{ active: selectedSkill?.id === skill.id }"
-        @click="emit('select-skill', skill.id)"
-      >
-        <span>
-          <strong>{{ skill.name }}</strong>
-          <small>{{ skill.description || skill.id }}</small>
-        </span>
-        <span class="status-dot" :class="{ on: skill.defaultEnabled, conflict: skill.conflict }"></span>
-      </button>
+      <div v-if="skills.length" class="list-stack">
+        <button
+          v-for="skill in skills"
+          :key="skill.id"
+          class="row-item"
+          :class="{ active: selectedSkill?.id === skill.id }"
+          @click="emit('select-skill', skill.id)"
+        >
+          <span>
+            <strong>{{ skill.name }}</strong>
+            <small>{{ skill.description || skill.id }}</small>
+          </span>
+          <span class="status-dot" :class="{ on: skill.defaultEnabled, conflict: skill.conflict }"></span>
+        </button>
+      </div>
 
-      <div v-if="!skills.length" class="content-empty">技能库里还没有 skill。</div>
+      <div v-else class="content-empty content-empty--inline">技能库里还没有 skill。</div>
     </section>
 
-    <section class="detail-panel">
+    <section class="detail-panel panel-card">
       <template v-if="selectedSkill">
         <div class="detail-header">
           <div>
@@ -114,7 +129,7 @@ async function importSkill() {
           删除 skill
         </button>
       </template>
-      <div v-else class="content-empty">选择或导入一个 skill。</div>
+      <div v-else class="content-empty content-empty--inline">选择或导入一个 skill。</div>
     </section>
   </div>
 </template>

@@ -37,11 +37,15 @@ async function run(action: () => Promise<AppSnapshot>) {
 }
 
 async function addProject() {
-  const selected = await open({ directory: true, multiple: false });
-  if (typeof selected === "string") {
-    const parts = selected.split(/[\\/]/).filter(Boolean);
-    const name = parts[parts.length - 1] ?? selected;
-    await run(() => api.addProject({ name, path: selected }));
+  try {
+    const selected = await open({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      const parts = selected.split(/[\\/]/).filter(Boolean);
+      const name = parts[parts.length - 1] ?? selected;
+      await run(() => api.addProject({ name, path: selected }));
+    }
+  } catch (cause) {
+    emit("error", String(cause));
   }
 }
 
@@ -53,7 +57,16 @@ function setRule(skillId: string, rule: ProjectRule) {
 
 <template>
   <div class="split-content">
-    <section class="list-panel">
+    <section class="list-panel panel-card">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Workspace</p>
+          <h2>项目列表</h2>
+          <p class="panel-copy">为每个项目覆盖技能规则，避免全局开关过重。</p>
+        </div>
+        <span class="panel-count">{{ snapshot.state.projects.length }}</span>
+      </div>
+
       <div class="toolbar">
         <button class="primary-button" :disabled="busy" @click="addProject">
           <FolderPlus :size="16" />
@@ -61,23 +74,25 @@ function setRule(skillId: string, rule: ProjectRule) {
         </button>
       </div>
 
-      <button
-        v-for="project in snapshot.state.projects"
-        :key="project.id"
-        class="row-item"
-        :class="{ active: selectedProject?.id === project.id }"
-        @click="emit('select-project', project.id)"
-      >
-        <span>
-          <strong>{{ project.name }}</strong>
-          <small>{{ project.path }}</small>
-        </span>
-      </button>
+      <div v-if="snapshot.state.projects.length" class="list-stack">
+        <button
+          v-for="project in snapshot.state.projects"
+          :key="project.id"
+          class="row-item"
+          :class="{ active: selectedProject?.id === project.id }"
+          @click="emit('select-project', project.id)"
+        >
+          <span>
+            <strong>{{ project.name }}</strong>
+            <small>{{ project.path }}</small>
+          </span>
+        </button>
+      </div>
 
-      <div v-if="!snapshot.state.projects.length" class="content-empty">还没有项目。</div>
+      <div v-else class="content-empty content-empty--inline">还没有项目。</div>
     </section>
 
-    <section class="detail-panel">
+    <section class="detail-panel panel-card">
       <template v-if="selectedProject">
         <div class="detail-header">
           <div>
@@ -107,7 +122,7 @@ function setRule(skillId: string, rule: ProjectRule) {
           </div>
         </div>
       </template>
-      <div v-else class="content-empty">添加或选择一个项目。</div>
+      <div v-else class="content-empty content-empty--inline">添加或选择一个项目。</div>
     </section>
   </div>
 </template>
