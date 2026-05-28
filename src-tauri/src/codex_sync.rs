@@ -25,6 +25,15 @@ pub struct SyncConflict {
     pub message: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManagedLinkValidation {
+    Valid,
+    Missing,
+    WrongType,
+    WrongTarget { actual: PathBuf },
+    MissingSource,
+}
+
 pub fn plan_codex_sync(
     skills: &[Skill],
     active_skill_ids: &[String],
@@ -40,19 +49,45 @@ pub fn plan_codex_sync(
     for skill in skills {
         let target = codex_skills_path.join(&skill.id);
         let should_be_active = active.contains(&skill.id);
+        let managed_recorded = skill.managed_links.codex.as_ref() == Some(&target);
+
         if should_be_active {
-            if target.exists() && skill.managed_links.codex.as_ref() != Some(&target) {
-                report.conflicts.push(SyncConflict {
-                    skill_id: skill.id.clone(),
-                    target,
-                    message: "Codex 目录中已有同名非托管 skill".to_string(),
-                });
-            } else if !target.exists() {
-                report.to_create.push(LinkAction {
+            match validate_managed_link(&skill.library_path, &target)? {
+                ManagedLinkValidation::Missing => report.to_create.push(LinkAction {
                     skill_id: skill.id.clone(),
                     source: skill.library_path.clone(),
                     target,
-                });
+                }),
+                ManagedLinkValidation::Valid => {}
+                ManagedLinkValidation::WrongType => report.conflicts.push(SyncConflict {
+                    skill_id: skill.id.clone(),
+                    target,
+                    message: if managed_recorded {
+                        "托管链接记录与磁盘现场不一致：目标已被替换为普通目录或文件，SkillMaster 未覆盖它"
+                            .to_string()
+                    } else {
+                        "Codex 目录中已有同名非托管 skill".to_string()
+                    },
+                }),
+                ManagedLinkValidation::WrongTarget { actual } => {
+                    report.conflicts.push(SyncConflict {
+                        skill_id: skill.id.clone(),
+                        target,
+                        message: if managed_recorded {
+                            format!(
+                                "托管链接已改为指向其他位置，SkillMaster 未覆盖它：{}",
+                                actual.display()
+                            )
+                        } else {
+                            "Codex 目录中已有同名非托管 skill".to_string()
+                        },
+                    })
+                }
+                ManagedLinkValidation::MissingSource => report.conflicts.push(SyncConflict {
+                    skill_id: skill.id.clone(),
+                    target,
+                    message: "技能库中的源目录不存在，无法同步到 Codex".to_string(),
+                }),
             }
         } else if let Some(managed_target) = &skill.managed_links.codex {
             report.to_remove.push(LinkAction {
@@ -82,10 +117,71 @@ pub fn create_directory_link(source: &Path, target: &Path) -> Result<()> {
 }
 
 pub fn remove_managed_link(target: &Path) -> Result<()> {
-    if target.exists() {
+    if fs::symlink_metadata(target).is_ok() {
         fs::remove_dir(target)?;
     }
     Ok(())
+}
+
+pub fn validate_managed_link(source: &Path, target: &Path) -> Result<ManagedLinkValidation> {
+    if !source.exists() {
+        return Ok(ManagedLinkValidation::MissingSource);
+    }
+
+    let metadata = match fs::symlink_metadata(target) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(ManagedLinkValidation::Missing);
+        }
+        Err(error) => return Err(error.into()),
+    };
+
+    if !metadata.file_type().is_symlink() {
+        return Ok(ManagedLinkValidation::WrongType);
+    }
+
+    let actual = fs::read_link(target)?;
+    if same_path(&actual, source)? {
+        Ok(ManagedLinkValidation::Valid)
+    } else {
+        Ok(ManagedLinkValidation::WrongTarget { actual })
+    }
+}
+
+pub fn managed_link_issue_message(target: &Path, validation: &ManagedLinkValidation) -> String {
+    match validation {
+        ManagedLinkValidation::Valid => "托管链接状态正常".to_string(),
+        ManagedLinkValidation::Missing => format!(
+            "托管链接记录仍在，但磁盘上的目标不存在：{}",
+            target.display()
+        ),
+        ManagedLinkValidation::WrongType => format!(
+            "托管链接记录仍在，但目标已不是 SkillMaster 创建的目录链接：{}",
+            target.display()
+        ),
+        ManagedLinkValidation::WrongTarget { actual } => format!(
+            "托管链接已指向其他位置，SkillMaster 未删除它：{} -> {}",
+            target.display(),
+            actual.display()
+        ),
+        ManagedLinkValidation::MissingSource => {
+            "技能库中的源目录不存在，无法验证或重建托管链接".to_string()
+        }
+    }
+}
+
+fn same_path(actual: &Path, expected: &Path) -> Result<bool> {
+    let actual = canonical_or_original(actual)?;
+    let expected = canonical_or_original(expected)?;
+    Ok(actual == expected)
+}
+
+fn canonical_or_original(path: &Path) -> Result<PathBuf> {
+    match fs::canonicalize(path) {
+        Ok(path) => Ok(path),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(path.to_path_buf()),
+        Err(error) => Err(error.into()),
+    }
 }
 
 #[cfg(test)]
@@ -137,5 +233,39 @@ mod tests {
         assert_eq!(report.to_create.len(), 1);
         assert_eq!(report.to_create[0].skill_id, "writer");
         assert!(report.conflicts.is_empty());
+    }
+
+    #[test]
+    fn treats_retargeted_managed_link_as_conflict() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("library");
+        let codex = dir.path().join("codex");
+        let other = dir.path().join("other");
+        fs::create_dir_all(&codex).unwrap();
+        fs::create_dir_all(&other).unwrap();
+        let mut skill = skill("writer", &library);
+        let target = codex.join("writer");
+        create_directory_link(&other, &target).unwrap();
+        skill.managed_links.codex = Some(target);
+
+        let report = plan_codex_sync(&[skill], &["writer".to_string()], &codex).unwrap();
+
+        assert_eq!(report.conflicts.len(), 1);
+        assert!(report.conflicts[0].message.contains("指向其他位置"));
+    }
+
+    #[test]
+    fn validates_managed_link_against_expected_source() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source");
+        let target_root = dir.path().join("target");
+        let target = target_root.join("writer");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&target_root).unwrap();
+        create_directory_link(&source, &target).unwrap();
+
+        let validation = validate_managed_link(&source, &target).unwrap();
+
+        assert_eq!(validation, ManagedLinkValidation::Valid);
     }
 }

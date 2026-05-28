@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AddProjectRequest, AppSnapshot, ProjectRule, SetProjectRuleRequest } from "./types";
+import type {
+  AddProjectRequest,
+  AppSnapshot,
+  DeleteSkillPreview,
+  ProjectRule,
+  SetProjectRuleRequest,
+} from "./types";
 
 export function getSnapshot(): Promise<AppSnapshot> {
   return invoke<AppSnapshot>("get_snapshot");
@@ -11,6 +17,10 @@ export function importSkill(source: string): Promise<AppSnapshot> {
 
 export function deleteSkill(skillId: string): Promise<AppSnapshot> {
   return invoke<AppSnapshot>("delete_skill", { skillId });
+}
+
+export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview> {
+  return invoke<DeleteSkillPreview>("preview_delete_skill", { skillId });
 }
 
 export function setDefaultEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
@@ -35,6 +45,10 @@ export function setCodexPath(path: string): Promise<AppSnapshot> {
 
 export function migrateLibrary(target: string): Promise<AppSnapshot> {
   return invoke<AppSnapshot>("migrate_library", { target });
+}
+
+export function rebuildState(): Promise<AppSnapshot> {
+  return invoke<AppSnapshot>("rebuild_state");
 }
 
 export function syncCodex(): Promise<AppSnapshot> {

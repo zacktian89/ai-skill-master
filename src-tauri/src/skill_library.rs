@@ -1,7 +1,7 @@
 use crate::error::{Result, SkillMasterError};
-use crate::models::{ManagedLinks, Skill};
+use crate::models::{ManagedLinks, MigrationNotice, Skill};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkillMetadata {
@@ -74,7 +74,37 @@ pub fn import_skill(state: &mut crate::models::AppState, source: &Path) -> Resul
     Ok(())
 }
 
-pub fn delete_skill(state: &mut crate::models::AppState, skill_id: &str) -> Result<Vec<PathBuf>> {
+pub fn scan_skill_library(root: &Path) -> Result<Vec<Skill>> {
+    if !root.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut skills = Vec::new();
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+        let skill_dir = entry.path();
+        let metadata = match read_skill_metadata(&skill_dir) {
+            Ok(metadata) => metadata,
+            Err(_) => continue,
+        };
+        skills.push(Skill {
+            id: metadata.id,
+            name: metadata.name,
+            description: metadata.description,
+            library_path: skill_dir,
+            default_enabled: false,
+            managed_links: ManagedLinks::default(),
+            conflict: None,
+        });
+    }
+    skills.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(skills)
+}
+
+pub fn delete_skill(state: &mut crate::models::AppState, skill_id: &str) -> Result<()> {
     let skill = state
         .skills
         .iter()
@@ -85,23 +115,18 @@ pub fn delete_skill(state: &mut crate::models::AppState, skill_id: &str) -> Resu
     if skill.library_path.exists() {
         fs::remove_dir_all(&skill.library_path)?;
     }
-    let removed_links = skill
-        .managed_links
-        .codex
-        .iter()
-        .cloned()
-        .collect::<Vec<PathBuf>>();
     state.skills.retain(|skill| skill.id != skill_id);
     for project in &mut state.projects {
         project.rules.remove(skill_id);
     }
-    Ok(removed_links)
+    Ok(())
 }
 
 pub fn migrate_skill_library(
     state: &mut crate::models::AppState,
     target_root: &Path,
 ) -> Result<()> {
+    let previous_root = state.skill_library_path.clone();
     fs::create_dir_all(target_root)?;
     for skill in &state.skills {
         let target = target_root.join(&skill.id);
@@ -115,6 +140,13 @@ pub fn migrate_skill_library(
         skill.library_path = target_root.join(&skill.id);
         skill.managed_links.codex = None;
     }
+    state.migration_notice = Some(MigrationNotice {
+        old_library_path: previous_root,
+        new_library_path: target_root.to_path_buf(),
+        message: "技能库迁移已完成，SkillMaster 已切换到新目录。旧目录不会自动删除；如需让 Codex 使用新技能库，请重新同步。"
+            .to_string(),
+        requires_codex_resync: true,
+    });
     Ok(())
 }
 
@@ -189,6 +221,19 @@ mod tests {
     }
 
     #[test]
+    fn scans_existing_skill_library() {
+        let root = tempdir().unwrap();
+        let skill_dir = root.path().join("writer");
+        fs::create_dir_all(&skill_dir).unwrap();
+        fs::write(skill_dir.join("SKILL.md"), "---\nname: writer\n---\n").unwrap();
+
+        let skills = scan_skill_library(root.path()).unwrap();
+
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].id, "writer");
+    }
+
+    #[test]
     fn migrates_skill_library_and_updates_skill_paths() {
         let source_root = tempdir().unwrap();
         let old_root = tempdir().unwrap();
@@ -204,6 +249,7 @@ mod tests {
         assert_eq!(state.skill_library_path, new_root.path());
         assert_eq!(state.skills[0].library_path, new_root.path().join("writer"));
         assert!(new_root.path().join("writer").join("SKILL.md").exists());
+        assert!(state.migration_notice.is_some());
     }
 
     #[test]

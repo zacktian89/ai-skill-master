@@ -14,6 +14,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_snapshot,
             commands::import_skill,
+            commands::preview_delete_skill,
             commands::delete_skill,
             commands::set_default_enabled,
             commands::add_project,
@@ -21,6 +22,7 @@ pub fn run() {
             commands::set_current_project,
             commands::set_codex_path,
             commands::migrate_library,
+            commands::rebuild_state,
             commands::sync_codex
         ])
         .run(tauri::generate_context!())

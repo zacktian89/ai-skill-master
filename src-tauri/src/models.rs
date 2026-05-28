@@ -9,6 +9,10 @@ pub struct AppState {
     pub skill_library_path: PathBuf,
     pub codex_skills_path: Option<PathBuf>,
     pub current_project_id: Option<String>,
+    #[serde(default)]
+    pub sync_status: SyncStatus,
+    #[serde(default)]
+    pub migration_notice: Option<MigrationNotice>,
     pub skills: Vec<Skill>,
     pub projects: Vec<Project>,
 }
@@ -37,6 +41,53 @@ pub struct SkillConflict {
     pub target: String,
     pub path: PathBuf,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncStatus {
+    #[serde(default)]
+    pub phase: SyncPhase,
+    #[serde(default)]
+    pub message: Option<String>,
+    #[serde(default)]
+    pub pending_actions: Vec<PendingSyncAction>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SyncPhase {
+    #[default]
+    Idle,
+    Healthy,
+    RepairRequired,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingSyncAction {
+    pub kind: PendingSyncActionKind,
+    pub skill_id: String,
+    pub target: PathBuf,
+    pub source: Option<PathBuf>,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum PendingSyncActionKind {
+    Create,
+    Remove,
+    Inspect,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MigrationNotice {
+    pub old_library_path: PathBuf,
+    pub new_library_path: PathBuf,
+    pub message: String,
+    pub requires_codex_resync: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

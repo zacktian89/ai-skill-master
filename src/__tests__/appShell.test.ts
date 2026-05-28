@@ -11,11 +11,25 @@ vi.mock("../api", () => ({
       skillLibraryPath: "D:/skills",
       codexSkillsPath: null,
       currentProjectId: null,
+      syncStatus: {
+        phase: "idle",
+        message: null,
+        pendingActions: [],
+      },
+      migrationNotice: null,
       skills: [],
       projects: [],
     },
     codexConnected: false,
     diagnostics: [],
+    paths: {
+      stateFile: "D:/config/skillmaster.json",
+      backupFile: "D:/config/skillmaster.json.bak",
+    },
+    stateLoad: {
+      phase: "clean",
+      message: null,
+    },
   }),
 }));
 

@@ -24,6 +24,10 @@ const selectedProject = computed(() =>
   null,
 );
 
+const currentProject = computed(
+  () => props.snapshot.state.projects.find((project) => project.id === props.snapshot.state.currentProjectId) ?? null,
+);
+
 async function run(action: () => Promise<AppSnapshot>) {
   busy.value = true;
   try {
@@ -74,6 +78,11 @@ function setRule(skillId: string, rule: ProjectRule) {
         </button>
       </div>
 
+      <div class="context-banner" :class="{ 'context-banner--global': !currentProject }">
+        <strong>{{ currentProject ? "当前项目上下文" : "全局默认上下文" }}</strong>
+        <small>{{ currentProject ? currentProject.path : "后续同步将回到默认启用集合。" }}</small>
+      </div>
+
       <div v-if="snapshot.state.projects.length" class="list-stack">
         <button
           v-for="project in snapshot.state.projects"
@@ -99,9 +108,14 @@ function setRule(skillId: string, rule: ProjectRule) {
             <h2>{{ selectedProject.name }}</h2>
             <p>{{ selectedProject.path }}</p>
           </div>
-          <button class="primary-button" :disabled="busy" @click="run(() => api.setCurrentProject(selectedProject!.id))">
-            设为当前项目
-          </button>
+          <div class="button-row">
+            <button class="primary-button" :disabled="busy" @click="run(() => api.setCurrentProject(selectedProject!.id))">
+              设为当前项目
+            </button>
+            <button class="icon-button" :disabled="busy" @click="run(() => api.setCurrentProject(null))">
+              清除当前项目
+            </button>
+          </div>
         </div>
 
         <div class="rule-list">

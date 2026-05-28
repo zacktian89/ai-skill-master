@@ -57,7 +57,7 @@ const statusItems = computed(() => {
     {
       key: "current-project",
       icon: FolderKanban,
-      label: currentProject ? `Current: ${currentProject.name}` : "No active project",
+      label: currentProject ? `Context: ${currentProject.name}` : "Context: Global default",
       tone: currentProject ? "neutral" : "muted",
     },
     {
@@ -85,6 +85,12 @@ async function refresh() {
 
 function applySnapshot(next: AppSnapshot) {
   snapshot.value = next;
+  if (selectedSkillId.value && !next.state.skills.some((skill) => skill.id === selectedSkillId.value)) {
+    selectedSkillId.value = next.state.skills[0]?.id ?? null;
+  }
+  if (selectedProjectId.value && !next.state.projects.some((project) => project.id === selectedProjectId.value)) {
+    selectedProjectId.value = next.state.currentProjectId ?? next.state.projects[0]?.id ?? null;
+  }
 }
 
 onMounted(refresh);
