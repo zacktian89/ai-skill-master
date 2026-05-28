@@ -15,7 +15,7 @@ Date: 2026-05-28
 | Task 7: Add Frontend Types, API Wrapper, and Store State | Done | `bc88f21` | `npm test -- src/__tests__/effectiveState.test.ts`; `npm run build` |
 | Task 8: Build Two-Column Vue UI | Done | `574562f` | `npm test`; `npm run build`; browser check at `http://127.0.0.1:1420/` |
 | Task 9: Add Skill Library Migration Command | Done | `5a647d3` | `cargo fmt --check`; `cargo test migrates_skill_library_and_updates_skill_paths`; `cargo test`; `npm test`; `npm run build` |
-| Task 10: End-to-End Verification and Local Debug | Done | `ef00a5f` | `npm test`; `npm run build`; `cargo test`; `npm run tauri dev` |
+| Task 10: End-to-End Verification and Local Debug | Done | `c67eaa4` | `npm test`; `npm run build`; `cargo test`; `npm run tauri dev` |
 
 ## Notes
 
