@@ -98,6 +98,26 @@ pub fn delete_skill(state: &mut crate::models::AppState, skill_id: &str) -> Resu
     Ok(removed_links)
 }
 
+pub fn migrate_skill_library(
+    state: &mut crate::models::AppState,
+    target_root: &Path,
+) -> Result<()> {
+    fs::create_dir_all(target_root)?;
+    for skill in &state.skills {
+        let target = target_root.join(&skill.id);
+        if target.exists() {
+            return Err(SkillMasterError::DuplicateSkill(skill.id.clone()));
+        }
+        copy_dir_all(&skill.library_path, &target)?;
+    }
+    state.skill_library_path = target_root.to_path_buf();
+    for skill in &mut state.skills {
+        skill.library_path = target_root.join(&skill.id);
+        skill.managed_links.codex = None;
+    }
+    Ok(())
+}
+
 fn copy_dir_all(source: &Path, target: &Path) -> Result<()> {
     fs::create_dir_all(target)?;
     for entry in fs::read_dir(source)? {
@@ -166,6 +186,24 @@ mod tests {
         assert_eq!(state.skills.len(), 1);
         assert_eq!(state.skills[0].id, "writer");
         assert!(library_root.path().join("writer").join("SKILL.md").exists());
+    }
+
+    #[test]
+    fn migrates_skill_library_and_updates_skill_paths() {
+        let source_root = tempdir().unwrap();
+        let old_root = tempdir().unwrap();
+        let new_root = tempdir().unwrap();
+        let source = source_root.path().join("writer");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("SKILL.md"), "---\nname: writer\n---\n").unwrap();
+        let mut state = default_state(old_root.path().to_path_buf(), None);
+        import_skill(&mut state, &source).unwrap();
+
+        migrate_skill_library(&mut state, new_root.path()).unwrap();
+
+        assert_eq!(state.skill_library_path, new_root.path());
+        assert_eq!(state.skills[0].library_path, new_root.path().join("writer"));
+        assert!(new_root.path().join("writer").join("SKILL.md").exists());
     }
 
     #[test]

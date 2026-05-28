@@ -5,6 +5,7 @@ use crate::error::{Result, SkillMasterError};
 use crate::models::{AppState, Project, ProjectRule, SkillConflict};
 use crate::skill_library::{
     delete_skill as delete_skill_from_library, import_skill as import_skill_into_library,
+    migrate_skill_library,
 };
 use crate::state_store::{load_or_create_state, save_state};
 use serde::{Deserialize, Serialize};
@@ -192,6 +193,17 @@ pub fn set_current_project(
 pub fn set_codex_path(app: AppHandle, path: PathBuf) -> std::result::Result<AppSnapshot, String> {
     let (paths, mut state) = load_command_state(&app).map_err(|error| error.to_string())?;
     state.codex_skills_path = Some(path);
+    persist(&paths, &state).map_err(|error| error.to_string())?;
+    Ok(build_snapshot(state))
+}
+
+#[tauri::command]
+pub fn migrate_library(
+    app: AppHandle,
+    target: PathBuf,
+) -> std::result::Result<AppSnapshot, String> {
+    let (paths, mut state) = load_command_state(&app).map_err(|error| error.to_string())?;
+    migrate_skill_library(&mut state, &target).map_err(|error| error.to_string())?;
     persist(&paths, &state).map_err(|error| error.to_string())?;
     Ok(build_snapshot(state))
 }

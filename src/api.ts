@@ -33,6 +33,10 @@ export function setCodexPath(path: string): Promise<AppSnapshot> {
   return invoke<AppSnapshot>("set_codex_path", { path });
 }
 
+export function migrateLibrary(target: string): Promise<AppSnapshot> {
+  return invoke<AppSnapshot>("migrate_library", { target });
+}
+
 export function syncCodex(): Promise<AppSnapshot> {
   return invoke<AppSnapshot>("sync_codex");
 }

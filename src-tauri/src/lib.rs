@@ -20,6 +20,7 @@ pub fn run() {
             commands::set_project_rule,
             commands::set_current_project,
             commands::set_codex_path,
+            commands::migrate_library,
             commands::sync_codex
         ])
         .run(tauri::generate_context!())

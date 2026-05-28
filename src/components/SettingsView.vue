@@ -31,6 +31,13 @@ async function chooseCodexPath() {
     await run(() => api.setCodexPath(selected));
   }
 }
+
+async function chooseLibraryTarget() {
+  const selected = await open({ directory: true, multiple: false });
+  if (typeof selected === "string") {
+    await run(() => api.migrateLibrary(selected));
+  }
+}
 </script>
 
 <template>
@@ -41,7 +48,12 @@ async function chooseCodexPath() {
         <dt>位置</dt>
         <dd>{{ snapshot.state.skillLibraryPath }}</dd>
       </dl>
-      <p class="muted">迁移技能库会在后续任务中接入，第一版先展示当前位置。</p>
+      <div class="button-row">
+        <button class="primary-button" :disabled="busy" @click="chooseLibraryTarget">
+          <FolderOpen :size="16" />
+          迁移技能库
+        </button>
+      </div>
     </section>
 
     <section class="settings-section">
