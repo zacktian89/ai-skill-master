@@ -14,8 +14,8 @@ Date: 2026-05-28
 | Task 6: Add Tauri Command API | Done | `3f8f9c9` | `cargo fmt --check`; `cargo test commands`; `cargo test` |
 | Task 7: Add Frontend Types, API Wrapper, and Store State | Done | `bc88f21` | `npm test -- src/__tests__/effectiveState.test.ts`; `npm run build` |
 | Task 8: Build Two-Column Vue UI | Done | `574562f` | `npm test`; `npm run build`; browser check at `http://127.0.0.1:1420/` |
-| Task 9: Add Skill Library Migration Command | Not started | - | - |
-| Task 10: End-to-End Verification and Packaging | Not started | - | - |
+| Task 9: Add Skill Library Migration Command | Done | `5a647d3` | `cargo fmt --check`; `cargo test migrates_skill_library_and_updates_skill_paths`; `cargo test`; `npm test`; `npm run build` |
+| Task 10: End-to-End Verification and Local Debug | Done | `ef00a5f` | `npm test`; `npm run build`; `cargo test`; `npm run tauri dev` |
 
 ## Notes
 
@@ -27,5 +27,7 @@ Date: 2026-05-28
 - Task 6 added the Tauri command API, app snapshots, state persistence helpers, and Codex sync command orchestration.
 - Task 7 added frontend state types, the Tauri invoke API wrapper, global CSS loading, and a Vitest check for project rule labels.
 - Task 8 replaced the scaffold page with the two-column SkillMaster UI, added Skills/Projects/Settings views, and added an App shell render test.
+- Task 9 added skill library migration, a Tauri command, and Settings UI wiring.
+- Task 10 added README/local QA docs and fixed the dev server host to `127.0.0.1` so Tauri dev can connect reliably on Windows.
 - Visual Studio Build Tools were installed locally so Rust MSVC builds can link on this machine.
 - The generated scaffold required `tsconfig.node.json` and `public/` assets in addition to the original task file list.
