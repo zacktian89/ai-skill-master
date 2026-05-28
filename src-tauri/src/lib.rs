@@ -1,4 +1,5 @@
 pub mod app_paths;
+pub mod codex_sync;
 pub mod effective_state;
 pub mod error;
 pub mod models;
