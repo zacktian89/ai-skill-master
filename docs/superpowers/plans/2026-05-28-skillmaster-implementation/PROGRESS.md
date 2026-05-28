@@ -11,7 +11,7 @@ Date: 2026-05-28
 | Task 3: Add App Paths and Skill Library Operations | Done | `205666b` | `cargo fmt --check`; `cargo test app_paths`; `cargo test skill_library`; `cargo test` |
 | Task 4: Add Effective State and Project Rules | Done | `0668311` | `cargo fmt --check`; `cargo test effective_state`; `cargo test` |
 | Task 5: Add Codex Sync Planning and Link Ownership | Done | `7adad4e` | `cargo fmt --check`; `cargo test codex_sync`; `cargo test` |
-| Task 6: Add Tauri Command API | Not started | - | - |
+| Task 6: Add Tauri Command API | Done | `3f8f9c9` | `cargo fmt --check`; `cargo test commands`; `cargo test` |
 | Task 7: Add Frontend Types, API Wrapper, and Store State | Not started | - | - |
 | Task 8: Build Two-Column Vue UI | Not started | - | - |
 | Task 9: Add Skill Library Migration Command | Not started | - | - |
@@ -24,5 +24,6 @@ Date: 2026-05-28
 - Task 3 added app path derivation, Codex skills path detection, local skill metadata parsing, import, and delete operations.
 - Task 4 added effective skill activation resolution from defaults plus project-level rules.
 - Task 5 added Codex sync planning for managed links, missing active skills, and non-managed target conflicts.
+- Task 6 added the Tauri command API, app snapshots, state persistence helpers, and Codex sync command orchestration.
 - Visual Studio Build Tools were installed locally so Rust MSVC builds can link on this machine.
 - The generated scaffold required `tsconfig.node.json` and `public/` assets in addition to the original task file list.
