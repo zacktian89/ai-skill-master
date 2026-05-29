@@ -5,7 +5,7 @@ import * as api from "../api";
 import { openDirectory } from "../dialog";
 import type { AppSnapshot, DiagnosticItem } from "../types";
 
-type SettingsGroupId = "library" | "codex" | "diagnostics" | "advanced";
+type SettingsGroupId = "storage" | "codex" | "issues";
 
 const props = defineProps<{ snapshot: AppSnapshot }>();
 
@@ -15,43 +15,76 @@ const emit = defineEmits<{
 }>();
 
 const busy = ref(false);
-const selectedGroup = ref<SettingsGroupId>("library");
+const selectedGroup = ref<SettingsGroupId>("storage");
 
 const canRebuild = computed(() => props.snapshot.stateLoad.phase === "rebuildRequired");
 
-const groupedDiagnostics = computed(() => ({
-  error: props.snapshot.diagnostics.filter((item) => item.level === "error"),
-  warning: props.snapshot.diagnostics.filter((item) => item.level === "warning"),
-  info: props.snapshot.diagnostics.filter((item) => item.level === "info"),
-}));
+const issueItems = computed(() =>
+  props.snapshot.diagnostics.filter((item) => item.code !== "library-migrated"),
+);
+
+const applyState = computed(() => {
+  const issueCount = issueItems.value.filter((item) => item.level === "error").length;
+  const pendingCount = props.snapshot.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
+
+  if (issueCount) {
+    return {
+      tone: "danger",
+      label: "需处理",
+      message: `有 ${issueCount} 个问题需要先处理。`,
+    };
+  }
+
+  if (pendingCount) {
+    return {
+      tone: "warning",
+      label: "待应用",
+      message: `有 ${pendingCount} 项改动待应用到 Codex。`,
+    };
+  }
+
+  return {
+    tone: props.snapshot.codexConnected ? "success" : "neutral",
+    label: props.snapshot.codexConnected ? "已应用" : "未连接",
+    message: props.snapshot.codexConnected ? "当前配置已应用到 Codex。" : "请先连接 Codex 目录。",
+  };
+});
 
 const settingsGroups = computed(() => [
   {
-    id: "library" as const,
-    title: "技能库",
-    description: "路径与迁移",
+    id: "storage" as const,
+    title: "存储位置",
+    description: "技能库与状态文件",
     issueCount: props.snapshot.diagnostics.filter((item) => item.code.includes("library")).length,
   },
   {
     id: "codex" as const,
-    title: "Codex 连接",
-    description: "连接与同步",
+    title: "Codex",
+    description: "连接与应用",
     issueCount:
       Number(!props.snapshot.codexConnected) + props.snapshot.state.syncStatus.pendingActions.length,
   },
   {
-    id: "diagnostics" as const,
-    title: "诊断中心",
-    description: "错误与警告",
-    issueCount: props.snapshot.diagnostics.length,
-  },
-  {
-    id: "advanced" as const,
-    title: "高级与恢复",
-    description: "恢复操作",
-    issueCount: Number(canRebuild.value),
+    id: "issues" as const,
+    title: "问题与修复",
+    description: "低频处理入口",
+    issueCount: issueItems.value.length + Number(canRebuild.value),
   },
 ]);
+
+function issueCategory(item: DiagnosticItem): string {
+  if (item.code === "codex-not-connected" || item.code.startsWith("sync-")) return "连接与应用";
+  if (item.code === "codex-conflict" || item.code === "managed-link-mismatch") return "内容冲突";
+  if (item.code.startsWith("state-")) return "恢复";
+  if (item.code.includes("project") || item.code === "effective-state-error") return "规则";
+  return "存储";
+}
+
+function issueTone(item: DiagnosticItem): "danger" | "warning" | "neutral" {
+  if (item.level === "error") return "danger";
+  if (item.level === "warning") return "warning";
+  return "neutral";
+}
 
 function diagnosticGuide(item: DiagnosticItem) {
   if (item.code === "skill-library-missing") {
@@ -129,7 +162,7 @@ async function chooseLibraryTarget() {
       <div class="panel-header">
         <div>
           <p class="eyebrow">Settings</p>
-          <h1 class="panel-title">设置与诊断</h1>
+          <h1 class="panel-title">连接与存储</h1>
         </div>
       </div>
 
@@ -153,11 +186,11 @@ async function chooseLibraryTarget() {
     </section>
 
     <section class="detail-panel">
-      <template v-if="selectedGroup === 'library'">
+      <template v-if="selectedGroup === 'storage'">
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Skill Library</p>
-            <h2>技能库</h2>
+            <p class="eyebrow">Storage</p>
+            <h2>存储位置</h2>
           </div>
         </div>
 
@@ -204,8 +237,8 @@ async function chooseLibraryTarget() {
       <template v-else-if="selectedGroup === 'codex'">
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Codex Connection</p>
-            <h2>Codex 连接</h2>
+            <p class="eyebrow">Codex</p>
+            <h2>连接与应用</h2>
           </div>
           <div class="tag-row">
             <span class="status-tag" :class="snapshot.codexConnected ? 'status-tag--success' : 'status-tag--muted'">
@@ -221,12 +254,12 @@ async function chooseLibraryTarget() {
               <dd>{{ snapshot.codexConnected ? "已连接" : "未连接或目录不可用" }}</dd>
             </div>
             <div>
-              <dt>Codex skills 目录</dt>
+              <dt>Codex 目录</dt>
               <dd>{{ snapshot.state.codexSkillsPath || "未设置" }}</dd>
             </div>
             <div>
-              <dt>上次同步结果</dt>
-              <dd>{{ snapshot.state.syncStatus.message || "尚未执行同步" }}</dd>
+              <dt>当前状态</dt>
+              <dd>{{ applyState.message }}</dd>
             </div>
           </dl>
         </section>
@@ -242,8 +275,12 @@ async function chooseLibraryTarget() {
             </button>
             <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
               <RefreshCw :size="16" />
-              手动同步
+              应用到 Codex
             </button>
+          </div>
+          <div class="inline-panel" :class="`inline-panel--${applyState.tone}`">
+            <strong>{{ applyState.label }}</strong>
+            <span>{{ snapshot.state.syncStatus.message || applyState.message }}</span>
           </div>
           <div v-if="snapshot.state.syncStatus.pendingActions.length" class="issue-list">
             <div
@@ -252,78 +289,49 @@ async function chooseLibraryTarget() {
               class="issue-card issue-card--warning"
             >
               <strong>{{ item.skillId }}</strong>
-              <p>{{ item.message }} · {{ item.target }}</p>
+              <p>{{ item.kind === 'inspect' ? '需要处理后再应用' : '有改动待应用' }}</p>
+              <small>{{ item.message }} · {{ item.target }}</small>
             </div>
           </div>
-        </section>
-      </template>
-
-      <template v-else-if="selectedGroup === 'diagnostics'">
-        <div class="detail-header">
-          <div>
-            <p class="eyebrow">Diagnostics</p>
-            <h2>诊断中心</h2>
-          </div>
-        </div>
-
-        <section v-if="groupedDiagnostics.error.length" class="detail-section detail-section--danger">
-          <div class="section-heading">
-            <h3>错误</h3>
-          </div>
-          <div class="issue-list">
-            <div v-for="item in groupedDiagnostics.error" :key="`${item.code}-${item.detail}`" class="issue-card">
-              <strong>{{ item.title }}</strong>
-              <p>{{ item.detail }}</p>
-              <small>下一步：{{ diagnosticGuide(item).action }}</small>
-            </div>
-          </div>
-        </section>
-
-        <section v-if="groupedDiagnostics.warning.length" class="detail-section">
-          <div class="section-heading">
-            <h3>警告</h3>
-          </div>
-          <div class="issue-list">
-            <div v-for="item in groupedDiagnostics.warning" :key="`${item.code}-${item.detail}`" class="issue-card issue-card--warning">
-              <strong>{{ item.title }}</strong>
-              <p>{{ item.detail }}</p>
-              <small>下一步：{{ diagnosticGuide(item).action }}</small>
-            </div>
-          </div>
-        </section>
-
-        <section class="detail-section">
-          <div class="section-heading">
-            <h3>信息</h3>
-          </div>
-          <div v-if="groupedDiagnostics.info.length" class="issue-list">
-            <div v-for="item in groupedDiagnostics.info" :key="`${item.code}-${item.detail}`" class="issue-card issue-card--neutral">
-              <strong>{{ item.title }}</strong>
-              <p>{{ item.detail }}</p>
-              <small>下一步：{{ diagnosticGuide(item).action }}</small>
-            </div>
-          </div>
-          <div v-else class="content-empty content-empty--compact">没有信息项。</div>
         </section>
       </template>
 
       <template v-else>
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Advanced</p>
-            <h2>高级与恢复</h2>
+            <p class="eyebrow">Issues</p>
+            <h2>问题与修复</h2>
           </div>
         </div>
 
         <section class="detail-section">
+          <div class="section-heading">
+            <h3>当前问题</h3>
+          </div>
+          <div v-if="issueItems.length" class="issue-list">
+            <div
+              v-for="item in issueItems"
+              :key="`${item.code}-${item.detail}`"
+              class="issue-card"
+              :class="`issue-card--${issueTone(item)}`"
+            >
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.detail }}</p>
+              <small>{{ issueCategory(item) }} · 下一步：{{ diagnosticGuide(item).action }}</small>
+            </div>
+          </div>
+          <div v-else class="content-empty content-empty--compact">当前没有需要处理的问题。</div>
+        </section>
+
+        <section class="detail-section">
           <dl class="detail-kv">
             <div>
-              <dt>状态加载</dt>
+              <dt>状态恢复</dt>
               <dd>{{ snapshot.stateLoad.message || "当前状态文件正常加载。" }}</dd>
             </div>
             <div>
-              <dt>当前阶段</dt>
-              <dd>{{ snapshot.stateLoad.phase }}</dd>
+              <dt>恢复入口</dt>
+              <dd>{{ canRebuild ? "可重建状态文件" : "当前不需要重建" }}</dd>
             </div>
           </dl>
         </section>
@@ -335,7 +343,7 @@ async function chooseLibraryTarget() {
           <div class="button-row">
             <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
               <Wrench :size="16" />
-              重新诊断并同步
+              重新检查并应用
             </button>
             <button v-if="canRebuild" class="danger-button" :disabled="busy" @click="run(api.rebuildState)">
               <RotateCcw :size="16" />

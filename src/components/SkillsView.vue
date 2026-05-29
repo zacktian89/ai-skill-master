@@ -5,7 +5,7 @@ import * as api from "../api";
 import { openDirectory } from "../dialog";
 import type { AppSnapshot, DeleteSkillPreview, PendingSyncAction, Skill } from "../types";
 
-type SkillFilter = "all" | "enabled" | "conflict" | "unsynced" | "disabled";
+type SkillFilter = "all" | "enabled" | "pending" | "issues" | "disabled";
 type SkillSort = "name" | "status" | "sync";
 
 const props = defineProps<{
@@ -30,24 +30,70 @@ function actionsForSkill(skillId: string): PendingSyncAction[] {
   return props.snapshot.state.syncStatus.pendingActions.filter((item) => item.skillId === skillId);
 }
 
-function hasPendingSync(skill: Skill): boolean {
-  return actionsForSkill(skill.id).length > 0 || !skill.managedLinks.codex;
+const currentProject = computed(
+  () =>
+    props.snapshot.state.projects.find((project) => project.id === props.snapshot.state.currentProjectId) ?? null,
+);
+
+function effectiveEnabled(skill: Skill): boolean {
+  const rule = currentProject.value?.rules[skill.id];
+  if (rule === "enable") return true;
+  if (rule === "disable") return false;
+  return skill.defaultEnabled;
+}
+
+function hasBlockingIssue(skill: Skill): boolean {
+  return Boolean(skill.conflict) || actionsForSkill(skill.id).some((item) => item.kind === "inspect");
+}
+
+function hasPendingApply(skill: Skill): boolean {
+  if (hasBlockingIssue(skill)) return false;
+  const actions = actionsForSkill(skill.id);
+  if (actions.some((item) => item.kind === "create" || item.kind === "remove")) return true;
+  return effectiveEnabled(skill) && !skill.managedLinks.codex;
 }
 
 function matchesFilter(skill: Skill): boolean {
-  if (filter.value === "enabled") return skill.defaultEnabled;
-  if (filter.value === "disabled") return !skill.defaultEnabled;
-  if (filter.value === "conflict") return Boolean(skill.conflict);
-  if (filter.value === "unsynced") return hasPendingSync(skill);
+  if (filter.value === "enabled") return effectiveEnabled(skill);
+  if (filter.value === "disabled") return !effectiveEnabled(skill);
+  if (filter.value === "issues") return hasBlockingIssue(skill);
+  if (filter.value === "pending") return hasPendingApply(skill);
   return true;
 }
 
 function statusWeight(skill: Skill): number {
-  if (skill.conflict) return 0;
-  if (hasPendingSync(skill)) return 1;
-  if (skill.defaultEnabled) return 2;
+  if (hasBlockingIssue(skill)) return 0;
+  if (hasPendingApply(skill)) return 1;
+  if (effectiveEnabled(skill)) return 2;
   return 3;
 }
+
+const globalApplyState = computed(() => {
+  const issueCount = props.snapshot.diagnostics.filter((item) => item.level === "error").length;
+  const pendingCount = props.snapshot.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
+
+  if (issueCount) {
+    return {
+      tone: "danger",
+      label: "需处理",
+      message: `有 ${issueCount} 个问题需要处理，处理后再应用到 Codex。`,
+    };
+  }
+
+  if (pendingCount) {
+    return {
+      tone: "warning",
+      label: "待应用",
+      message: `有 ${pendingCount} 项改动待应用到 Codex。`,
+    };
+  }
+
+  return {
+    tone: props.snapshot.codexConnected ? "success" : "neutral",
+    label: props.snapshot.codexConnected ? "已应用" : "未连接",
+    message: props.snapshot.codexConnected ? "当前配置已应用到 Codex。" : "请先连接 Codex 目录。",
+  };
+});
 
 const skills = computed(() => {
   const normalized = query.value.trim().toLowerCase();
@@ -59,7 +105,7 @@ const skills = computed(() => {
     })
     .sort((left, right) => {
       if (sort.value === "name") return left.name.localeCompare(right.name, "zh-CN");
-      if (sort.value === "sync") return Number(hasPendingSync(left)) - Number(hasPendingSync(right));
+      if (sort.value === "sync") return Number(hasPendingApply(right)) - Number(hasPendingApply(left));
       const diff = statusWeight(left) - statusWeight(right);
       return diff || left.name.localeCompare(right.name, "zh-CN");
     });
@@ -71,53 +117,69 @@ const selectedSkill = computed(
 
 const selectedIssues = computed(() => {
   if (!selectedSkill.value) return [];
-  const issues = actionsForSkill(selectedSkill.value.id).map((item) => ({
-    key: `${item.kind}-${item.target}-${item.message}`,
-    title: item.kind === "remove" ? "待移除托管链接" : item.kind === "inspect" ? "需要人工检查" : "待创建托管链接",
-    detail: `${item.message} · ${item.target}`,
-  }));
+  const issues = actionsForSkill(selectedSkill.value.id)
+    .filter((item) => item.kind === "inspect")
+    .map((item) => ({
+      key: `${item.kind}-${item.target}-${item.message}`,
+      title: "需要处理",
+      detail: `${item.message} · ${item.target}`,
+    }));
   if (selectedSkill.value.conflict) {
     issues.unshift({
       key: `conflict-${selectedSkill.value.conflict.path}`,
-      title: "存在冲突",
+      title: "内容冲突",
       detail: `${selectedSkill.value.conflict.message} · ${selectedSkill.value.conflict.path}`,
-    });
-  }
-  if (!selectedSkill.value.managedLinks.codex) {
-    issues.push({
-      key: "missing-link",
-      title: "尚未同步到 Codex",
-      detail: "当前 skill 还没有托管链接。",
     });
   }
   return issues;
 });
 
+function applyState(skill: Skill) {
+  if (hasBlockingIssue(skill)) return { label: "需处理", tone: "danger" };
+  if (hasPendingApply(skill)) return { label: "待应用", tone: "warning" };
+  if (props.snapshot.codexConnected) return { label: "已应用", tone: "success" };
+  return { label: "未连接", tone: "neutral" };
+}
+
 function skillTags(skill: Skill) {
   const tags = [
     {
-      label: skill.defaultEnabled ? "默认启用" : "默认停用",
-      tone: skill.defaultEnabled ? "brand" : "neutral",
+      label: effectiveEnabled(skill) ? "当前启用" : "当前停用",
+      tone: effectiveEnabled(skill) ? "brand" : "neutral",
     },
   ];
-
-  if (skill.conflict) {
-    tags.push({ label: "有冲突", tone: "danger" });
-  } else if (hasPendingSync(skill)) {
-    tags.push({ label: "待同步", tone: "warning" });
-  } else {
-    tags.push({ label: "已同步", tone: "success" });
-  }
-
+  tags.push(applyState(skill));
   return tags;
 }
 
+function primarySkillState(skill: Skill) {
+  if (hasBlockingIssue(skill)) return { label: "需处理", tone: "danger" };
+  return effectiveEnabled(skill)
+    ? { label: "启用中", tone: "brand" }
+    : { label: "已停用", tone: "neutral" };
+}
+
+function listSummary(skill: Skill): string {
+  const summary = [skill.defaultEnabled ? "默认启用" : "默认停用"];
+
+  if (hasBlockingIssue(skill)) {
+    summary.push("处理问题后才能应用");
+  } else if (hasPendingApply(skill)) {
+    summary.push("有改动待应用");
+  } else if (effectiveEnabled(skill)) {
+    summary.push("当前会生效");
+  } else {
+    summary.push("当前不会生效");
+  }
+
+  return summary.join(" · ");
+}
+
 function syncSummary(skill: Skill): string {
-  const actions = actionsForSkill(skill.id);
-  if (skill.conflict) return "存在冲突，处理后再同步。";
-  if (actions.length) return actions[0]?.message ?? "有待处理同步操作。";
-  if (!skill.managedLinks.codex) return "尚未建立 Codex 托管链接。";
-  return props.snapshot.state.syncStatus.message || "已同步到 Codex。";
+  if (hasBlockingIssue(skill)) return "存在问题，处理后再应用到 Codex。";
+  if (hasPendingApply(skill)) return "有改动待应用到 Codex。";
+  if (!props.snapshot.codexConnected) return "请先连接 Codex 目录。";
+  return "当前配置已应用到 Codex。";
 }
 
 async function run(action: () => Promise<AppSnapshot>) {
@@ -180,19 +242,19 @@ function closeDeleteDialog() {
       </div>
 
       <div class="toolbar toolbar--stack">
-        <input v-model="query" class="search-input" placeholder="搜索 skill 名称、描述或 ID" />
+        <input v-model="query" class="search-input" placeholder="搜索名称、ID 或描述" />
 
         <div class="toolbar-row">
           <div class="filter-group">
             <button class="filter-chip" :class="{ active: filter === 'all' }" @click="filter = 'all'">全部</button>
             <button class="filter-chip" :class="{ active: filter === 'enabled' }" @click="filter = 'enabled'">
-              已启用
+              启用中
             </button>
-            <button class="filter-chip" :class="{ active: filter === 'conflict' }" @click="filter = 'conflict'">
-              有冲突
+            <button class="filter-chip" :class="{ active: filter === 'pending' }" @click="filter = 'pending'">
+              待应用
             </button>
-            <button class="filter-chip" :class="{ active: filter === 'unsynced' }" @click="filter = 'unsynced'">
-              未同步
+            <button class="filter-chip" :class="{ active: filter === 'issues' }" @click="filter = 'issues'">
+              需处理
             </button>
             <button class="filter-chip" :class="{ active: filter === 'disabled' }" @click="filter = 'disabled'">
               已停用
@@ -213,8 +275,13 @@ function closeDeleteDialog() {
           </button>
           <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
             <RefreshCw :size="16" />
-            同步
+            应用到 Codex
           </button>
+        </div>
+
+        <div class="inline-panel" :class="`inline-panel--${globalApplyState.tone}`">
+          <strong>{{ globalApplyState.label }}</strong>
+          <span>{{ globalApplyState.message }}</span>
         </div>
       </div>
 
@@ -226,19 +293,17 @@ function closeDeleteDialog() {
           :class="{ active: selectedSkill?.id === skill.id }"
           @click="emit('select-skill', skill.id)"
         >
-          <div class="list-row-copy">
-            <strong>{{ skill.name }}</strong>
-            <small>{{ skill.description || skill.id }}</small>
-          </div>
-          <div class="list-row-meta">
-            <span
-              v-for="tag in skillTags(skill)"
-              :key="`${skill.id}-${tag.label}`"
-              class="status-tag"
-              :class="`status-tag--${tag.tone}`"
-            >
-              {{ tag.label }}
-            </span>
+          <div class="list-row-main">
+            <div class="list-row-top">
+              <strong>{{ skill.name }}</strong>
+              <span class="status-tag list-row-state" :class="`status-tag--${primarySkillState(skill).tone}`">
+                {{ primarySkillState(skill).label }}
+              </span>
+            </div>
+            <div class="list-row-bottom">
+              <code class="skill-id-badge">{{ skill.id }}</code>
+              <span class="list-row-summary">{{ listSummary(skill) }}</span>
+            </div>
           </div>
         </button>
       </div>
@@ -276,19 +341,23 @@ function closeDeleteDialog() {
               <dd>{{ selectedSkill.id }}</dd>
             </div>
             <div>
-              <dt>默认状态</dt>
-              <dd>{{ selectedSkill.defaultEnabled ? "默认启用" : "默认停用" }}</dd>
+              <dt>当前状态</dt>
+              <dd>{{ primarySkillState(selectedSkill).label }}</dd>
             </div>
             <div>
-              <dt>Codex</dt>
-              <dd>{{ selectedSkill.managedLinks.codex ? "已托管" : "未同步" }}</dd>
+              <dt>应用状态</dt>
+              <dd>{{ applyState(selectedSkill).label }}</dd>
+            </div>
+            <div>
+              <dt>默认规则</dt>
+              <dd>{{ selectedSkill.defaultEnabled ? "默认启用" : "默认停用" }}</dd>
             </div>
           </dl>
         </section>
 
         <section class="detail-section">
           <div class="section-heading">
-            <h3>启用与同步</h3>
+            <h3>规则与应用</h3>
           </div>
           <div class="action-card">
             <label class="toggle-row">
@@ -306,7 +375,7 @@ function closeDeleteDialog() {
             <div class="button-row">
               <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
                 <RefreshCw :size="16" />
-                手动同步
+                应用到 Codex
               </button>
             </div>
             <p class="inline-copy">{{ syncSummary(selectedSkill) }}</p>
@@ -315,7 +384,7 @@ function closeDeleteDialog() {
 
         <section class="detail-section">
           <div class="section-heading">
-            <h3>路径与来源</h3>
+            <h3>高级信息</h3>
           </div>
           <dl class="detail-kv detail-kv--wide">
             <div>
@@ -323,15 +392,15 @@ function closeDeleteDialog() {
               <dd>{{ selectedSkill.libraryPath }}</dd>
             </div>
             <div>
-              <dt>托管链接</dt>
-              <dd>{{ selectedSkill.managedLinks.codex || "尚未创建 Codex 托管链接" }}</dd>
+              <dt>Codex 目标</dt>
+              <dd>{{ selectedSkill.managedLinks.codex || "当前还没有应用目标" }}</dd>
             </div>
           </dl>
         </section>
 
         <section v-if="selectedIssues.length" class="detail-section detail-section--danger">
           <div class="section-heading">
-            <h3>异常与冲突</h3>
+            <h3>问题与修复</h3>
           </div>
           <div class="issue-list">
             <div v-for="issue in selectedIssues" :key="issue.key" class="issue-card">

@@ -736,10 +736,7 @@ button:disabled {
 }
 
 .list-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
+  display: block;
   width: 100%;
   padding: 14px 16px;
   border: 1px solid transparent;
@@ -764,7 +761,58 @@ button:disabled {
   min-width: 0;
 }
 
-.list-row-meta,
+.list-row-main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.list-row-top,
+.list-row-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.list-row-top {
+  justify-content: space-between;
+}
+
+.list-row-top strong {
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.list-row-state {
+  flex: 0 0 auto;
+}
+
+.list-row-bottom {
+  flex-wrap: wrap;
+}
+
+.skill-id-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-tertiary);
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.list-row-summary {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .tag-row {
   justify-content: flex-end;
 }
@@ -958,6 +1006,11 @@ button:disabled {
   background: var(--warning-bg);
 }
 
+.issue-card--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
 .issue-card--neutral {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -976,6 +1029,26 @@ button:disabled {
 .inline-panel {
   display: grid;
   gap: 6px;
+}
+
+.inline-panel--success {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+}
+
+.inline-panel--warning {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.inline-panel--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.inline-panel--neutral {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .expander {
@@ -1176,6 +1249,10 @@ button:disabled {
   .detail-kv,
   .stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .list-row-top {
+    align-items: flex-start;
   }
 
   .segmented-control {

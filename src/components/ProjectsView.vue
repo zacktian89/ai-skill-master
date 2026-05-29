@@ -223,7 +223,7 @@ function projectTags(project: Project) {
             </div>
             <div>
               <dt>当前上下文</dt>
-              <dd>{{ snapshot.state.currentProjectId === selectedProject.id ? "已设为当前项目" : "未设为当前项目" }}</dd>
+              <dd>{{ snapshot.state.currentProjectId === selectedProject.id ? "当前正在使用这个项目" : "当前使用全局默认规则" }}</dd>
             </div>
             <div>
               <dt>覆盖规则</dt>
@@ -241,7 +241,7 @@ function projectTags(project: Project) {
               设为当前项目
             </button>
             <button class="secondary-button" :disabled="busy" @click="run(() => api.setCurrentProject(null))">
-              清除当前项目
+              回到全局默认
             </button>
           </div>
         </section>

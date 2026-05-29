@@ -37,8 +37,8 @@ const sectionMeta: Record<Section, { eyebrow: string; title: string; label: stri
     label: "Projects",
   },
   settings: {
-    eyebrow: "Settings",
-    title: "设置与诊断",
+    eyebrow: "Storage & Connection",
+    title: "连接与存储",
     label: "Settings",
   },
 };
@@ -50,19 +50,16 @@ const activeSummary = computed(() => {
 
   if (activeSection.value === "skills") {
     const skills = snapshot.value.state.skills;
-    const pendingSkillIds = new Set(snapshot.value.state.syncStatus.pendingActions.map((item) => item.skillId));
-    const conflictCount = skills.filter((skill) => Boolean(skill.conflict)).length;
-    const needsAttention = skills.filter(
-      (skill) => Boolean(skill.conflict) || !skill.managedLinks.codex || pendingSkillIds.has(skill.id),
-    ).length;
+    const issueCount = skills.filter((skill) => Boolean(skill.conflict)).length;
+    const pendingCount = snapshot.value.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
 
     const parts = [`${skills.length} 个 skill`];
-    if (conflictCount) {
-      parts.push(`${conflictCount} 个冲突`);
-    } else if (needsAttention) {
-      parts.push(`${needsAttention} 个待处理`);
+    if (issueCount) {
+      parts.push(`${issueCount} 个需处理`);
+    } else if (pendingCount) {
+      parts.push(`${pendingCount} 项待应用`);
     } else {
-      parts.push("全部已同步");
+      parts.push("已应用到 Codex");
     }
     return parts.join(" · ");
   }
@@ -72,23 +69,20 @@ const activeSummary = computed(() => {
     const currentProject = projects.find((project) => project.id === snapshot.value?.state.currentProjectId);
     const overrideCount = projects.reduce((total, project) => total + Object.keys(project.rules).length, 0);
     const parts = [`${projects.length} 个项目`];
-    if (currentProject) parts.push(`当前 ${currentProject.name}`);
+    parts.push(currentProject ? `当前 ${currentProject.name}` : "当前全局默认");
     parts.push(`${overrideCount} 条覆盖`);
     return parts.join(" · ");
   }
 
-  const diagnostics = snapshot.value.diagnostics;
-  const errorCount = diagnostics.filter((item) => item.level === "error").length;
-  const warningCount = diagnostics.filter((item) => item.level === "warning").length;
+  const issueCount = snapshot.value.diagnostics.filter((item) => item.level === "error").length;
+  const pendingCount = snapshot.value.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
   const parts = [snapshot.value.codexConnected ? "Codex 已连接" : "Codex 未连接"];
-  if (errorCount) {
-    parts.push(`${errorCount} 个错误`);
-  } else if (warningCount) {
-    parts.push(`${warningCount} 个警告`);
-  } else if (diagnostics.length) {
-    parts.push(`${diagnostics.length} 条信息`);
+  if (issueCount) {
+    parts.push(`${issueCount} 个问题待处理`);
+  } else if (pendingCount) {
+    parts.push(`${pendingCount} 项待应用`);
   } else {
-    parts.push("没有待处理问题");
+    parts.push("状态正常");
   }
   return parts.join(" · ");
 });
@@ -96,7 +90,7 @@ const activeSummary = computed(() => {
 const currentProjectName = computed(() => {
   const projects = snapshot.value?.state.projects ?? [];
   const currentId = snapshot.value?.state.currentProjectId;
-  return projects.find((project) => project.id === currentId)?.name ?? "ai-skill-master";
+  return projects.find((project) => project.id === currentId)?.name ?? "全局默认";
 });
 
 async function refresh() {

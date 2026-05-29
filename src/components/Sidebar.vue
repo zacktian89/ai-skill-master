@@ -21,33 +21,37 @@ defineEmits<{
   "update:activeSection": [value: Section];
 }>();
 
-const healthState = computed(() => {
+const workspaceState = computed(() => {
   const diagnostics = props.snapshot?.diagnostics ?? [];
-  if (diagnostics.some((item) => item.level === "error")) {
+  const pendingActions = props.snapshot?.state.syncStatus.pendingActions ?? [];
+  const blockingIssues = diagnostics.filter((item) => item.level === "error").length;
+  const pendingChanges = pendingActions.filter((item) => item.kind !== "inspect").length;
+
+  if (blockingIssues) {
     return {
       tone: "danger",
-      title: `${diagnostics.length} 个问题待处理`,
+      title: `${blockingIssues} 个问题待处理`,
       short: "需处理",
     };
   }
-  if (diagnostics.some((item) => item.level === "warning")) {
+  if (pendingChanges) {
     return {
       tone: "warning",
-      title: `${diagnostics.length} 条诊断提醒`,
-      short: "有提醒",
+      title: `${pendingChanges} 项待应用`,
+      short: "待应用",
     };
   }
   return {
-    tone: "success",
-    title: diagnostics.length ? `${diagnostics.length} 条信息` : "没有待处理问题",
-    short: diagnostics.length ? "正常" : "已就绪",
+    tone: props.snapshot?.codexConnected ? "success" : "muted",
+    title: props.snapshot?.codexConnected ? "已应用到 Codex" : "等待连接 Codex",
+    short: props.snapshot?.codexConnected ? "已应用" : "未连接",
   };
 });
 
 const currentProject = computed(() => {
   const projects = props.snapshot?.state.projects ?? [];
   const currentId = props.snapshot?.state.currentProjectId;
-  return projects.find((project) => project.id === currentId) ?? projects[0] ?? null;
+  return projects.find((project) => project.id === currentId) ?? null;
 });
 
 const navItems = computed(() => [
@@ -99,8 +103,8 @@ const navItems = computed(() => [
       <button class="project-button" :class="{ active: activeSection === 'projects' }" @click="$emit('update:activeSection', 'projects')">
         <FolderKanban :size="18" />
         <span class="project-button-copy">
-          <strong>{{ currentProject?.name ?? "ai-skill-master" }}</strong>
-          <small>{{ currentProject?.path ?? "等待项目上下文" }}</small>
+          <strong>{{ currentProject?.name ?? "全局默认" }}</strong>
+          <small>{{ currentProject?.path ?? "当前未选择项目" }}</small>
         </span>
       </button>
     </section>
@@ -121,10 +125,10 @@ const navItems = computed(() => [
         <div class="status-row">
           <div class="status-row-copy">
             <ShieldAlert :size="15" />
-            <span>诊断</span>
+            <span>应用</span>
           </div>
-          <span class="status-value" :class="`is-${healthState.tone}`">
-            {{ healthState.short }}
+          <span class="status-value" :class="`is-${workspaceState.tone}`">
+            {{ workspaceState.short }}
           </span>
         </div>
       </div>
@@ -139,7 +143,7 @@ const navItems = computed(() => [
         <Settings :size="18" />
         <span class="rail-nav-copy">
           <strong>Settings</strong>
-          <small>{{ healthState.title }}</small>
+          <small>{{ workspaceState.title }}</small>
         </span>
       </button>
     </div>
