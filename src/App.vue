@@ -25,28 +25,73 @@ const selectedProjectId = ref<string | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
-const sectionMeta: Record<Section, { eyebrow: string; title: string; copy: string; label: string }> = {
+const sectionMeta: Record<Section, { eyebrow: string; title: string; label: string }> = {
   skills: {
     eyebrow: "Skill Library",
-    title: "让技能库像 Codex 一样安静、有序、可控。",
-    copy: "在深色工作区里统一查看本地 skill、同步状态和默认规则，保持信息密度高但不吵。",
+    title: "技能库",
     label: "Skills",
   },
   projects: {
     eyebrow: "Project Rules",
-    title: "按项目收束例外，让默认集保持干净。",
-    copy: "把项目上下文、覆盖规则和当前工作目录收在一个面板里，切换时不需要跳出主视线。",
+    title: "项目规则",
     label: "Projects",
   },
   settings: {
     eyebrow: "Settings",
-    title: "把低频配置收进底部入口，把诊断留在该出现的地方。",
-    copy: "保留 Codex 风格的导航秩序，同时把连接、迁移和恢复动作集中到一个稳定的深色舞台里。",
+    title: "设置与诊断",
     label: "Settings",
   },
 };
 
 const activeMeta = computed(() => sectionMeta[activeSection.value]);
+
+const activeSummary = computed(() => {
+  if (!snapshot.value) return "";
+
+  if (activeSection.value === "skills") {
+    const skills = snapshot.value.state.skills;
+    const pendingSkillIds = new Set(snapshot.value.state.syncStatus.pendingActions.map((item) => item.skillId));
+    const conflictCount = skills.filter((skill) => Boolean(skill.conflict)).length;
+    const needsAttention = skills.filter(
+      (skill) => Boolean(skill.conflict) || !skill.managedLinks.codex || pendingSkillIds.has(skill.id),
+    ).length;
+
+    const parts = [`${skills.length} 个 skill`];
+    if (conflictCount) {
+      parts.push(`${conflictCount} 个冲突`);
+    } else if (needsAttention) {
+      parts.push(`${needsAttention} 个待处理`);
+    } else {
+      parts.push("全部已同步");
+    }
+    return parts.join(" · ");
+  }
+
+  if (activeSection.value === "projects") {
+    const projects = snapshot.value.state.projects;
+    const currentProject = projects.find((project) => project.id === snapshot.value?.state.currentProjectId);
+    const overrideCount = projects.reduce((total, project) => total + Object.keys(project.rules).length, 0);
+    const parts = [`${projects.length} 个项目`];
+    if (currentProject) parts.push(`当前 ${currentProject.name}`);
+    parts.push(`${overrideCount} 条覆盖`);
+    return parts.join(" · ");
+  }
+
+  const diagnostics = snapshot.value.diagnostics;
+  const errorCount = diagnostics.filter((item) => item.level === "error").length;
+  const warningCount = diagnostics.filter((item) => item.level === "warning").length;
+  const parts = [snapshot.value.codexConnected ? "Codex 已连接" : "Codex 未连接"];
+  if (errorCount) {
+    parts.push(`${errorCount} 个错误`);
+  } else if (warningCount) {
+    parts.push(`${warningCount} 个警告`);
+  } else if (diagnostics.length) {
+    parts.push(`${diagnostics.length} 条信息`);
+  } else {
+    parts.push("没有待处理问题");
+  }
+  return parts.join(" · ");
+});
 
 const currentProjectName = computed(() => {
   const projects = snapshot.value?.state.projects ?? [];
@@ -124,7 +169,7 @@ onMounted(refresh);
         <section class="workspace-hero">
           <p class="workspace-kicker">{{ activeMeta.eyebrow }}</p>
           <h1 class="workspace-hero-title">{{ activeMeta.title }}</h1>
-          <p class="workspace-hero-copy">{{ activeMeta.copy }}</p>
+          <p class="workspace-hero-summary">{{ activeSummary }}</p>
         </section>
 
         <section class="workspace-frame">

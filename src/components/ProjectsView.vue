@@ -136,7 +136,6 @@ function projectTags(project: Project) {
         <div>
           <p class="eyebrow">Projects</p>
           <h1 class="panel-title">项目规则</h1>
-          <p class="panel-copy">按项目覆盖默认规则，让默认集保持安静，例外只出现在需要的地方。</p>
         </div>
         <span class="panel-count">{{ projects.length }}</span>
       </div>
@@ -216,7 +215,6 @@ function projectTags(project: Project) {
         <section class="detail-section">
           <div class="section-heading">
             <h3>概览</h3>
-            <p>项目上下文和覆盖规模先看摘要，不先展开全量规则。</p>
           </div>
           <dl class="detail-kv">
             <div>
@@ -237,7 +235,6 @@ function projectTags(project: Project) {
         <section class="detail-section">
           <div class="section-heading">
             <h3>上下文控制</h3>
-            <p>只保留最常用的项目上下文切换动作。</p>
           </div>
           <div class="button-row">
             <button class="primary-button" :disabled="busy" @click="run(() => api.setCurrentProject(selectedProject!.id))">
@@ -252,7 +249,6 @@ function projectTags(project: Project) {
         <section class="detail-section">
           <div class="section-heading">
             <h3>规则摘要</h3>
-            <p>只放覆盖数量，不在这里重复列出继承态噪音。</p>
           </div>
           <div class="stat-grid">
             <div class="stat-card">
@@ -273,7 +269,6 @@ function projectTags(project: Project) {
         <section class="detail-section">
           <div class="section-heading">
             <h3>已覆盖规则</h3>
-            <p>默认只列出非继承项，每项都能直接改回跟随默认。</p>
           </div>
           <div v-if="overrideRows.length" class="rule-stack">
             <div v-for="item in overrideRows" :key="item.skill.id" class="rule-card">
@@ -299,11 +294,10 @@ function projectTags(project: Project) {
 
         <section class="detail-section">
           <div class="section-heading">
-            <h3>全量规则</h3>
-            <p>只有主动展开时才展示所有 skill，避免默认形成表单墙。</p>
+            <h3>全部规则</h3>
           </div>
           <details class="expander">
-            <summary>展开全部 skill 规则</summary>
+            <summary>展开全部规则</summary>
             <div v-if="allSkills.length" class="rule-stack">
               <div v-for="skill in allSkills" :key="skill.id" class="rule-card">
                 <div class="rule-copy">
@@ -342,7 +336,6 @@ function projectTags(project: Project) {
         <section class="detail-section detail-section--danger">
           <div class="section-heading">
             <h3>低频操作</h3>
-            <p>重置会清空全部覆盖规则；删除项目会同时移除上下文记录。</p>
           </div>
           <div class="button-row">
             <button class="secondary-button" :disabled="busy || !overrideCount(selectedProject)" @click="confirmAction = 'reset'">
@@ -369,9 +362,7 @@ function projectTags(project: Project) {
           <h2>{{ confirmAction === "reset" ? "重置覆盖规则" : `删除 ${selectedProject.name}` }}</h2>
           <p>
             {{
-              confirmAction === "reset"
-                ? "这会把所有项目规则改回跟随默认，不会影响 skill 的全局默认状态。"
-                : "这会移除项目记录，并在它是当前上下文时自动回退到全局默认。"
+              confirmAction === "reset" ? "这会把所有项目规则改回跟随默认。" : "这会移除项目记录。"
             }}
           </p>
         </div>

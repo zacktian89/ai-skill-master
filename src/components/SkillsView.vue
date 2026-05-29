@@ -87,7 +87,7 @@ const selectedIssues = computed(() => {
     issues.push({
       key: "missing-link",
       title: "尚未同步到 Codex",
-      detail: "当前 skill 还没有托管链接，执行同步后才会写入 Codex skills 目录。",
+      detail: "当前 skill 还没有托管链接。",
     });
   }
   return issues;
@@ -114,10 +114,10 @@ function skillTags(skill: Skill) {
 
 function syncSummary(skill: Skill): string {
   const actions = actionsForSkill(skill.id);
-  if (skill.conflict) return "检测到冲突，需先处理异常后再同步。";
-  if (actions.length) return actions[0]?.message ?? "存在待处理同步操作。";
+  if (skill.conflict) return "存在冲突，处理后再同步。";
+  if (actions.length) return actions[0]?.message ?? "有待处理同步操作。";
   if (!skill.managedLinks.codex) return "尚未建立 Codex 托管链接。";
-  return props.snapshot.state.syncStatus.message || "当前 skill 已处于已同步状态。";
+  return props.snapshot.state.syncStatus.message || "已同步到 Codex。";
 }
 
 async function run(action: () => Promise<AppSnapshot>) {
@@ -175,7 +175,6 @@ function closeDeleteDialog() {
         <div>
           <p class="eyebrow">Skills</p>
           <h1 class="panel-title">技能库</h1>
-          <p class="panel-copy">管理本地技能库、默认启用状态与同步状态。</p>
         </div>
         <span class="panel-count">{{ skills.length }}</span>
       </div>
@@ -270,7 +269,6 @@ function closeDeleteDialog() {
         <section class="detail-section">
           <div class="section-heading">
             <h3>概览</h3>
-            <p>先确认当前 skill 的默认状态和托管结果。</p>
           </div>
           <dl class="detail-kv">
             <div>
@@ -291,13 +289,12 @@ function closeDeleteDialog() {
         <section class="detail-section">
           <div class="section-heading">
             <h3>启用与同步</h3>
-            <p>布尔开关负责默认状态，手动同步只在需要时触发。</p>
           </div>
           <div class="action-card">
             <label class="toggle-row">
               <span>
                 <strong>默认启用</strong>
-                <small>关闭后只会在显式覆盖的项目里启用。</small>
+                <small>关闭后仅在项目覆盖时启用</small>
               </span>
               <input
                 type="checkbox"
@@ -319,7 +316,6 @@ function closeDeleteDialog() {
         <section class="detail-section">
           <div class="section-heading">
             <h3>路径与来源</h3>
-            <p>长路径收纳在详情区，不参与列表扫描。</p>
           </div>
           <dl class="detail-kv detail-kv--wide">
             <div>
@@ -330,17 +326,12 @@ function closeDeleteDialog() {
               <dt>托管链接</dt>
               <dd>{{ selectedSkill.managedLinks.codex || "尚未创建 Codex 托管链接" }}</dd>
             </div>
-            <div>
-              <dt>来源类型</dt>
-              <dd>本地技能库目录</dd>
-            </div>
           </dl>
         </section>
 
         <section v-if="selectedIssues.length" class="detail-section detail-section--danger">
           <div class="section-heading">
             <h3>异常与冲突</h3>
-            <p>问题会在列表和详情里同时可见，但完整解释只保留在这里。</p>
           </div>
           <div class="issue-list">
             <div v-for="issue in selectedIssues" :key="issue.key" class="issue-card">
@@ -353,7 +344,6 @@ function closeDeleteDialog() {
         <section class="detail-section detail-section--danger">
           <div class="section-heading">
             <h3>危险操作</h3>
-            <p>删除前会先预览托管链接和项目规则影响范围。</p>
           </div>
           <button class="danger-button" :disabled="busy" @click="openDeleteDialog">
             <Trash2 :size="16" />
@@ -372,7 +362,7 @@ function closeDeleteDialog() {
         <div>
           <p class="eyebrow">Confirm Delete</p>
           <h2>删除 {{ deletePreview.skillName }}</h2>
-          <p>预览会列出托管链接和项目规则影响，关闭前不会修改任何文件。</p>
+          <p>确认前不会修改任何文件。</p>
         </div>
       </div>
 
