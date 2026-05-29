@@ -113,7 +113,7 @@ summary:focus-visible {
 .rail-brand {
   display: grid;
   justify-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .rail-brand-mark {
@@ -127,24 +127,6 @@ summary:focus-visible {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.04em;
-}
-
-.rail-brand-copy {
-  display: grid;
-  gap: 4px;
-  text-align: center;
-}
-
-.rail-brand-copy strong {
-  font-size: 13px;
-  line-height: 1.2;
-}
-
-.rail-brand-copy span {
-  display: none;
-  color: var(--text-tertiary);
-  font-size: 12px;
-  line-height: 1.4;
 }
 
 .eyebrow {
@@ -186,49 +168,23 @@ summary:focus-visible {
   box-shadow: inset 3px 0 0 var(--brand-500);
 }
 
-.rail-count {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--bg-panel-muted);
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 18px;
-}
-
 .rail-footer {
   margin-top: auto;
   display: grid;
   gap: 10px;
+  justify-items: center;
 }
 
 .rail-status-card {
   display: grid;
-  gap: 8px;
-  justify-items: center;
-  padding: 12px 10px;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.56);
   color: var(--text-secondary);
-  text-align: center;
-}
-
-.rail-status-card strong {
-  display: block;
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.rail-status-card span {
-  display: block;
-  font-size: 11px;
-  line-height: 1.45;
 }
 
 .tone-success {
@@ -847,17 +803,7 @@ button:disabled {
   }
 
   .rail-brand {
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    justify-items: start;
-  }
-
-  .rail-brand-copy {
-    text-align: left;
-  }
-
-  .rail-brand-copy span {
-    display: block;
+    flex: 0 0 auto;
   }
 
   .rail-nav {
@@ -907,6 +853,6 @@ button:disabled {
   }
 
   .rail-footer {
-    display: none;
+    display: flex;
   }
 }
