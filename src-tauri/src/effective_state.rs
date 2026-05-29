@@ -31,7 +31,7 @@ pub fn effective_skill_ids(state: &AppState, project_id: Option<&str>) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{ManagedLinks, Project, ProjectRule, Skill};
+    use crate::models::{ManagedLinks, Project, ProjectRule, Skill, SkillSource};
     use crate::state_store::default_state;
     use std::collections::BTreeMap;
     use tempfile::tempdir;
@@ -42,6 +42,7 @@ mod tests {
             name: id.to_string(),
             description: String::new(),
             library_path: tempdir().unwrap().path().join(id),
+            source: SkillSource::default(),
             default_enabled,
             managed_links: ManagedLinks::default(),
             conflict: None,

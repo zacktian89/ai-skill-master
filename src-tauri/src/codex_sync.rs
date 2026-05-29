@@ -187,7 +187,7 @@ fn canonical_or_original(path: &Path) -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{ManagedLinks, Skill};
+    use crate::models::{ManagedLinks, Skill, SkillSource};
     use std::fs;
     use tempfile::tempdir;
 
@@ -199,6 +199,7 @@ mod tests {
             name: id.to_string(),
             description: String::new(),
             library_path,
+            source: SkillSource::default(),
             default_enabled: true,
             managed_links: ManagedLinks::default(),
             conflict: None,

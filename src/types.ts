@@ -8,6 +8,18 @@ export interface ManagedLinks {
   codex?: string | null;
 }
 
+export type SkillSourceKind = "local" | "github" | "openclawMarket" | "unknown";
+
+export interface SkillSource {
+  kind: SkillSourceKind;
+  label?: string | null;
+  url?: string | null;
+  path?: string | null;
+  ref?: string | null;
+  commit?: string | null;
+  subdir?: string | null;
+}
+
 export interface SkillConflict {
   target: string;
   path: string;
@@ -40,6 +52,7 @@ export interface Skill {
   name: string;
   description: string;
   libraryPath: string;
+  source?: SkillSource | null;
   defaultEnabled: boolean;
   managedLinks: ManagedLinks;
   conflict?: SkillConflict | null;

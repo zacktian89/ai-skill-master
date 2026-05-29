@@ -880,6 +880,7 @@ mod tests {
             name: "writer".to_string(),
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
+            source: Default::default(),
             default_enabled: true,
             managed_links: Default::default(),
             conflict: None,
@@ -900,6 +901,7 @@ mod tests {
             name: "Writer".to_string(),
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
+            source: Default::default(),
             default_enabled: true,
             managed_links: crate::models::ManagedLinks {
                 codex: Some(dir.path().join("codex").join("writer")),

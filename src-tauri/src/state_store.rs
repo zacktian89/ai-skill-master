@@ -141,7 +141,7 @@ fn load_state_with_recovery(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AppState, ManagedLinks, Project, ProjectRule, Skill};
+    use crate::models::{AppState, ManagedLinks, Project, ProjectRule, Skill, SkillSource};
     use std::collections::BTreeMap;
     use tempfile::tempdir;
 
@@ -164,6 +164,7 @@ mod tests {
                 name: "markdown-go".to_string(),
                 description: "Convert Markdown to WeChat HTML".to_string(),
                 library_path: dir.path().join("skills").join("markdown-go"),
+                source: SkillSource::default(),
                 default_enabled: true,
                 managed_links: ManagedLinks {
                     codex: Some(dir.path().join("codex").join("markdown-go")),
@@ -202,6 +203,38 @@ mod tests {
         assert!(state.state.skills.is_empty());
         assert!(path.exists());
         assert!(library.exists());
+    }
+
+    #[test]
+    fn loads_legacy_skill_without_source_as_local() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("skillmaster.json");
+        fs::write(
+            &path,
+            r#"{
+              "schemaVersion": 1,
+              "skillLibraryPath": "/tmp/skills",
+              "codexSkillsPath": null,
+              "currentProjectId": null,
+              "syncStatus": { "phase": "idle", "message": null, "pendingActions": [] },
+              "migrationNotice": null,
+              "skills": [{
+                "id": "writer",
+                "name": "Writer",
+                "description": "",
+                "libraryPath": "/tmp/skills/writer",
+                "defaultEnabled": false,
+                "managedLinks": { "codex": null },
+                "conflict": null
+              }],
+              "projects": []
+            }"#,
+        )
+        .unwrap();
+
+        let state = load_state(&path).unwrap();
+
+        assert_eq!(state.skills[0].source, SkillSource::default());
     }
 
     #[test]

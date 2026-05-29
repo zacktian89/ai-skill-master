@@ -24,9 +24,53 @@ pub struct Skill {
     pub name: String,
     pub description: String,
     pub library_path: PathBuf,
+    #[serde(default)]
+    pub source: SkillSource,
     pub default_enabled: bool,
     pub managed_links: ManagedLinks,
     pub conflict: Option<SkillConflict>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSource {
+    pub kind: SkillSourceKind,
+    pub label: Option<String>,
+    pub url: Option<String>,
+    pub path: Option<PathBuf>,
+    #[serde(rename = "ref")]
+    pub source_ref: Option<String>,
+    pub commit: Option<String>,
+    pub subdir: Option<String>,
+}
+
+impl SkillSource {
+    pub fn local(path: Option<PathBuf>) -> Self {
+        Self {
+            kind: SkillSourceKind::Local,
+            label: Some("本地".to_string()),
+            url: None,
+            path,
+            source_ref: None,
+            commit: None,
+            subdir: None,
+        }
+    }
+}
+
+impl Default for SkillSource {
+    fn default() -> Self {
+        Self::local(None)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SkillSourceKind {
+    Local,
+    Github,
+    OpenclawMarket,
+    Unknown,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]

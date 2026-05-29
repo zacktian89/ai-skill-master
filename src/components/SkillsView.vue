@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { FolderPlus, RefreshCw, Trash2 } from "lucide-vue-next";
+import { CircleHelp, Folder, Github, Plus, RefreshCw, ShoppingBag, Trash2 } from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
-import type { AppSnapshot, DeleteSkillPreview, PendingSyncAction, Skill } from "../types";
-
-type SkillFilter = "all" | "enabled" | "pending" | "issues" | "disabled";
-type SkillSort = "name" | "status" | "sync";
+import type { AppSnapshot, DeleteSkillPreview, PendingSyncAction, Skill, SkillSourceKind } from "../types";
 
 const props = defineProps<{
   snapshot: AppSnapshot;
@@ -20,11 +17,23 @@ const emit = defineEmits<{
 }>();
 
 const query = ref("");
-const filter = ref<SkillFilter>("all");
-const sort = ref<SkillSort>("status");
 const busy = ref(false);
 const deletePreview = ref<DeleteSkillPreview | null>(null);
 const deleteDialogOpen = ref(false);
+
+const sourceIcons = {
+  local: Folder,
+  github: Github,
+  openclawMarket: ShoppingBag,
+  unknown: CircleHelp,
+} satisfies Record<SkillSourceKind, unknown>;
+
+const sourceLabels = {
+  local: "本地",
+  github: "GitHub",
+  openclawMarket: "OpenClaw Market",
+  unknown: "未知来源",
+} satisfies Record<SkillSourceKind, string>;
 
 function actionsForSkill(skillId: string): PendingSyncAction[] {
   return props.snapshot.state.syncStatus.pendingActions.filter((item) => item.skillId === skillId);
@@ -53,62 +62,28 @@ function hasPendingApply(skill: Skill): boolean {
   return effectiveEnabled(skill) && !skill.managedLinks.codex;
 }
 
-function matchesFilter(skill: Skill): boolean {
-  if (filter.value === "enabled") return effectiveEnabled(skill);
-  if (filter.value === "disabled") return !effectiveEnabled(skill);
-  if (filter.value === "issues") return hasBlockingIssue(skill);
-  if (filter.value === "pending") return hasPendingApply(skill);
-  return true;
+function isReferenced(skill: Skill): boolean {
+  if (skill.defaultEnabled) return true;
+  return props.snapshot.state.projects.some((project) => project.rules[skill.id] === "enable");
 }
 
-function statusWeight(skill: Skill): number {
-  if (hasBlockingIssue(skill)) return 0;
-  if (hasPendingApply(skill)) return 1;
-  if (effectiveEnabled(skill)) return 2;
-  return 3;
+function sourceKind(skill: Skill): SkillSourceKind {
+  return skill.source?.kind ?? "local";
 }
 
-const globalApplyState = computed(() => {
-  const issueCount = props.snapshot.diagnostics.filter((item) => item.level === "error").length;
-  const pendingCount = props.snapshot.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
-
-  if (issueCount) {
-    return {
-      tone: "danger",
-      label: "需处理",
-      message: `有 ${issueCount} 个问题需要处理，处理后再应用到 Codex。`,
-    };
-  }
-
-  if (pendingCount) {
-    return {
-      tone: "warning",
-      label: "待应用",
-      message: `有 ${pendingCount} 项改动待应用到 Codex。`,
-    };
-  }
-
-  return {
-    tone: props.snapshot.codexConnected ? "success" : "neutral",
-    label: props.snapshot.codexConnected ? "已应用" : "未连接",
-    message: props.snapshot.codexConnected ? "当前配置已应用到 Codex。" : "请先连接 Codex 目录。",
-  };
-});
+function sourceLabel(skill: Skill): string {
+  const kind = sourceKind(skill);
+  return skill.source?.label || sourceLabels[kind];
+}
 
 const skills = computed(() => {
   const normalized = query.value.trim().toLowerCase();
   return [...props.snapshot.state.skills]
     .filter((skill) => {
-      if (!matchesFilter(skill)) return false;
       if (!normalized) return true;
       return `${skill.name} ${skill.description} ${skill.id}`.toLowerCase().includes(normalized);
     })
-    .sort((left, right) => {
-      if (sort.value === "name") return left.name.localeCompare(right.name, "zh-CN");
-      if (sort.value === "sync") return Number(hasPendingApply(right)) - Number(hasPendingApply(left));
-      const diff = statusWeight(left) - statusWeight(right);
-      return diff || left.name.localeCompare(right.name, "zh-CN");
-    });
+    .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
 });
 
 const selectedSkill = computed(
@@ -157,22 +132,6 @@ function primarySkillState(skill: Skill) {
   return effectiveEnabled(skill)
     ? { label: "启用中", tone: "brand" }
     : { label: "已停用", tone: "neutral" };
-}
-
-function listSummary(skill: Skill): string {
-  const summary = [skill.defaultEnabled ? "默认启用" : "默认停用"];
-
-  if (hasBlockingIssue(skill)) {
-    summary.push("处理问题后才能应用");
-  } else if (hasPendingApply(skill)) {
-    summary.push("有改动待应用");
-  } else if (effectiveEnabled(skill)) {
-    summary.push("当前会生效");
-  } else {
-    summary.push("当前不会生效");
-  }
-
-  return summary.join(" · ");
 }
 
 function syncSummary(skill: Skill): string {
@@ -242,46 +201,11 @@ function closeDeleteDialog() {
       </div>
 
       <div class="toolbar toolbar--stack">
-        <input v-model="query" class="search-input" placeholder="搜索名称、ID 或描述" />
-
-        <div class="toolbar-row">
-          <div class="filter-group">
-            <button class="filter-chip" :class="{ active: filter === 'all' }" @click="filter = 'all'">全部</button>
-            <button class="filter-chip" :class="{ active: filter === 'enabled' }" @click="filter = 'enabled'">
-              启用中
-            </button>
-            <button class="filter-chip" :class="{ active: filter === 'pending' }" @click="filter = 'pending'">
-              待应用
-            </button>
-            <button class="filter-chip" :class="{ active: filter === 'issues' }" @click="filter = 'issues'">
-              需处理
-            </button>
-            <button class="filter-chip" :class="{ active: filter === 'disabled' }" @click="filter = 'disabled'">
-              已停用
-            </button>
-          </div>
-
-          <select v-model="sort" class="select-input">
-            <option value="status">状态优先</option>
-            <option value="name">名称</option>
-            <option value="sync">同步优先</option>
-          </select>
-        </div>
-
-        <div class="toolbar-row">
-          <button class="primary-button" :disabled="busy" @click="importSkill">
-            <FolderPlus :size="16" />
-            导入 Skill
+        <div class="list-search-row">
+          <input v-model="query" class="search-input" placeholder="搜索已安装 Skill" />
+          <button class="icon-button" type="button" :disabled="busy" aria-label="按文件夹添加 Skill" @click="importSkill">
+            <Plus :size="18" />
           </button>
-          <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
-            <RefreshCw :size="16" />
-            应用到 Codex
-          </button>
-        </div>
-
-        <div class="inline-panel" :class="`inline-panel--${globalApplyState.tone}`">
-          <strong>{{ globalApplyState.label }}</strong>
-          <span>{{ globalApplyState.message }}</span>
         </div>
       </div>
 
@@ -296,13 +220,19 @@ function closeDeleteDialog() {
           <div class="list-row-main">
             <div class="list-row-top">
               <strong>{{ skill.name }}</strong>
-              <span class="status-tag list-row-state" :class="`status-tag--${primarySkillState(skill).tone}`">
-                {{ primarySkillState(skill).label }}
-              </span>
+              <span
+                class="reference-dot"
+                :class="isReferenced(skill) ? 'reference-dot--active' : 'reference-dot--idle'"
+                :aria-label="isReferenced(skill) ? '已引用' : '未引用'"
+                :title="isReferenced(skill) ? '已引用' : '未引用'"
+                role="img"
+              ></span>
             </div>
             <div class="list-row-bottom">
+              <span class="source-icon" :title="sourceLabel(skill)" :aria-label="sourceLabel(skill)" role="img">
+                <component :is="sourceIcons[sourceKind(skill)]" :size="13" />
+              </span>
               <code class="skill-id-badge">{{ skill.id }}</code>
-              <span class="list-row-summary">{{ listSummary(skill) }}</span>
             </div>
           </div>
         </button>

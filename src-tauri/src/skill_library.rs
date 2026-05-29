@@ -1,5 +1,5 @@
 use crate::error::{Result, SkillMasterError};
-use crate::models::{ManagedLinks, MigrationNotice, Skill};
+use crate::models::{ManagedLinks, MigrationNotice, Skill, SkillSource};
 use std::fs;
 use std::path::Path;
 
@@ -66,6 +66,7 @@ pub fn import_skill(state: &mut crate::models::AppState, source: &Path) -> Resul
         name: metadata.name,
         description: metadata.description,
         library_path: target,
+        source: SkillSource::local(Some(source.to_path_buf())),
         default_enabled: false,
         managed_links: ManagedLinks::default(),
         conflict: None,
@@ -95,6 +96,7 @@ pub fn scan_skill_library(root: &Path) -> Result<Vec<Skill>> {
             name: metadata.name,
             description: metadata.description,
             library_path: skill_dir,
+            source: SkillSource::default(),
             default_enabled: false,
             managed_links: ManagedLinks::default(),
             conflict: None,
@@ -217,6 +219,7 @@ mod tests {
 
         assert_eq!(state.skills.len(), 1);
         assert_eq!(state.skills[0].id, "writer");
+        assert_eq!(state.skills[0].source, SkillSource::local(Some(source)));
         assert!(library_root.path().join("writer").join("SKILL.md").exists());
     }
 
@@ -231,6 +234,7 @@ mod tests {
 
         assert_eq!(skills.len(), 1);
         assert_eq!(skills[0].id, "writer");
+        assert_eq!(skills[0].source, SkillSource::default());
     }
 
     #[test]
