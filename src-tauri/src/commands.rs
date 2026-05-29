@@ -104,6 +104,28 @@ pub struct ProjectImpact {
     pub project_path: PathBuf,
 }
 
+fn delete_project_from_state(state: &mut AppState, project_id: &str) -> Result<()> {
+    let original_len = state.projects.len();
+    state.projects.retain(|project| project.id != project_id);
+    if state.projects.len() == original_len {
+        return Err(SkillMasterError::ProjectNotFound(project_id.to_string()));
+    }
+    if state.current_project_id.as_deref() == Some(project_id) {
+        state.current_project_id = None;
+    }
+    Ok(())
+}
+
+fn reset_project_rules_in_state(state: &mut AppState, project_id: &str) -> Result<()> {
+    let project = state
+        .projects
+        .iter_mut()
+        .find(|project| project.id == project_id)
+        .ok_or_else(|| SkillMasterError::ProjectNotFound(project_id.to_string()))?;
+    project.rules.clear();
+    Ok(())
+}
+
 struct CommandState {
     paths: AppPaths,
     state: AppState,
@@ -672,6 +694,39 @@ pub fn set_current_project(
 }
 
 #[tauri::command]
+pub fn reset_project_rules(
+    app: AppHandle,
+    project_id: String,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    reset_project_rules_in_state(&mut command_state.state, &project_id)
+        .map_err(|error| error.to_string())?;
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn delete_project(
+    app: AppHandle,
+    project_id: String,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    delete_project_from_state(&mut command_state.state, &project_id).map_err(|error| error.to_string())?;
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub fn set_codex_path(app: AppHandle, path: PathBuf) -> std::result::Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
     command_state.state.codex_skills_path = Some(path);
@@ -865,5 +920,52 @@ mod tests {
         assert_eq!(preview.skill_name, "Writer");
         assert_eq!(preview.managed_link_targets.len(), 1);
         assert_eq!(preview.affected_projects.len(), 1);
+    }
+
+    #[test]
+    fn deleting_current_project_clears_context() {
+        let dir = tempdir().unwrap();
+        let mut state = default_state(dir.path().join("skills"), None);
+        state.current_project_id = Some("demo".to_string());
+        state.projects.push(Project {
+            id: "demo".to_string(),
+            name: "Demo".to_string(),
+            path: dir.path().join("demo"),
+            rules: BTreeMap::new(),
+        });
+
+        delete_project_from_state(&mut state, "demo").unwrap();
+
+        assert!(state.projects.is_empty());
+        assert_eq!(state.current_project_id, None);
+    }
+
+    #[test]
+    fn resetting_project_rules_clears_only_selected_project() {
+        let dir = tempdir().unwrap();
+        let mut state = default_state(dir.path().join("skills"), None);
+
+        let mut demo_rules = BTreeMap::new();
+        demo_rules.insert("writer".to_string(), ProjectRule::Enable);
+        let mut keep_rules = BTreeMap::new();
+        keep_rules.insert("reviewer".to_string(), ProjectRule::Disable);
+
+        state.projects.push(Project {
+            id: "demo".to_string(),
+            name: "Demo".to_string(),
+            path: dir.path().join("demo"),
+            rules: demo_rules,
+        });
+        state.projects.push(Project {
+            id: "keep".to_string(),
+            name: "Keep".to_string(),
+            path: dir.path().join("keep"),
+            rules: keep_rules,
+        });
+
+        reset_project_rules_in_state(&mut state, "demo").unwrap();
+
+        assert!(state.projects[0].rules.is_empty());
+        assert_eq!(state.projects[1].rules.len(), 1);
     }
 }

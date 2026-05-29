@@ -20,6 +20,8 @@ pub fn run() {
             commands::add_project,
             commands::set_project_rule,
             commands::set_current_project,
+            commands::reset_project_rules,
+            commands::delete_project,
             commands::set_codex_path,
             commands::migrate_library,
             commands::rebuild_state,
