@@ -3,11 +3,9 @@ import { computed } from "vue";
 import {
   FolderKanban,
   Library,
-  Link2,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  ShieldAlert,
   Sparkles,
 } from "lucide-vue-next";
 import type { AppSnapshot } from "../types";
@@ -33,35 +31,17 @@ const workspaceState = computed(() => {
 
   if (blockingIssues) {
     return {
-      tone: "danger",
       title: `${blockingIssues} 个问题待处理`,
-      short: "需处理",
     };
   }
   if (pendingChanges) {
     return {
-      tone: "warning",
       title: `${pendingChanges} 项未完成`,
-      short: "待应用",
     };
   }
   return {
-    tone: "success",
     title: "链接状态正常",
-    short: "正常",
   };
-});
-
-const codexPathState = computed(() =>
-  props.snapshot?.state.codexSkillsPath
-    ? { tone: "success", label: "已设置" }
-    : { tone: "muted", label: "未设置" },
-);
-
-const currentProject = computed(() => {
-  const projects = props.snapshot?.state.projects ?? [];
-  const currentId = props.snapshot?.state.currentProjectId;
-  return projects.find((project) => project.id === currentId) ?? null;
 });
 
 const navItems = computed(() => [
@@ -119,48 +99,6 @@ const navItems = computed(() => [
         </span>
       </button>
     </nav>
-
-    <section class="sidebar-section sidebar-section--project">
-      <p class="sidebar-section-title">当前项目</p>
-      <button
-        class="project-button"
-        :class="{ active: activeSection === 'projects' }"
-        :title="collapsed ? currentProject?.name ?? '全局默认' : undefined"
-        :aria-label="collapsed ? currentProject?.name ?? '全局默认' : undefined"
-        @click="$emit('update:activeSection', 'projects')"
-      >
-        <FolderKanban :size="18" />
-        <span class="project-button-copy">
-          <strong>{{ currentProject?.name ?? "全局默认" }}</strong>
-          <small>{{ currentProject?.path ?? "当前未选择项目" }}</small>
-        </span>
-      </button>
-    </section>
-
-    <section class="sidebar-section">
-      <p class="sidebar-section-title">状态</p>
-      <div class="status-list">
-        <div class="status-row">
-          <div class="status-row-copy">
-            <Link2 :size="15" />
-            <span>目录</span>
-          </div>
-          <span class="status-value" :class="`is-${codexPathState.tone}`">
-            {{ codexPathState.label }}
-          </span>
-        </div>
-
-        <div class="status-row">
-          <div class="status-row-copy">
-            <ShieldAlert :size="15" />
-            <span>应用</span>
-          </div>
-          <span class="status-value" :class="`is-${workspaceState.tone}`">
-            {{ workspaceState.short }}
-          </span>
-        </div>
-      </div>
-    </section>
 
     <div class="rail-footer">
       <button
