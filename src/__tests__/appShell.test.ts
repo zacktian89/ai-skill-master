@@ -20,7 +20,6 @@ vi.mock("../api", () => ({
       skills: [],
       projects: [],
     },
-    codexConnected: false,
     diagnostics: [],
     paths: {
       stateFile: "D:/config/skillmaster.json",

@@ -42,11 +42,11 @@ export async function previewDeleteSkill(skillId: string): Promise<DeleteSkillPr
   return invoke ? invoke<DeleteSkillPreview>("preview_delete_skill", { skillId }) : mockApi.previewDeleteSkill(skillId);
 }
 
-export async function setDefaultEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
+export async function setSkillLinkEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
   return invoke
-    ? invoke<AppSnapshot>("set_default_enabled", { skillId, enabled })
-    : mockApi.setDefaultEnabled(skillId, enabled);
+    ? invoke<AppSnapshot>("set_skill_link_enabled", { skillId, enabled })
+    : mockApi.setSkillLinkEnabled(skillId, enabled);
 }
 
 export async function addProject(request: AddProjectRequest): Promise<AppSnapshot> {

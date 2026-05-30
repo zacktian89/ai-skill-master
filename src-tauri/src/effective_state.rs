@@ -18,7 +18,7 @@ pub fn effective_skill_ids(state: &AppState, project_id: Option<&str>) -> Result
         let enabled = match project.and_then(|project| project.rules.get(&skill.id)) {
             Some(ProjectRule::Enable) => true,
             Some(ProjectRule::Disable) => false,
-            Some(ProjectRule::Inherit) | None => skill.default_enabled,
+            Some(ProjectRule::Inherit) | None => skill.managed_links.codex.is_some(),
         };
         if enabled {
             active.push(skill.id.clone());
@@ -36,21 +36,23 @@ mod tests {
     use std::collections::BTreeMap;
     use tempfile::tempdir;
 
-    fn skill(id: &str, default_enabled: bool) -> Skill {
+    fn skill(id: &str, linked: bool) -> Skill {
+        let library_path = tempdir().unwrap().path().join(id);
         Skill {
             id: id.to_string(),
             name: id.to_string(),
             description: String::new(),
-            library_path: tempdir().unwrap().path().join(id),
+            library_path,
             source: SkillSource::default(),
-            default_enabled,
-            managed_links: ManagedLinks::default(),
+            managed_links: ManagedLinks {
+                codex: linked.then(|| tempdir().unwrap().path().join("codex").join(id)),
+            },
             conflict: None,
         }
     }
 
     #[test]
-    fn no_project_uses_default_enabled_skills() {
+    fn no_project_uses_linked_skills() {
         let dir = tempdir().unwrap();
         let mut state = default_state(dir.path().join("skills"), None);
         state.skills = vec![skill("writer", true), skill("imagegen", false)];
@@ -61,7 +63,7 @@ mod tests {
     }
 
     #[test]
-    fn project_rule_overrides_default_state() {
+    fn project_rule_overrides_link_state() {
         let dir = tempdir().unwrap();
         let mut state = default_state(dir.path().join("skills"), None);
         state.skills = vec![skill("writer", true), skill("imagegen", false)];

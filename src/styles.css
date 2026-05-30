@@ -551,6 +551,185 @@ summary:focus-visible {
   overflow: auto;
 }
 
+.extension-detail {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+
+.extension-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: flex-start;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.extension-identity {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.extension-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(243, 138, 66, 0.18), rgba(255, 255, 255, 0.04)),
+    rgba(255, 255, 255, 0.03);
+  color: var(--brand-700);
+}
+
+.extension-title-group {
+  min-width: 0;
+}
+
+.extension-title-group h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.18;
+  font-weight: 620;
+}
+
+.extension-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.extension-meta code {
+  color: var(--text-primary);
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
+}
+
+.extension-command-panel {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.extension-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.switch-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.switch-control input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand-600);
+}
+
+.danger-button--icon {
+  width: 40px;
+  padding: 0;
+}
+
+.issue-strip {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.issue-strip > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--danger-border);
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.issue-strip strong {
+  font-size: 13px;
+}
+
+.issue-strip span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.detail-tabs {
+  display: flex;
+  min-height: 44px;
+  margin-top: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.detail-tab {
+  position: relative;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.detail-tab.active {
+  color: var(--text-primary);
+}
+
+.detail-tab.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--brand-500);
+  content: "";
+}
+
+.description-pane {
+  min-height: 0;
+  padding: 22px 0 0;
+  overflow: auto;
+}
+
+.description-pane p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.description-pane .description-empty {
+  color: var(--text-secondary);
+}
+
 .panel-header,
 .detail-header {
   display: flex;
@@ -1288,11 +1467,20 @@ button:disabled {
 
   .panel-header,
   .detail-header,
+  .extension-header,
   .rule-card,
   .toggle-row {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .extension-command-panel {
+    justify-items: start;
+  }
+
+  .extension-actions {
+    justify-content: flex-start;
   }
 
   .detail-kv,

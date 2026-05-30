@@ -35,6 +35,10 @@ function disabledOverrides(project: Project): number {
   return Object.values(project.rules).filter((rule) => rule === "disable").length;
 }
 
+function linkStateLabel(skill: Skill): string {
+  return skill.managedLinks.codex ? "已链接" : "未链接";
+}
+
 function matchesFilter(project: Project): boolean {
   if (filter.value === "current") return props.snapshot.state.currentProjectId === project.id;
   if (filter.value === "overrides") return overrideCount(project) > 0;
@@ -302,7 +306,7 @@ function projectTags(project: Project) {
               <div v-for="skill in allSkills" :key="skill.id" class="rule-card">
                 <div class="rule-copy">
                   <strong>{{ skill.name }}</strong>
-                  <small>{{ ruleLabel(selectedProject.rules[skill.id]) }} · {{ skill.defaultEnabled ? "默认启用" : "默认停用" }}</small>
+                  <small>{{ ruleLabel(selectedProject.rules[skill.id]) }} · {{ linkStateLabel(skill) }}</small>
                 </div>
                 <div class="segmented-control">
                   <button

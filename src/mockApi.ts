@@ -29,7 +29,6 @@ const mockSnapshot: AppSnapshot = {
         name: "Writer Pro",
         description: "长文写作与风格控制",
         libraryPath: "/Users/demo/.skillmaster/skills/writer-pro",
-        defaultEnabled: true,
         managedLinks: {
           codex: "/Users/demo/.codex/skills/writer-pro",
         },
@@ -40,7 +39,6 @@ const mockSnapshot: AppSnapshot = {
         name: "UI Auditor",
         description: "检查界面层级、配色和布局一致性",
         libraryPath: "/Users/demo/.skillmaster/skills/ui-auditor",
-        defaultEnabled: true,
         managedLinks: {
           codex: "/Users/demo/.codex/skills/ui-auditor",
         },
@@ -51,7 +49,6 @@ const mockSnapshot: AppSnapshot = {
         name: "Deploy Guard",
         description: "发布前校验与回滚预案",
         libraryPath: "/Users/demo/.skillmaster/skills/deploy-guard",
-        defaultEnabled: false,
         managedLinks: {
           codex: null,
         },
@@ -62,7 +59,6 @@ const mockSnapshot: AppSnapshot = {
         name: "Legacy Review",
         description: "旧系统审计与兼容性分析",
         libraryPath: "/Users/demo/.skillmaster/skills/legacy-review",
-        defaultEnabled: true,
         managedLinks: {
           codex: "/Users/demo/.codex/skills/legacy-review",
         },
@@ -99,19 +95,12 @@ const mockSnapshot: AppSnapshot = {
       },
     ],
   },
-  codexConnected: true,
   diagnostics: [
     {
       level: "warning",
       code: "codex-conflict",
       title: "Skill 冲突：legacy-review",
       detail: "目标目录包含非托管内容，需要人工确认后再同步。",
-    },
-    {
-      level: "info",
-      code: "codex-not-connected",
-      title: "浏览器预览模式",
-      detail: "当前页面运行在 mock API 上，用于本地 UI 预览。",
     },
   ],
   paths: {
@@ -133,7 +122,7 @@ function effectiveEnabled(skill: Skill): boolean {
   const projectRule = currentProject?.rules[skill.id];
   if (projectRule === "enable") return true;
   if (projectRule === "disable") return false;
-  return skill.defaultEnabled;
+  return Boolean(skill.managedLinks.codex);
 }
 
 function snapshot(): Promise<AppSnapshot> {
@@ -167,7 +156,6 @@ export function importSkill(source: string): Promise<AppSnapshot> {
     name,
     description: "浏览器 mock 导入的示例 skill",
     libraryPath: `${mockSnapshot.state.skillLibraryPath}/${id}`,
-    defaultEnabled: false,
     managedLinks: {
       codex: null,
     },
@@ -215,10 +203,15 @@ export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview>
   });
 }
 
-export function setDefaultEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
+export function setSkillLinkEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
   const skill = mockSnapshot.state.skills.find((item) => item.id === skillId);
   if (skill) {
-    skill.defaultEnabled = enabled;
+    skill.managedLinks.codex = enabled ? `${mockSnapshot.state.codexSkillsPath}/${skill.id}` : null;
+    mockSnapshot.state.syncStatus = {
+      phase: "healthy",
+      message: enabled ? "Mock 托管链接已创建。" : "Mock 托管链接已移除。",
+      pendingActions: [],
+    };
   }
   return snapshot();
 }
@@ -271,7 +264,6 @@ export function deleteProject(projectId: string): Promise<AppSnapshot> {
 
 export function setCodexPath(path: string): Promise<AppSnapshot> {
   mockSnapshot.state.codexSkillsPath = path;
-  mockSnapshot.codexConnected = true;
   return snapshot();
 }
 

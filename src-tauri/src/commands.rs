@@ -26,7 +26,6 @@ use tauri::{AppHandle, Manager};
 #[serde(rename_all = "camelCase")]
 pub struct AppSnapshot {
     pub state: AppState,
-    pub codex_connected: bool,
     pub diagnostics: Vec<DiagnosticItem>,
     pub paths: SnapshotPaths,
     pub state_load: StateLoadInfo,
@@ -137,11 +136,6 @@ pub fn build_snapshot(
     mut state: AppState,
     load_status: &StateLoadStatus,
 ) -> Result<AppSnapshot> {
-    let codex_connected = state
-        .codex_skills_path
-        .as_ref()
-        .map(|path| path.exists())
-        .unwrap_or(false);
     let mut diagnostics = Vec::new();
     let mut seen = BTreeSet::new();
 
@@ -206,25 +200,12 @@ pub fn build_snapshot(
         );
     }
 
-    if !codex_connected {
-        let detail = match &state.codex_skills_path {
-            Some(path) => format!("Codex skills 目录当前不可用：{}", path.display()),
-            None => "尚未检测到 Codex skills 目录，可在 Settings 中手动选择。".to_string(),
-        };
-        push_diagnostic(
-            &mut diagnostics,
-            &mut seen,
-            DiagnosticItem {
-                level: DiagnosticLevel::Info,
-                code: "codex-not-connected".to_string(),
-                title: "Codex 未连接".to_string(),
-                detail,
-            },
-        );
-    }
-
     if let Some(project_id) = state.current_project_id.as_deref() {
-        if !state.projects.iter().any(|project| project.id == project_id) {
+        if !state
+            .projects
+            .iter()
+            .any(|project| project.id == project_id)
+        {
             push_diagnostic(
                 &mut diagnostics,
                 &mut seen,
@@ -238,12 +219,21 @@ pub fn build_snapshot(
         }
     }
 
-    if let Some(codex_path) = state.codex_skills_path.as_ref().filter(|path| path.exists()) {
+    if let Some(codex_path) = state
+        .codex_skills_path
+        .as_ref()
+        .filter(|path| path.exists())
+    {
         match effective_skill_ids(&state, state.current_project_id.as_deref()) {
             Ok(active) => {
                 let report = plan_codex_sync(&state.skills, &active, codex_path)?;
                 for conflict in report.conflicts {
-                    mark_skill_conflict(&mut state.skills, &conflict.skill_id, &conflict.target, &conflict.message);
+                    mark_skill_conflict(
+                        &mut state.skills,
+                        &conflict.skill_id,
+                        &conflict.target,
+                        &conflict.message,
+                    );
                     push_diagnostic(
                         &mut diagnostics,
                         &mut seen,
@@ -308,18 +298,15 @@ pub fn build_snapshot(
                 level: DiagnosticLevel::Error,
                 code: "sync-repair-required".to_string(),
                 title: "Codex 同步需要修复".to_string(),
-                detail: state
-                    .sync_status
-                    .message
-                    .clone()
-                    .unwrap_or_else(|| "上一轮同步未完成，请根据挂起操作重新同步或手动处理。".to_string()),
+                detail: state.sync_status.message.clone().unwrap_or_else(|| {
+                    "上一轮同步未完成，请根据挂起操作重新同步或手动处理。".to_string()
+                }),
             },
         );
     }
 
     Ok(AppSnapshot {
         state,
-        codex_connected,
         diagnostics,
         paths: SnapshotPaths {
             state_file: paths.state_file.clone(),
@@ -398,7 +385,12 @@ fn push_diagnostic(
     }
 }
 
-fn mark_skill_conflict(skills: &mut [Skill], skill_id: &str, path: &std::path::Path, message: &str) {
+fn mark_skill_conflict(
+    skills: &mut [Skill],
+    skill_id: &str,
+    path: &std::path::Path,
+    message: &str,
+) {
     if let Some(skill) = skills.iter_mut().find(|skill| skill.id == skill_id) {
         skill.conflict = Some(SkillConflict {
             target: "codex".to_string(),
@@ -485,7 +477,8 @@ pub fn get_snapshot(app: AppHandle) -> std::result::Result<AppSnapshot, String> 
 #[tauri::command]
 pub fn import_skill(app: AppHandle, source: PathBuf) -> std::result::Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    import_skill_into_library(&mut command_state.state, &source).map_err(|error| error.to_string())?;
+    import_skill_into_library(&mut command_state.state, &source)
+        .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -519,8 +512,8 @@ pub fn delete_skill(app: AppHandle, skill_id: String) -> std::result::Result<App
     let mut issues = Vec::new();
 
     if let Some(target) = &skill.managed_links.codex {
-        let validation =
-            validate_managed_link(&skill.library_path, target).map_err(|error| error.to_string())?;
+        let validation = validate_managed_link(&skill.library_path, target)
+            .map_err(|error| error.to_string())?;
         if validation != ManagedLinkValidation::Valid {
             issues.push(managed_link_issue_message(target, &validation));
             pending.push(PendingSyncAction {
@@ -579,7 +572,8 @@ pub fn delete_skill(app: AppHandle, skill_id: String) -> std::result::Result<App
         }
     }
 
-    delete_skill_from_library(&mut command_state.state, &skill_id).map_err(|error| error.to_string())?;
+    delete_skill_from_library(&mut command_state.state, &skill_id)
+        .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -590,19 +584,100 @@ pub fn delete_skill(app: AppHandle, skill_id: String) -> std::result::Result<App
 }
 
 #[tauri::command]
-pub fn set_default_enabled(
+pub fn set_skill_link_enabled(
     app: AppHandle,
     skill_id: String,
     enabled: bool,
 ) -> std::result::Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    let codex_path = command_state
+        .state
+        .codex_skills_path
+        .clone()
+        .ok_or_else(|| "Codex skills 目录未设置".to_string())?;
     let skill = command_state
         .state
         .skills
         .iter_mut()
         .find(|skill| skill.id == skill_id)
         .ok_or_else(|| format!("找不到 skill：{skill_id}"))?;
-    skill.default_enabled = enabled;
+    let target = codex_path.join(&skill.id);
+
+    if enabled {
+        match validate_managed_link(&skill.library_path, &target)
+            .map_err(|error| error.to_string())?
+        {
+            ManagedLinkValidation::Valid => {
+                skill.managed_links.codex = Some(target);
+                command_state.state.sync_status = SyncStatus {
+                    phase: SyncPhase::Healthy,
+                    message: Some("托管链接已启用。".to_string()),
+                    pending_actions: Vec::new(),
+                };
+            }
+            ManagedLinkValidation::Missing => {
+                create_directory_link(&skill.library_path, &target)
+                    .map_err(|error| error.to_string())?;
+                skill.managed_links.codex = Some(target);
+                command_state.state.sync_status = SyncStatus {
+                    phase: SyncPhase::Healthy,
+                    message: Some("托管链接已创建。".to_string()),
+                    pending_actions: Vec::new(),
+                };
+            }
+            validation => {
+                let message = managed_link_issue_message(&target, &validation);
+                command_state.state.sync_status = SyncStatus {
+                    phase: SyncPhase::RepairRequired,
+                    message: Some(message.clone()),
+                    pending_actions: vec![PendingSyncAction {
+                        kind: PendingSyncActionKind::Inspect,
+                        skill_id: skill.id.clone(),
+                        target,
+                        source: Some(skill.library_path.clone()),
+                        message,
+                    }],
+                };
+            }
+        }
+    } else {
+        let target = skill.managed_links.codex.clone().unwrap_or(target);
+        match validate_managed_link(&skill.library_path, &target)
+            .map_err(|error| error.to_string())?
+        {
+            ManagedLinkValidation::Valid => {
+                remove_managed_link(&target).map_err(|error| error.to_string())?;
+                skill.managed_links.codex = None;
+                command_state.state.sync_status = SyncStatus {
+                    phase: SyncPhase::Healthy,
+                    message: Some("托管链接已移除。".to_string()),
+                    pending_actions: Vec::new(),
+                };
+            }
+            ManagedLinkValidation::Missing => {
+                skill.managed_links.codex = None;
+                command_state.state.sync_status = SyncStatus {
+                    phase: SyncPhase::Healthy,
+                    message: Some("托管链接已停用。".to_string()),
+                    pending_actions: Vec::new(),
+                };
+            }
+            validation => {
+                let message = managed_link_issue_message(&target, &validation);
+                command_state.state.sync_status = SyncStatus {
+                    phase: SyncPhase::RepairRequired,
+                    message: Some(message.clone()),
+                    pending_actions: vec![PendingSyncAction {
+                        kind: PendingSyncActionKind::Inspect,
+                        skill_id: skill.id.clone(),
+                        target,
+                        source: Some(skill.library_path.clone()),
+                        message,
+                    }],
+                };
+            }
+        }
+    }
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -716,7 +791,8 @@ pub fn delete_project(
     project_id: String,
 ) -> std::result::Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    delete_project_from_state(&mut command_state.state, &project_id).map_err(|error| error.to_string())?;
+    delete_project_from_state(&mut command_state.state, &project_id)
+        .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -781,10 +857,13 @@ pub fn sync_codex(app: AppHandle) -> std::result::Result<AppSnapshot, String> {
         .codex_skills_path
         .clone()
         .ok_or_else(|| "Codex skills 目录未设置".to_string())?;
-    let active = effective_skill_ids(&command_state.state, command_state.state.current_project_id.as_deref())
+    let active = effective_skill_ids(
+        &command_state.state,
+        command_state.state.current_project_id.as_deref(),
+    )
+    .map_err(|error| error.to_string())?;
+    let report = plan_codex_sync(&command_state.state.skills, &active, &codex_path)
         .map_err(|error| error.to_string())?;
-    let report =
-        plan_codex_sync(&command_state.state.skills, &active, &codex_path).map_err(|error| error.to_string())?;
 
     let mut issues = Vec::new();
 
@@ -836,7 +915,10 @@ pub fn sync_codex(app: AppHandle) -> std::result::Result<AppSnapshot, String> {
             message: Some(if report.conflicts.is_empty() {
                 "Codex 同步已完成。".to_string()
             } else {
-                format!("Codex 同步已完成，但仍有 {} 个冲突未覆盖。", report.conflicts.len())
+                format!(
+                    "Codex 同步已完成，但仍有 {} 个冲突未覆盖。",
+                    report.conflicts.len()
+                )
             }),
             pending_actions: Vec::new(),
         };
@@ -845,10 +927,7 @@ pub fn sync_codex(app: AppHandle) -> std::result::Result<AppSnapshot, String> {
             .map_err(|error| error.to_string())?;
         command_state.state.sync_status = SyncStatus {
             phase: SyncPhase::RepairRequired,
-            message: Some(format!(
-                "Codex 同步未完成：{}",
-                issues.join("；")
-            )),
+            message: Some(format!("Codex 同步未完成：{}", issues.join("；"))),
             pending_actions: build_pending_actions(&repair_report),
         };
     }
@@ -869,7 +948,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn snapshot_marks_codex_connected_when_path_exists() {
+    fn snapshot_includes_skills_when_codex_path_exists() {
         let dir = tempdir().unwrap();
         let codex = dir.path().join("codex");
         std::fs::create_dir_all(&codex).unwrap();
@@ -881,14 +960,12 @@ mod tests {
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
             source: Default::default(),
-            default_enabled: true,
             managed_links: Default::default(),
             conflict: None,
         });
 
         let snapshot = build_snapshot(&paths, state, &StateLoadStatus::Clean).unwrap();
 
-        assert!(snapshot.codex_connected);
         assert_eq!(snapshot.state.skills.len(), 1);
     }
 
@@ -902,7 +979,6 @@ mod tests {
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
             source: Default::default(),
-            default_enabled: true,
             managed_links: crate::models::ManagedLinks {
                 codex: Some(dir.path().join("codex").join("writer")),
             },

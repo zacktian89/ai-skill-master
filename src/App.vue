@@ -37,8 +37,8 @@ const sectionMeta: Record<Section, { eyebrow: string; title: string; label: stri
     label: "Projects",
   },
   settings: {
-    eyebrow: "Storage & Connection",
-    title: "连接与存储",
+    eyebrow: "Storage & Links",
+    title: "路径与存储",
     label: "Settings",
   },
 };
@@ -76,7 +76,7 @@ const activeSummary = computed(() => {
 
   const issueCount = snapshot.value.diagnostics.filter((item) => item.level === "error").length;
   const pendingCount = snapshot.value.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
-  const parts = [snapshot.value.codexConnected ? "Codex 已连接" : "Codex 未连接"];
+  const parts = [snapshot.value.state.codexSkillsPath ? "Codex 路径已设置" : "Codex 路径未设置"];
   if (issueCount) {
     parts.push(`${issueCount} 个问题待处理`);
   } else if (pendingCount) {

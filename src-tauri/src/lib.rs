@@ -16,7 +16,7 @@ pub fn run() {
             commands::import_skill,
             commands::preview_delete_skill,
             commands::delete_skill,
-            commands::set_default_enabled,
+            commands::set_skill_link_enabled,
             commands::add_project,
             commands::set_project_rule,
             commands::set_current_project,

@@ -42,11 +42,17 @@ const workspaceState = computed(() => {
     };
   }
   return {
-    tone: props.snapshot?.codexConnected ? "success" : "muted",
-    title: props.snapshot?.codexConnected ? "已应用到 Codex" : "等待连接 Codex",
-    short: props.snapshot?.codexConnected ? "已应用" : "未连接",
+    tone: "success",
+    title: "链接状态正常",
+    short: "正常",
   };
 });
+
+const codexPathState = computed(() =>
+  props.snapshot?.state.codexSkillsPath
+    ? { tone: "success", label: "已设置" }
+    : { tone: "muted", label: "未设置" },
+);
 
 const currentProject = computed(() => {
   const projects = props.snapshot?.state.projects ?? [];
@@ -115,10 +121,10 @@ const navItems = computed(() => [
         <div class="status-row">
           <div class="status-row-copy">
             <Link2 :size="15" />
-            <span>Codex</span>
+            <span>目录</span>
           </div>
-          <span class="status-value" :class="snapshot?.codexConnected ? 'is-success' : 'is-muted'">
-            {{ snapshot?.codexConnected ? "在线" : "离线" }}
+          <span class="status-value" :class="`is-${codexPathState.tone}`">
+            {{ codexPathState.label }}
           </span>
         </div>
 

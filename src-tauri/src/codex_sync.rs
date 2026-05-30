@@ -200,7 +200,6 @@ mod tests {
             description: String::new(),
             library_path,
             source: SkillSource::default(),
-            default_enabled: true,
             managed_links: ManagedLinks::default(),
             conflict: None,
         }

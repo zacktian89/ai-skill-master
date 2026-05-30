@@ -53,7 +53,6 @@ export interface Skill {
   description: string;
   libraryPath: string;
   source?: SkillSource | null;
-  defaultEnabled: boolean;
   managedLinks: ManagedLinks;
   conflict?: SkillConflict | null;
 }
@@ -95,7 +94,6 @@ export interface StateLoadInfo {
 
 export interface AppSnapshot {
   state: AppState;
-  codexConnected: boolean;
   diagnostics: DiagnosticItem[];
   paths: SnapshotPaths;
   stateLoad: StateLoadInfo;

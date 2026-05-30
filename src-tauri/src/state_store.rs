@@ -165,7 +165,6 @@ mod tests {
                 description: "Convert Markdown to WeChat HTML".to_string(),
                 library_path: dir.path().join("skills").join("markdown-go"),
                 source: SkillSource::default(),
-                default_enabled: true,
                 managed_links: ManagedLinks {
                     codex: Some(dir.path().join("codex").join("markdown-go")),
                 },
@@ -223,7 +222,6 @@ mod tests {
                 "name": "Writer",
                 "description": "",
                 "libraryPath": "/tmp/skills/writer",
-                "defaultEnabled": false,
                 "managedLinks": { "codex": null },
                 "conflict": null
               }],

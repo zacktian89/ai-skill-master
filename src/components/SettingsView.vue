@@ -44,9 +44,9 @@ const applyState = computed(() => {
   }
 
   return {
-    tone: props.snapshot.codexConnected ? "success" : "neutral",
-    label: props.snapshot.codexConnected ? "已应用" : "未连接",
-    message: props.snapshot.codexConnected ? "当前配置已应用到 Codex。" : "请先连接 Codex 目录。",
+    tone: "success",
+    label: "状态正常",
+    message: "当前没有待处理的链接操作。",
   };
 });
 
@@ -60,9 +60,8 @@ const settingsGroups = computed(() => [
   {
     id: "codex" as const,
     title: "Codex",
-    description: "连接与应用",
-    issueCount:
-      Number(!props.snapshot.codexConnected) + props.snapshot.state.syncStatus.pendingActions.length,
+    description: "路径与链接",
+    issueCount: props.snapshot.state.syncStatus.pendingActions.length,
   },
   {
     id: "issues" as const,
@@ -73,7 +72,7 @@ const settingsGroups = computed(() => [
 ]);
 
 function issueCategory(item: DiagnosticItem): string {
-  if (item.code === "codex-not-connected" || item.code.startsWith("sync-")) return "连接与应用";
+  if (item.code.startsWith("sync-")) return "路径与链接";
   if (item.code === "codex-conflict" || item.code === "managed-link-mismatch") return "内容冲突";
   if (item.code.startsWith("state-")) return "恢复";
   if (item.code.includes("project") || item.code === "effective-state-error") return "规则";
@@ -90,11 +89,6 @@ function diagnosticGuide(item: DiagnosticItem) {
   if (item.code === "skill-library-missing") {
     return {
       action: "检查技能库目录；必要时迁移到新的位置。",
-    };
-  }
-  if (item.code === "codex-not-connected") {
-    return {
-      action: "选择正确的 Codex skills 目录，然后重新同步。",
     };
   }
   if (item.code === "state-rebuild-required") {
@@ -162,7 +156,7 @@ async function chooseLibraryTarget() {
       <div class="panel-header">
         <div>
           <p class="eyebrow">Settings</p>
-          <h1 class="panel-title">连接与存储</h1>
+          <h1 class="panel-title">路径与存储</h1>
         </div>
       </div>
 
@@ -238,21 +232,17 @@ async function chooseLibraryTarget() {
         <div class="detail-header">
           <div>
             <p class="eyebrow">Codex</p>
-            <h2>连接与应用</h2>
+            <h2>路径与链接</h2>
           </div>
           <div class="tag-row">
-            <span class="status-tag" :class="snapshot.codexConnected ? 'status-tag--success' : 'status-tag--muted'">
-              {{ snapshot.codexConnected ? "已连接" : "离线" }}
+            <span class="status-tag" :class="snapshot.state.codexSkillsPath ? 'status-tag--success' : 'status-tag--muted'">
+              {{ snapshot.state.codexSkillsPath ? "已设置" : "未设置" }}
             </span>
           </div>
         </div>
 
         <section class="detail-section">
           <dl class="detail-kv detail-kv--wide">
-            <div>
-              <dt>连接状态</dt>
-              <dd>{{ snapshot.codexConnected ? "已连接" : "未连接或目录不可用" }}</dd>
-            </div>
             <div>
               <dt>Codex 目录</dt>
               <dd>{{ snapshot.state.codexSkillsPath || "未设置" }}</dd>

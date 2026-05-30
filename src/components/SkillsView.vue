@@ -48,7 +48,7 @@ function effectiveEnabled(skill: Skill): boolean {
   const rule = currentProject.value?.rules[skill.id];
   if (rule === "enable") return true;
   if (rule === "disable") return false;
-  return skill.defaultEnabled;
+  return linkEnabled(skill);
 }
 
 function hasBlockingIssue(skill: Skill): boolean {
@@ -58,13 +58,16 @@ function hasBlockingIssue(skill: Skill): boolean {
 function hasPendingApply(skill: Skill): boolean {
   if (hasBlockingIssue(skill)) return false;
   const actions = actionsForSkill(skill.id);
-  if (actions.some((item) => item.kind === "create" || item.kind === "remove")) return true;
-  return effectiveEnabled(skill) && !skill.managedLinks.codex;
+  return actions.some((item) => item.kind === "create" || item.kind === "remove");
 }
 
 function isReferenced(skill: Skill): boolean {
-  if (skill.defaultEnabled) return true;
+  if (linkEnabled(skill)) return true;
   return props.snapshot.state.projects.some((project) => project.rules[skill.id] === "enable");
+}
+
+function linkEnabled(skill: Skill): boolean {
+  return Boolean(skill.managedLinks.codex);
 }
 
 function sourceKind(skill: Skill): SkillSourceKind {
@@ -112,8 +115,9 @@ const selectedIssues = computed(() => {
 function applyState(skill: Skill) {
   if (hasBlockingIssue(skill)) return { label: "需处理", tone: "danger" };
   if (hasPendingApply(skill)) return { label: "待应用", tone: "warning" };
-  if (props.snapshot.codexConnected) return { label: "已应用", tone: "success" };
-  return { label: "未连接", tone: "neutral" };
+  return linkEnabled(skill)
+    ? { label: "已链接", tone: "success" }
+    : { label: "未链接", tone: "neutral" };
 }
 
 function skillTags(skill: Skill) {
@@ -127,18 +131,10 @@ function skillTags(skill: Skill) {
   return tags;
 }
 
-function primarySkillState(skill: Skill) {
-  if (hasBlockingIssue(skill)) return { label: "需处理", tone: "danger" };
-  return effectiveEnabled(skill)
-    ? { label: "启用中", tone: "brand" }
-    : { label: "已停用", tone: "neutral" };
-}
-
 function syncSummary(skill: Skill): string {
   if (hasBlockingIssue(skill)) return "存在问题，处理后再应用到 Codex。";
   if (hasPendingApply(skill)) return "有改动待应用到 Codex。";
-  if (!props.snapshot.codexConnected) return "请先连接 Codex 目录。";
-  return "当前配置已应用到 Codex。";
+  return linkEnabled(skill) ? "Codex 中存在托管链接。" : "Codex 中没有托管链接。";
 }
 
 async function run(action: () => Promise<AppSnapshot>) {
@@ -243,112 +239,71 @@ function closeDeleteDialog() {
 
     <section class="detail-panel">
       <template v-if="selectedSkill">
-        <div class="detail-header">
-          <div>
-            <p class="eyebrow">Skill Detail</p>
-            <h2>{{ selectedSkill.name }}</h2>
-            <p>{{ selectedSkill.description || "没有描述，使用 ID 作为识别信息。" }}</p>
-          </div>
-          <div class="tag-row">
-            <span
-              v-for="tag in skillTags(selectedSkill)"
-              :key="`detail-${tag.label}`"
-              class="status-tag"
-              :class="`status-tag--${tag.tone}`"
-            >
-              {{ tag.label }}
-            </span>
-          </div>
-        </div>
+        <div class="extension-detail">
+          <header class="extension-header">
+            <div class="extension-identity">
+              <div class="extension-icon" :title="sourceLabel(selectedSkill)">
+                <component :is="sourceIcons[sourceKind(selectedSkill)]" :size="28" />
+              </div>
+              <div class="extension-title-group">
+                <p class="eyebrow">Skill Detail</p>
+                <h2>{{ selectedSkill.name }}</h2>
+                <div class="extension-meta">
+                  <code>{{ selectedSkill.id }}</code>
+                  <span>{{ sourceLabel(selectedSkill) }}</span>
+                  <span>{{ syncSummary(selectedSkill) }}</span>
+                </div>
+              </div>
+            </div>
 
-        <section class="detail-section">
-          <div class="section-heading">
-            <h3>概览</h3>
-          </div>
-          <dl class="detail-kv">
-            <div>
-              <dt>Skill ID</dt>
-              <dd>{{ selectedSkill.id }}</dd>
+            <div class="extension-command-panel">
+              <div class="tag-row">
+                <span
+                  v-for="tag in skillTags(selectedSkill)"
+                  :key="`detail-${tag.label}`"
+                  class="status-tag"
+                  :class="`status-tag--${tag.tone}`"
+                >
+                  {{ tag.label }}
+                </span>
+              </div>
+              <div class="extension-actions">
+                <label class="switch-control">
+                  <span>启用</span>
+                  <input
+                    type="checkbox"
+                    :checked="linkEnabled(selectedSkill)"
+                    :disabled="busy"
+                    @change="run(() => api.setSkillLinkEnabled(selectedSkill!.id, ($event.target as HTMLInputElement).checked))"
+                  />
+                </label>
+                <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
+                  <RefreshCw :size="16" />
+                  同步
+                </button>
+                <button class="danger-button danger-button--icon" :disabled="busy" aria-label="删除 Skill" @click="openDeleteDialog">
+                  <Trash2 :size="16" />
+                </button>
+              </div>
             </div>
-            <div>
-              <dt>当前状态</dt>
-              <dd>{{ primarySkillState(selectedSkill).label }}</dd>
-            </div>
-            <div>
-              <dt>应用状态</dt>
-              <dd>{{ applyState(selectedSkill).label }}</dd>
-            </div>
-            <div>
-              <dt>默认规则</dt>
-              <dd>{{ selectedSkill.defaultEnabled ? "默认启用" : "默认停用" }}</dd>
-            </div>
-          </dl>
-        </section>
+          </header>
 
-        <section class="detail-section">
-          <div class="section-heading">
-            <h3>规则与应用</h3>
-          </div>
-          <div class="action-card">
-            <label class="toggle-row">
-              <span>
-                <strong>默认启用</strong>
-                <small>关闭后仅在项目覆盖时启用</small>
-              </span>
-              <input
-                type="checkbox"
-                :checked="selectedSkill.defaultEnabled"
-                :disabled="busy"
-                @change="run(() => api.setDefaultEnabled(selectedSkill!.id, ($event.target as HTMLInputElement).checked))"
-              />
-            </label>
-            <div class="button-row">
-              <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
-                <RefreshCw :size="16" />
-                应用到 Codex
-              </button>
-            </div>
-            <p class="inline-copy">{{ syncSummary(selectedSkill) }}</p>
-          </div>
-        </section>
-
-        <section class="detail-section">
-          <div class="section-heading">
-            <h3>高级信息</h3>
-          </div>
-          <dl class="detail-kv detail-kv--wide">
-            <div>
-              <dt>技能库路径</dt>
-              <dd>{{ selectedSkill.libraryPath }}</dd>
-            </div>
-            <div>
-              <dt>Codex 目标</dt>
-              <dd>{{ selectedSkill.managedLinks.codex || "当前还没有应用目标" }}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section v-if="selectedIssues.length" class="detail-section detail-section--danger">
-          <div class="section-heading">
-            <h3>问题与修复</h3>
-          </div>
-          <div class="issue-list">
-            <div v-for="issue in selectedIssues" :key="issue.key" class="issue-card">
+          <div v-if="selectedIssues.length" class="issue-strip">
+            <div v-for="issue in selectedIssues" :key="issue.key">
               <strong>{{ issue.title }}</strong>
-              <p>{{ issue.detail }}</p>
+              <span>{{ issue.detail }}</span>
             </div>
           </div>
-        </section>
 
-        <section class="detail-section detail-section--danger">
-          <div class="section-heading">
-            <h3>危险操作</h3>
-          </div>
-          <button class="danger-button" :disabled="busy" @click="openDeleteDialog">
-            <Trash2 :size="16" />
-            删除 Skill
-          </button>
-        </section>
+          <nav class="detail-tabs" aria-label="Skill detail tabs">
+            <button class="detail-tab active" type="button">Description</button>
+          </nav>
+
+          <section class="description-pane">
+            <p v-if="selectedSkill.description">{{ selectedSkill.description }}</p>
+            <p v-else class="description-empty">暂无描述。</p>
+          </section>
+        </div>
       </template>
 
       <div v-else class="content-empty">选择左侧 skill 查看详情。</div>

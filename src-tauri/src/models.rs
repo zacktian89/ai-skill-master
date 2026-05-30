@@ -26,7 +26,6 @@ pub struct Skill {
     pub library_path: PathBuf,
     #[serde(default)]
     pub source: SkillSource,
-    pub default_enabled: bool,
     pub managed_links: ManagedLinks,
     pub conflict: Option<SkillConflict>,
 }
