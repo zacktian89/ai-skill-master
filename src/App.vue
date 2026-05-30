@@ -1,14 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  LayoutPanelTop,
-  PanelRightOpen,
-  Search,
-  SquareTerminal,
-} from "lucide-vue-next";
+import { onMounted, ref } from "vue";
+import { AlertCircle } from "lucide-vue-next";
 import * as api from "./api";
 import Sidebar from "./components/Sidebar.vue";
 import ProjectsView from "./components/ProjectsView.vue";
@@ -22,76 +14,9 @@ const activeSection = ref<Section>("skills");
 const snapshot = ref<AppSnapshot | null>(null);
 const selectedSkillId = ref<string | null>(null);
 const selectedProjectId = ref<string | null>(null);
+const sidebarCollapsed = ref(false);
 const loading = ref(true);
 const error = ref<string | null>(null);
-
-const sectionMeta: Record<Section, { eyebrow: string; title: string; label: string }> = {
-  skills: {
-    eyebrow: "Skill Library",
-    title: "技能库",
-    label: "Skills",
-  },
-  projects: {
-    eyebrow: "Project Rules",
-    title: "项目规则",
-    label: "Projects",
-  },
-  settings: {
-    eyebrow: "Storage & Links",
-    title: "路径与存储",
-    label: "Settings",
-  },
-};
-
-const activeMeta = computed(() => sectionMeta[activeSection.value]);
-
-const activeSummary = computed(() => {
-  if (!snapshot.value) return "";
-
-  if (activeSection.value === "skills") {
-    const skills = snapshot.value.state.skills;
-    const issueCount = skills.filter((skill) => Boolean(skill.conflict)).length;
-    const pendingCount = snapshot.value.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
-
-    const parts = [`${skills.length} 个 skill`];
-    if (issueCount) {
-      parts.push(`${issueCount} 个需处理`);
-    } else if (pendingCount) {
-      parts.push(`${pendingCount} 项待应用`);
-    } else {
-      parts.push("已应用到 Codex");
-    }
-    return parts.join(" · ");
-  }
-
-  if (activeSection.value === "projects") {
-    const projects = snapshot.value.state.projects;
-    const currentProject = projects.find((project) => project.id === snapshot.value?.state.currentProjectId);
-    const overrideCount = projects.reduce((total, project) => total + Object.keys(project.rules).length, 0);
-    const parts = [`${projects.length} 个项目`];
-    parts.push(currentProject ? `当前 ${currentProject.name}` : "当前全局默认");
-    parts.push(`${overrideCount} 条覆盖`);
-    return parts.join(" · ");
-  }
-
-  const issueCount = snapshot.value.diagnostics.filter((item) => item.level === "error").length;
-  const pendingCount = snapshot.value.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
-  const parts = [snapshot.value.state.codexSkillsPath ? "Codex 路径已设置" : "Codex 路径未设置"];
-  if (issueCount) {
-    parts.push(`${issueCount} 个问题待处理`);
-  } else if (pendingCount) {
-    parts.push(`${pendingCount} 项待应用`);
-  } else {
-    parts.push("状态正常");
-  }
-  return parts.join(" · ");
-});
-
-const currentProjectName = computed(() => {
-  const projects = snapshot.value?.state.projects ?? [];
-  const currentId = snapshot.value?.state.currentProjectId;
-  return projects.find((project) => project.id === currentId)?.name ?? "全局默认";
-});
 
 async function refresh() {
   loading.value = true;
@@ -122,50 +47,15 @@ onMounted(refresh);
 </script>
 
 <template>
-  <div class="app-shell">
-    <Sidebar v-model:active-section="activeSection" :snapshot="snapshot" />
+  <div class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }">
+    <Sidebar
+      v-model:active-section="activeSection"
+      v-model:collapsed="sidebarCollapsed"
+      :snapshot="snapshot"
+    />
 
     <div class="workspace-shell">
-      <header class="workspace-chrome">
-        <div class="chrome-cluster">
-          <div class="window-dots" aria-hidden="true">
-            <span class="window-dot window-dot--red"></span>
-            <span class="window-dot window-dot--amber"></span>
-            <span class="window-dot window-dot--green"></span>
-          </div>
-          <button class="chrome-icon-button" type="button" aria-label="Back">
-            <ArrowLeft :size="16" />
-          </button>
-          <button class="chrome-icon-button" type="button" aria-label="Forward">
-            <ArrowRight :size="16" />
-          </button>
-        </div>
-
-        <div class="chrome-title">
-          <span>{{ currentProjectName }}</span>
-        </div>
-
-        <div class="chrome-cluster chrome-cluster--right">
-          <button class="chrome-pill" type="button">
-            <LayoutPanelTop :size="15" />
-            <span>{{ activeMeta.label }}</span>
-          </button>
-          <button class="chrome-icon-button" type="button" aria-label="Search">
-            <Search :size="16" />
-          </button>
-          <button class="chrome-icon-button" type="button" aria-label="Layout">
-            <PanelRightOpen :size="16" />
-          </button>
-        </div>
-      </header>
-
       <main class="workspace">
-        <section class="workspace-hero">
-          <p class="workspace-kicker">{{ activeMeta.eyebrow }}</p>
-          <h1 class="workspace-hero-title">{{ activeMeta.title }}</h1>
-          <p class="workspace-hero-summary">{{ activeSummary }}</p>
-        </section>
-
         <section class="workspace-frame">
           <div v-if="error" class="notice notice--error">
             <AlertCircle :size="16" />
@@ -200,21 +90,6 @@ onMounted(refresh);
           />
         </section>
       </main>
-
-      <footer class="workspace-terminal">
-        <div class="terminal-tabs">
-          <div class="terminal-tab">
-            <SquareTerminal :size="15" />
-            <span>{{ currentProjectName }}</span>
-          </div>
-          <button class="terminal-add" type="button" aria-label="Add terminal tab">+</button>
-        </div>
-
-        <div class="terminal-body">
-          <span class="terminal-prompt">fang@fangdeMacBook-Pro</span>
-          <span class="terminal-command">{{ currentProjectName }} %</span>
-        </div>
-      </footer>
     </div>
   </div>
 </template>

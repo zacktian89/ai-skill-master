@@ -293,15 +293,15 @@ function closeDeleteDialog() {
 <template>
   <div class="split-content">
     <section class="list-panel">
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">Skills</p>
-          <h1 class="panel-title">技能库</h1>
+      <div class="list-panel-head">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Skills</p>
+            <h1 class="panel-title">技能库</h1>
+          </div>
+          <span class="panel-count">{{ skills.length }}</span>
         </div>
-        <span class="panel-count">{{ skills.length }}</span>
-      </div>
 
-      <div class="toolbar toolbar--stack">
         <div class="list-search-row">
           <input v-model="query" class="search-input" placeholder="搜索已安装 Skill" />
           <button class="icon-button" type="button" :disabled="busy" aria-label="按文件夹添加 Skill" @click="importSkill">

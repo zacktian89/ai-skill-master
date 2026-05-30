@@ -4,6 +4,8 @@ import {
   FolderKanban,
   Library,
   Link2,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   ShieldAlert,
   Sparkles,
@@ -14,11 +16,13 @@ type Section = "skills" | "projects" | "settings";
 
 const props = defineProps<{
   activeSection: Section;
+  collapsed: boolean;
   snapshot: AppSnapshot | null;
 }>();
 
 defineEmits<{
   "update:activeSection": [value: Section];
+  "update:collapsed": [value: boolean];
 }>();
 
 const workspaceState = computed(() => {
@@ -77,7 +81,7 @@ const navItems = computed(() => [
 </script>
 
 <template>
-  <aside class="sidebar-rail">
+  <aside class="sidebar-rail" :class="{ 'sidebar-rail--collapsed': collapsed }">
     <div class="rail-brand" title="SkillMaster">
       <div class="rail-brand-mark">
         <Sparkles :size="18" />
@@ -86,6 +90,16 @@ const navItems = computed(() => [
         <strong>ai-skill-master</strong>
         <small>SkillMaster workspace</small>
       </div>
+      <button
+        class="rail-collapse-button"
+        type="button"
+        :aria-label="collapsed ? '展开侧边栏' : '折叠侧边栏'"
+        :title="collapsed ? '展开侧边栏' : '折叠侧边栏'"
+        @click="$emit('update:collapsed', !collapsed)"
+      >
+        <PanelLeftOpen v-if="collapsed" :size="17" />
+        <PanelLeftClose v-else :size="17" />
+      </button>
     </div>
 
     <nav class="rail-nav" aria-label="Primary">
@@ -94,6 +108,8 @@ const navItems = computed(() => [
         :key="item.id"
         class="rail-nav-button"
         :class="{ active: activeSection === item.id }"
+        :title="collapsed ? `${item.title} · ${item.subtitle}` : undefined"
+        :aria-label="collapsed ? `${item.title} · ${item.subtitle}` : undefined"
         @click="$emit('update:activeSection', item.id)"
       >
         <component :is="item.icon" :size="18" />
@@ -104,9 +120,15 @@ const navItems = computed(() => [
       </button>
     </nav>
 
-    <section class="sidebar-section">
+    <section class="sidebar-section sidebar-section--project">
       <p class="sidebar-section-title">当前项目</p>
-      <button class="project-button" :class="{ active: activeSection === 'projects' }" @click="$emit('update:activeSection', 'projects')">
+      <button
+        class="project-button"
+        :class="{ active: activeSection === 'projects' }"
+        :title="collapsed ? currentProject?.name ?? '全局默认' : undefined"
+        :aria-label="collapsed ? currentProject?.name ?? '全局默认' : undefined"
+        @click="$emit('update:activeSection', 'projects')"
+      >
         <FolderKanban :size="18" />
         <span class="project-button-copy">
           <strong>{{ currentProject?.name ?? "全局默认" }}</strong>
@@ -144,6 +166,8 @@ const navItems = computed(() => [
       <button
         class="rail-nav-button rail-nav-button--footer"
         :class="{ active: activeSection === 'settings' }"
+        :title="collapsed ? `Settings · ${workspaceState.title}` : undefined"
+        :aria-label="collapsed ? `Settings · ${workspaceState.title}` : undefined"
         @click="$emit('update:activeSection', 'settings')"
       >
         <Settings :size="18" />
