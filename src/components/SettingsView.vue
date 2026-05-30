@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { FolderOpen, RefreshCw, RotateCcw, Wrench } from "lucide-vue-next";
+import { FolderOpen, RotateCcw, Wrench } from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
 import type { AppSnapshot, DiagnosticItem } from "../types";
@@ -38,8 +38,8 @@ const applyState = computed(() => {
   if (pendingCount) {
     return {
       tone: "warning",
-      label: "待应用",
-      message: `有 ${pendingCount} 项改动待应用到 Codex。`,
+      label: "未完成",
+      message: `有 ${pendingCount} 项链接操作未完成。`,
     };
   }
 
@@ -93,17 +93,17 @@ function diagnosticGuide(item: DiagnosticItem) {
   }
   if (item.code === "state-rebuild-required") {
     return {
-      action: "执行状态重建，然后重新同步一次。",
+      action: "执行状态重建，然后重新检查并应用。",
     };
   }
   if (item.code === "state-restored-from-backup") {
     return {
-      action: "检查诊断项后执行一次同步，必要时再重建状态。",
+      action: "检查诊断项后重新应用，必要时再重建状态。",
     };
   }
   if (item.code === "codex-conflict") {
     return {
-      action: "先处理冲突路径，再手动同步并复查诊断结果。",
+      action: "先处理冲突路径，再重新检查并应用。",
     };
   }
   if (item.code === "effective-state-error") {
@@ -112,7 +112,7 @@ function diagnosticGuide(item: DiagnosticItem) {
     };
   }
   return {
-    action: "检查对应路径、项目或同步目标，然后重新诊断。",
+    action: "检查对应路径、项目或目标目录，然后重新诊断。",
   };
 }
 
@@ -256,16 +256,12 @@ async function chooseLibraryTarget() {
 
         <section class="detail-section">
           <div class="section-heading">
-            <h3>目录与同步</h3>
+            <h3>Codex 目录</h3>
           </div>
           <div class="button-row">
             <button class="primary-button" :disabled="busy" @click="chooseCodexPath">
               <FolderOpen :size="16" />
               选择目录
-            </button>
-            <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
-              <RefreshCw :size="16" />
-              应用到 Codex
             </button>
           </div>
           <div class="inline-panel" :class="`inline-panel--${applyState.tone}`">
@@ -279,7 +275,7 @@ async function chooseLibraryTarget() {
               class="issue-card issue-card--warning"
             >
               <strong>{{ item.skillId }}</strong>
-              <p>{{ item.kind === 'inspect' ? '需要处理后再应用' : '有改动待应用' }}</p>
+              <p>{{ item.kind === 'inspect' ? '需要处理后再应用' : '链接操作未完成' }}</p>
               <small>{{ item.message }} · {{ item.target }}</small>
             </div>
           </div>

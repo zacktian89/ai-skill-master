@@ -53,7 +53,8 @@ describe("SkillsView references tab", () => {
     });
 
     expect(wrapper.find(".detail-tab.active").text()).toBe("引用");
-    expect(wrapper.text()).toContain("软链接引用");
+    expect(wrapper.text()).not.toContain("软链接引用");
+    expect(wrapper.text()).not.toContain("软链接已指向当前 skill");
     expect(wrapper.text()).toContain("/codex/skills/writer-pro");
     expect(wrapper.find(".reference-row").exists()).toBe(true);
 

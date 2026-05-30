@@ -41,7 +41,7 @@ const workspaceState = computed(() => {
   if (pendingChanges) {
     return {
       tone: "warning",
-      title: `${pendingChanges} 项待应用`,
+      title: `${pendingChanges} 项未完成`,
       short: "待应用",
     };
   }

@@ -29,12 +29,14 @@ export async function getSnapshot(): Promise<AppSnapshot> {
 
 export async function importSkill(source: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("import_skill", { source }) : mockApi.importSkill(source);
+  const next = invoke ? await invoke<AppSnapshot>("import_skill", { source }) : await mockApi.importSkill(source);
+  return autoSync(next);
 }
 
 export async function deleteSkill(skillId: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("delete_skill", { skillId }) : mockApi.deleteSkill(skillId);
+  const next = invoke ? await invoke<AppSnapshot>("delete_skill", { skillId }) : await mockApi.deleteSkill(skillId);
+  return autoSync(next);
 }
 
 export async function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview> {
@@ -56,40 +58,52 @@ export async function addProject(request: AddProjectRequest): Promise<AppSnapsho
 
 export async function setProjectRule(request: SetProjectRuleRequest): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("set_project_rule", { request }) : mockApi.setProjectRule(request);
+  const next = invoke ? await invoke<AppSnapshot>("set_project_rule", { request }) : await mockApi.setProjectRule(request);
+  return autoSync(next);
 }
 
 export async function setCurrentProject(projectId: string | null): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("set_current_project", { projectId }) : mockApi.setCurrentProject(projectId);
+  const next = invoke ? await invoke<AppSnapshot>("set_current_project", { projectId }) : await mockApi.setCurrentProject(projectId);
+  return autoSync(next);
 }
 
 export async function resetProjectRules(projectId: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("reset_project_rules", { projectId }) : mockApi.resetProjectRules(projectId);
+  const next = invoke ? await invoke<AppSnapshot>("reset_project_rules", { projectId }) : await mockApi.resetProjectRules(projectId);
+  return autoSync(next);
 }
 
 export async function deleteProject(projectId: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("delete_project", { projectId }) : mockApi.deleteProject(projectId);
+  const next = invoke ? await invoke<AppSnapshot>("delete_project", { projectId }) : await mockApi.deleteProject(projectId);
+  return autoSync(next);
 }
 
 export async function setCodexPath(path: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("set_codex_path", { path }) : mockApi.setCodexPath(path);
+  const next = invoke ? await invoke<AppSnapshot>("set_codex_path", { path }) : await mockApi.setCodexPath(path);
+  return autoSync(next);
 }
 
 export async function migrateLibrary(target: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("migrate_library", { target }) : mockApi.migrateLibrary(target);
+  const next = invoke ? await invoke<AppSnapshot>("migrate_library", { target }) : await mockApi.migrateLibrary(target);
+  return autoSync(next);
 }
 
 export async function rebuildState(): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
-  return invoke ? invoke<AppSnapshot>("rebuild_state") : mockApi.rebuildState();
+  const next = invoke ? await invoke<AppSnapshot>("rebuild_state") : await mockApi.rebuildState();
+  return autoSync(next);
 }
 
 export async function syncCodex(): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
   return invoke ? invoke<AppSnapshot>("sync_codex") : mockApi.syncCodex();
+}
+
+async function autoSync(snapshot: AppSnapshot): Promise<AppSnapshot> {
+  if (!snapshot.state.codexSkillsPath) return snapshot;
+  return syncCodex();
 }

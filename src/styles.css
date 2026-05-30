@@ -678,21 +678,8 @@ summary:focus-visible {
 .reference-pane-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 14px;
-}
-
-.reference-pane-header h3 {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.35;
-}
-
-.reference-pane-header p {
-  margin: 4px 0 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
 }
 
 .segmented-control--compact {
@@ -713,43 +700,15 @@ summary:focus-visible {
 
 .reference-row {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 14px;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
 }
 
-.reference-row--healthy {
-  border-color: var(--success-border);
-  background: color-mix(in srgb, var(--success-bg) 46%, transparent);
-}
-
-.reference-row--broken {
-  border-color: var(--warning-border);
-  background: color-mix(in srgb, var(--warning-bg) 42%, transparent);
-}
-
-.reference-row--mismatch {
-  border-color: var(--danger-border);
-  background: color-mix(in srgb, var(--danger-bg) 42%, transparent);
-}
-
-.reference-row-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-primary);
-}
-
 .reference-row-main {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -764,37 +723,13 @@ summary:focus-visible {
   font-size: 15px;
 }
 
-.reference-kv {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.reference-kv div {
-  min-width: 0;
-}
-
-.reference-kv dt {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 620;
-}
-
-.reference-kv dd {
-  margin: 4px 0 0;
+.reference-path {
   color: var(--text-primary);
   font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
-}
-
-.reference-row p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.55;
+  white-space: normal;
 }
 
 .reference-graph {
@@ -831,7 +766,6 @@ summary:focus-visible {
 }
 
 .reference-center-node span,
-.reference-node span,
 .reference-node small {
   color: var(--text-secondary);
   font-size: 12px;
@@ -880,24 +814,6 @@ summary:focus-visible {
   color: rgba(255, 255, 255, 0.34);
   transform: translateY(-50%) rotate(45deg);
   content: "";
-}
-
-.reference-graph-item--healthy .reference-line,
-.reference-graph-item--healthy .reference-line::after {
-  color: var(--success-text);
-  background: var(--success-border);
-}
-
-.reference-graph-item--broken .reference-line,
-.reference-graph-item--broken .reference-line::after {
-  color: var(--warning-text);
-  background: var(--warning-border);
-}
-
-.reference-graph-item--mismatch .reference-line,
-.reference-graph-item--mismatch .reference-line::after {
-  color: var(--danger-text);
-  background: var(--danger-border);
 }
 
 .reference-node {
@@ -1616,8 +1532,7 @@ button:disabled {
   }
 
   .detail-kv,
-  .stat-grid,
-  .reference-kv {
+  .stat-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1625,10 +1540,6 @@ button:disabled {
   .reference-row-top {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .reference-row {
-    grid-template-columns: 1fr;
   }
 
   .reference-graph {

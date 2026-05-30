@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import {
-  AlertTriangle,
-  CheckCircle2,
   CircleHelp,
   Folder,
   Github,
   List,
   Network,
   Plus,
-  RefreshCw,
   ShoppingBag,
   Trash2,
-  Unlink,
 } from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
@@ -20,16 +16,11 @@ import type { AppSnapshot, DeleteSkillPreview, PendingSyncAction, Skill, SkillSo
 
 type DetailTab = "references" | "description";
 type ReferenceViewMode = "list" | "graph";
-type SkillReferenceStatus = "healthy" | "broken" | "mismatch";
 
 interface SkillReference {
   id: string;
   targetName: string;
   symlinkPath: string;
-  targetPath: string;
-  status: SkillReferenceStatus;
-  statusLabel: string;
-  detail: string;
 }
 
 const props = defineProps<{
@@ -66,28 +57,6 @@ const sourceLabels = {
 
 function actionsForSkill(skillId: string): PendingSyncAction[] {
   return props.snapshot.state.syncStatus.pendingActions.filter((item) => item.skillId === skillId);
-}
-
-const currentProject = computed(
-  () =>
-    props.snapshot.state.projects.find((project) => project.id === props.snapshot.state.currentProjectId) ?? null,
-);
-
-function effectiveEnabled(skill: Skill): boolean {
-  const rule = currentProject.value?.rules[skill.id];
-  if (rule === "enable") return true;
-  if (rule === "disable") return false;
-  return linkEnabled(skill);
-}
-
-function hasBlockingIssue(skill: Skill): boolean {
-  return Boolean(skill.conflict) || actionsForSkill(skill.id).some((item) => item.kind === "inspect");
-}
-
-function hasPendingApply(skill: Skill): boolean {
-  if (hasBlockingIssue(skill)) return false;
-  const actions = actionsForSkill(skill.id);
-  return actions.some((item) => item.kind === "create" || item.kind === "remove");
 }
 
 function isReferenced(skill: Skill): boolean {
@@ -146,42 +115,10 @@ const selectedReferences = computed(() => {
   return referencesForSkill(selectedSkill.value);
 });
 
-function applyState(skill: Skill) {
-  if (hasBlockingIssue(skill)) return { label: "需处理", tone: "danger" };
-  if (hasPendingApply(skill)) return { label: "待应用", tone: "warning" };
-  return linkEnabled(skill)
-    ? { label: "已链接", tone: "success" }
-    : { label: "未链接", tone: "neutral" };
-}
-
-function skillTags(skill: Skill) {
-  const tags = [
-    {
-      label: effectiveEnabled(skill) ? "当前启用" : "当前停用",
-      tone: effectiveEnabled(skill) ? "brand" : "neutral",
-    },
-  ];
-  tags.push(applyState(skill));
-  return tags;
-}
-
-function syncSummary(skill: Skill): string {
-  if (hasBlockingIssue(skill)) return "存在问题，处理后再应用到 Codex。";
-  if (hasPendingApply(skill)) return "有改动待应用到 Codex。";
-  return linkEnabled(skill) ? "Codex 中存在托管链接。" : "Codex 中没有托管链接。";
-}
-
-function referenceStatusIcon(status: SkillReferenceStatus) {
-  if (status === "healthy") return CheckCircle2;
-  if (status === "mismatch") return AlertTriangle;
-  return Unlink;
-}
-
 function referencesForSkill(skill: Skill): SkillReference[] {
   const actions = actionsForSkill(skill.id);
   const inspectAction = actions.find((item) => item.kind === "inspect");
   const createAction = actions.find((item) => item.kind === "create");
-  const removeAction = actions.find((item) => item.kind === "remove");
 
   if (skill.conflict) {
     return [
@@ -189,10 +126,6 @@ function referencesForSkill(skill: Skill): SkillReference[] {
         id: `codex-conflict-${skill.conflict.path}`,
         targetName: "Codex",
         symlinkPath: skill.conflict.path,
-        targetPath: skill.libraryPath,
-        status: "mismatch",
-        statusLabel: "指向异常",
-        detail: skill.conflict.message,
       },
     ];
   }
@@ -203,10 +136,6 @@ function referencesForSkill(skill: Skill): SkillReference[] {
         id: `codex-inspect-${inspectAction.target}`,
         targetName: "Codex",
         symlinkPath: inspectAction.target,
-        targetPath: inspectAction.source ?? skill.libraryPath,
-        status: "mismatch",
-        statusLabel: "需检查",
-        detail: inspectAction.message,
       },
     ];
   }
@@ -217,10 +146,6 @@ function referencesForSkill(skill: Skill): SkillReference[] {
         id: `codex-${skill.managedLinks.codex}`,
         targetName: "Codex",
         symlinkPath: skill.managedLinks.codex,
-        targetPath: skill.libraryPath,
-        status: removeAction ? "mismatch" : "healthy",
-        statusLabel: removeAction ? "待移除" : "正常",
-        detail: removeAction?.message ?? "软链接已指向当前 skill。",
       },
     ];
   }
@@ -231,10 +156,6 @@ function referencesForSkill(skill: Skill): SkillReference[] {
         id: `codex-create-${createAction.target}`,
         targetName: "Codex",
         symlinkPath: createAction.target,
-        targetPath: createAction.source ?? skill.libraryPath,
-        status: "broken",
-        statusLabel: "待创建",
-        detail: createAction.message,
       },
     ];
   }
@@ -356,22 +277,11 @@ function closeDeleteDialog() {
                 <div class="extension-meta">
                   <code>{{ selectedSkill.id }}</code>
                   <span>{{ sourceLabel(selectedSkill) }}</span>
-                  <span>{{ syncSummary(selectedSkill) }}</span>
                 </div>
               </div>
             </div>
 
             <div class="extension-command-panel">
-              <div class="tag-row">
-                <span
-                  v-for="tag in skillTags(selectedSkill)"
-                  :key="`detail-${tag.label}`"
-                  class="status-tag"
-                  :class="`status-tag--${tag.tone}`"
-                >
-                  {{ tag.label }}
-                </span>
-              </div>
               <div class="extension-actions">
                 <label class="switch-control">
                   <span>启用</span>
@@ -382,10 +292,6 @@ function closeDeleteDialog() {
                     @change="run(() => api.setSkillLinkEnabled(selectedSkill!.id, ($event.target as HTMLInputElement).checked))"
                   />
                 </label>
-                <button class="secondary-button" :disabled="busy" @click="run(api.syncCodex)">
-                  <RefreshCw :size="16" />
-                  同步
-                </button>
                 <button class="danger-button danger-button--icon" :disabled="busy" aria-label="删除 Skill" @click="openDeleteDialog">
                   <Trash2 :size="16" />
                 </button>
@@ -421,10 +327,6 @@ function closeDeleteDialog() {
 
           <section v-if="activeDetailTab === 'references'" class="reference-pane">
             <div class="reference-pane-header">
-              <div>
-                <h3>软链接引用</h3>
-                <p>{{ selectedReferences.length ? `${selectedReferences.length} 处引用当前 skill` : "当前没有已记录的软链接引用。" }}</p>
-              </div>
               <div class="segmented-control segmented-control--compact" aria-label="引用视图切换">
                 <button
                   type="button"
@@ -452,29 +354,12 @@ function closeDeleteDialog() {
                 v-for="reference in selectedReferences"
                 :key="reference.id"
                 class="reference-row"
-                :class="`reference-row--${reference.status}`"
               >
-                <div class="reference-row-icon">
-                  <component :is="referenceStatusIcon(reference.status)" :size="18" />
-                </div>
                 <div class="reference-row-main">
                   <div class="reference-row-top">
                     <strong>{{ reference.targetName }}</strong>
-                    <span class="status-tag" :class="`status-tag--${reference.status === 'healthy' ? 'success' : reference.status === 'broken' ? 'warning' : 'danger'}`">
-                      {{ reference.statusLabel }}
-                    </span>
                   </div>
-                  <dl class="reference-kv">
-                    <div>
-                      <dt>软链接</dt>
-                      <dd>{{ reference.symlinkPath }}</dd>
-                    </div>
-                    <div>
-                      <dt>指向</dt>
-                      <dd>{{ reference.targetPath }}</dd>
-                    </div>
-                  </dl>
-                  <p>{{ reference.detail }}</p>
+                  <code class="reference-path">{{ reference.symlinkPath }}</code>
                 </div>
               </article>
             </div>
@@ -490,13 +375,11 @@ function closeDeleteDialog() {
                   v-for="reference in selectedReferences"
                   :key="reference.id"
                   class="reference-graph-item"
-                  :class="`reference-graph-item--${reference.status}`"
                 >
                   <div class="reference-line" aria-hidden="true"></div>
                   <div class="reference-node">
                     <div>
                       <strong>{{ reference.targetName }}</strong>
-                      <span>{{ reference.statusLabel }}</span>
                     </div>
                     <small>{{ reference.symlinkPath }}</small>
                   </div>
@@ -505,7 +388,7 @@ function closeDeleteDialog() {
             </div>
 
             <div v-else class="content-empty content-empty--compact">
-              没有软链接引用。启用后同步到 Codex，会在这里显示引用状态。
+              暂无引用。
             </div>
           </section>
 
