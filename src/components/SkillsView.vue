@@ -1,9 +1,36 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { CircleHelp, Folder, Github, Plus, RefreshCw, ShoppingBag, Trash2 } from "lucide-vue-next";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleHelp,
+  Folder,
+  Github,
+  List,
+  Network,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  Trash2,
+  Unlink,
+} from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
 import type { AppSnapshot, DeleteSkillPreview, PendingSyncAction, Skill, SkillSourceKind } from "../types";
+
+type DetailTab = "references" | "description";
+type ReferenceViewMode = "list" | "graph";
+type SkillReferenceStatus = "healthy" | "broken" | "mismatch";
+
+interface SkillReference {
+  id: string;
+  targetName: string;
+  symlinkPath: string;
+  targetPath: string;
+  status: SkillReferenceStatus;
+  statusLabel: string;
+  detail: string;
+}
 
 const props = defineProps<{
   snapshot: AppSnapshot;
@@ -20,6 +47,8 @@ const query = ref("");
 const busy = ref(false);
 const deletePreview = ref<DeleteSkillPreview | null>(null);
 const deleteDialogOpen = ref(false);
+const activeDetailTab = ref<DetailTab>("references");
+const referenceViewMode = ref<ReferenceViewMode>("list");
 
 const sourceIcons = {
   local: Folder,
@@ -112,6 +141,11 @@ const selectedIssues = computed(() => {
   return issues;
 });
 
+const selectedReferences = computed(() => {
+  if (!selectedSkill.value) return [];
+  return referencesForSkill(selectedSkill.value);
+});
+
 function applyState(skill: Skill) {
   if (hasBlockingIssue(skill)) return { label: "需处理", tone: "danger" };
   if (hasPendingApply(skill)) return { label: "待应用", tone: "warning" };
@@ -135,6 +169,77 @@ function syncSummary(skill: Skill): string {
   if (hasBlockingIssue(skill)) return "存在问题，处理后再应用到 Codex。";
   if (hasPendingApply(skill)) return "有改动待应用到 Codex。";
   return linkEnabled(skill) ? "Codex 中存在托管链接。" : "Codex 中没有托管链接。";
+}
+
+function referenceStatusIcon(status: SkillReferenceStatus) {
+  if (status === "healthy") return CheckCircle2;
+  if (status === "mismatch") return AlertTriangle;
+  return Unlink;
+}
+
+function referencesForSkill(skill: Skill): SkillReference[] {
+  const actions = actionsForSkill(skill.id);
+  const inspectAction = actions.find((item) => item.kind === "inspect");
+  const createAction = actions.find((item) => item.kind === "create");
+  const removeAction = actions.find((item) => item.kind === "remove");
+
+  if (skill.conflict) {
+    return [
+      {
+        id: `codex-conflict-${skill.conflict.path}`,
+        targetName: "Codex",
+        symlinkPath: skill.conflict.path,
+        targetPath: skill.libraryPath,
+        status: "mismatch",
+        statusLabel: "指向异常",
+        detail: skill.conflict.message,
+      },
+    ];
+  }
+
+  if (inspectAction) {
+    return [
+      {
+        id: `codex-inspect-${inspectAction.target}`,
+        targetName: "Codex",
+        symlinkPath: inspectAction.target,
+        targetPath: inspectAction.source ?? skill.libraryPath,
+        status: "mismatch",
+        statusLabel: "需检查",
+        detail: inspectAction.message,
+      },
+    ];
+  }
+
+  if (skill.managedLinks.codex) {
+    return [
+      {
+        id: `codex-${skill.managedLinks.codex}`,
+        targetName: "Codex",
+        symlinkPath: skill.managedLinks.codex,
+        targetPath: skill.libraryPath,
+        status: removeAction ? "mismatch" : "healthy",
+        statusLabel: removeAction ? "待移除" : "正常",
+        detail: removeAction?.message ?? "软链接已指向当前 skill。",
+      },
+    ];
+  }
+
+  if (createAction) {
+    return [
+      {
+        id: `codex-create-${createAction.target}`,
+        targetName: "Codex",
+        symlinkPath: createAction.target,
+        targetPath: createAction.source ?? skill.libraryPath,
+        status: "broken",
+        statusLabel: "待创建",
+        detail: createAction.message,
+      },
+    ];
+  }
+
+  return [];
 }
 
 async function run(action: () => Promise<AppSnapshot>) {
@@ -296,10 +401,115 @@ function closeDeleteDialog() {
           </div>
 
           <nav class="detail-tabs" aria-label="Skill detail tabs">
-            <button class="detail-tab active" type="button">Description</button>
+            <button
+              class="detail-tab"
+              :class="{ active: activeDetailTab === 'references' }"
+              type="button"
+              @click="activeDetailTab = 'references'"
+            >
+              引用
+            </button>
+            <button
+              class="detail-tab"
+              :class="{ active: activeDetailTab === 'description' }"
+              type="button"
+              @click="activeDetailTab = 'description'"
+            >
+              详情
+            </button>
           </nav>
 
-          <section class="description-pane">
+          <section v-if="activeDetailTab === 'references'" class="reference-pane">
+            <div class="reference-pane-header">
+              <div>
+                <h3>软链接引用</h3>
+                <p>{{ selectedReferences.length ? `${selectedReferences.length} 处引用当前 skill` : "当前没有已记录的软链接引用。" }}</p>
+              </div>
+              <div class="segmented-control segmented-control--compact" aria-label="引用视图切换">
+                <button
+                  type="button"
+                  :class="{ active: referenceViewMode === 'list' }"
+                  aria-label="列表视图"
+                  title="列表视图"
+                  @click="referenceViewMode = 'list'"
+                >
+                  <List :size="15" />
+                </button>
+                <button
+                  type="button"
+                  :class="{ active: referenceViewMode === 'graph' }"
+                  aria-label="连线图"
+                  title="连线图"
+                  @click="referenceViewMode = 'graph'"
+                >
+                  <Network :size="15" />
+                </button>
+              </div>
+            </div>
+
+            <div v-if="selectedReferences.length && referenceViewMode === 'list'" class="reference-list">
+              <article
+                v-for="reference in selectedReferences"
+                :key="reference.id"
+                class="reference-row"
+                :class="`reference-row--${reference.status}`"
+              >
+                <div class="reference-row-icon">
+                  <component :is="referenceStatusIcon(reference.status)" :size="18" />
+                </div>
+                <div class="reference-row-main">
+                  <div class="reference-row-top">
+                    <strong>{{ reference.targetName }}</strong>
+                    <span class="status-tag" :class="`status-tag--${reference.status === 'healthy' ? 'success' : reference.status === 'broken' ? 'warning' : 'danger'}`">
+                      {{ reference.statusLabel }}
+                    </span>
+                  </div>
+                  <dl class="reference-kv">
+                    <div>
+                      <dt>软链接</dt>
+                      <dd>{{ reference.symlinkPath }}</dd>
+                    </div>
+                    <div>
+                      <dt>指向</dt>
+                      <dd>{{ reference.targetPath }}</dd>
+                    </div>
+                  </dl>
+                  <p>{{ reference.detail }}</p>
+                </div>
+              </article>
+            </div>
+
+            <div v-else-if="selectedReferences.length" class="reference-graph" aria-label="Skill 引用连线图">
+              <div class="reference-center-node">
+                <span>当前 Skill</span>
+                <strong>{{ selectedSkill.name }}</strong>
+                <code>{{ selectedSkill.id }}</code>
+              </div>
+              <div class="reference-graph-stack">
+                <article
+                  v-for="reference in selectedReferences"
+                  :key="reference.id"
+                  class="reference-graph-item"
+                  :class="`reference-graph-item--${reference.status}`"
+                >
+                  <div class="reference-line" aria-hidden="true"></div>
+                  <div class="reference-node">
+                    <div>
+                      <strong>{{ reference.targetName }}</strong>
+                      <span>{{ reference.statusLabel }}</span>
+                    </div>
+                    <small>{{ reference.symlinkPath }}</small>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div v-else class="content-empty content-empty--compact">
+              没有软链接引用。启用后同步到 Codex，会在这里显示引用状态。
+            </div>
+          </section>
+
+          <section v-else class="description-pane">
             <p v-if="selectedSkill.description">{{ selectedSkill.description }}</p>
             <p v-else class="description-empty">暂无描述。</p>
           </section>
