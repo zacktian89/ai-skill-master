@@ -26,6 +26,8 @@ pub struct Skill {
     pub library_path: PathBuf,
     #[serde(default)]
     pub source: SkillSource,
+    #[serde(default)]
+    pub references: Vec<SkillReference>,
     pub managed_links: ManagedLinks,
     pub conflict: Option<SkillConflict>,
 }
@@ -76,6 +78,43 @@ pub enum SkillSourceKind {
 #[serde(rename_all = "camelCase")]
 pub struct ManagedLinks {
     pub codex: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillReference {
+    pub id: String,
+    pub target_name: String,
+    pub target_path: PathBuf,
+    #[serde(default = "default_reference_scope")]
+    pub scope: ReferenceScope,
+    #[serde(default = "default_reference_status")]
+    pub status: ReferenceStatus,
+}
+
+fn default_reference_scope() -> ReferenceScope {
+    ReferenceScope::User
+}
+
+fn default_reference_status() -> ReferenceStatus {
+    ReferenceStatus::Healthy
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ReferenceScope {
+    User,
+    Project,
+    Custom,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ReferenceStatus {
+    Healthy,
+    Missing,
+    Conflict,
+    Stale,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

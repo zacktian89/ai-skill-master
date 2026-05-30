@@ -1,18 +1,33 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import {
+  Bot,
   CircleHelp,
+  Code2,
+  Cpu,
   Folder,
   Github,
   List,
   Network,
   Plus,
   ShoppingBag,
+  SquareTerminal,
   Trash2,
+  Wind,
+  X,
 } from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
-import type { AppSnapshot, DeleteSkillPreview, PendingSyncAction, Skill, SkillSourceKind } from "../types";
+import type {
+  AppSnapshot,
+  DeleteSkillPreview,
+  PendingSyncAction,
+  ReferenceScope,
+  ReferenceStatus,
+  Skill,
+  SkillSourceKind,
+  SkillTargetProfile,
+} from "../types";
 
 type DetailTab = "references" | "description";
 type ReferenceViewMode = "list" | "graph";
@@ -21,6 +36,16 @@ interface SkillReference {
   id: string;
   targetName: string;
   symlinkPath: string;
+  scope: ReferenceScope;
+  status: ReferenceStatus;
+  removable: boolean;
+  legacyCodex: boolean;
+}
+
+interface PendingReferenceTarget {
+  targetName: string;
+  rootPath: string;
+  scope: ReferenceScope;
 }
 
 const props = defineProps<{
@@ -38,6 +63,10 @@ const query = ref("");
 const busy = ref(false);
 const deletePreview = ref<DeleteSkillPreview | null>(null);
 const deleteDialogOpen = ref(false);
+const addReferenceDialogOpen = ref(false);
+const pendingReferenceTarget = ref<PendingReferenceTarget | null>(null);
+const deleteReferenceDialogOpen = ref(false);
+const referenceToDelete = ref<SkillReference | null>(null);
 const activeDetailTab = ref<DetailTab>("references");
 const referenceViewMode = ref<ReferenceViewMode>("list");
 
@@ -55,12 +84,36 @@ const sourceLabels = {
   unknown: "未知来源",
 } satisfies Record<SkillSourceKind, string>;
 
+const targetIcons: Record<string, unknown> = {
+  Codex: SquareTerminal,
+  "Claude Code": Bot,
+  "GitHub Copilot": Github,
+  Cursor: Code2,
+  Windsurf: Wind,
+  Kiro: Cpu,
+  OpenCode: CircleHelp,
+  自定义目录: Folder,
+};
+
+const scopeLabels = {
+  user: "个人目录",
+  project: "项目目录",
+  custom: "自定义目录",
+} satisfies Record<ReferenceScope, string>;
+
+const referenceStatusLabels = {
+  healthy: "正常",
+  missing: "缺失",
+  conflict: "冲突",
+  stale: "失效",
+} satisfies Record<ReferenceStatus, string>;
+
 function actionsForSkill(skillId: string): PendingSyncAction[] {
   return props.snapshot.state.syncStatus.pendingActions.filter((item) => item.skillId === skillId);
 }
 
 function isReferenced(skill: Skill): boolean {
-  if (linkEnabled(skill)) return true;
+  if (linkEnabled(skill) || (skill.references?.length ?? 0) > 0) return true;
   return props.snapshot.state.projects.some((project) => project.rules[skill.id] === "enable");
 }
 
@@ -115,6 +168,13 @@ const selectedReferences = computed(() => {
   return referencesForSkill(selectedSkill.value);
 });
 
+const targetProfiles = computed<SkillTargetProfile[]>(() => props.snapshot.targetProfiles ?? []);
+
+const pendingReferencePath = computed(() => {
+  if (!selectedSkill.value || !pendingReferenceTarget.value) return "";
+  return joinPath(pendingReferenceTarget.value.rootPath, selectedSkill.value.id);
+});
+
 function referencesForSkill(skill: Skill): SkillReference[] {
   const actions = actionsForSkill(skill.id);
   const inspectAction = actions.find((item) => item.kind === "inspect");
@@ -126,41 +186,76 @@ function referencesForSkill(skill: Skill): SkillReference[] {
         id: `codex-conflict-${skill.conflict.path}`,
         targetName: "Codex",
         symlinkPath: skill.conflict.path,
+        scope: "user",
+        status: "conflict",
+        removable: false,
+        legacyCodex: true,
       },
     ];
   }
 
+  const references = (skill.references ?? []).map((reference) => ({
+    id: reference.id,
+    targetName: reference.targetName,
+    symlinkPath: reference.targetPath,
+    scope: reference.scope,
+    status: reference.status,
+    removable: true,
+    legacyCodex: false,
+  }));
+
   if (inspectAction) {
-    return [
+    return references.concat([
       {
         id: `codex-inspect-${inspectAction.target}`,
         targetName: "Codex",
         symlinkPath: inspectAction.target,
+        scope: "user",
+        status: "conflict",
+        removable: false,
+        legacyCodex: true,
       },
-    ];
+    ]);
   }
 
   if (skill.managedLinks.codex) {
-    return [
+    return references.concat([
       {
         id: `codex-${skill.managedLinks.codex}`,
         targetName: "Codex",
         symlinkPath: skill.managedLinks.codex,
+        scope: "user",
+        status: "healthy",
+        removable: true,
+        legacyCodex: true,
       },
-    ];
+    ]);
   }
 
   if (createAction) {
-    return [
+    return references.concat([
       {
         id: `codex-create-${createAction.target}`,
         targetName: "Codex",
         symlinkPath: createAction.target,
+        scope: "user",
+        status: "missing",
+        removable: false,
+        legacyCodex: true,
       },
-    ];
+    ]);
   }
 
-  return [];
+  return references;
+}
+
+function iconForTarget(targetName: string) {
+  return targetIcons[targetName] ?? CircleHelp;
+}
+
+function joinPath(root: string, child: string): string {
+  const normalized = root.replace(/[\\/]+$/, "");
+  return `${normalized}/${child}`;
 }
 
 async function run(action: () => Promise<AppSnapshot>) {
@@ -203,6 +298,73 @@ async function confirmDelete() {
   await run(() => api.deleteSkill(deletePreview.value!.skillId));
   deleteDialogOpen.value = false;
   deletePreview.value = null;
+}
+
+function openAddReferenceDialog() {
+  pendingReferenceTarget.value = null;
+  addReferenceDialogOpen.value = true;
+}
+
+function closeAddReferenceDialog() {
+  addReferenceDialogOpen.value = false;
+  pendingReferenceTarget.value = null;
+}
+
+function selectTargetProfile(profile: SkillTargetProfile) {
+  pendingReferenceTarget.value = {
+    targetName: profile.targetName,
+    rootPath: profile.rootPath,
+    scope: profile.scope,
+  };
+}
+
+async function selectCustomReferenceRoot() {
+  try {
+    const selected = await openDirectory({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      pendingReferenceTarget.value = {
+        targetName: "自定义目录",
+        rootPath: selected,
+        scope: "custom",
+      };
+    }
+  } catch (cause) {
+    emit("error", String(cause));
+  }
+}
+
+async function confirmAddReference() {
+  if (!selectedSkill.value || !pendingReferenceTarget.value) return;
+  await run(() =>
+    api.addSkillReference({
+      skillId: selectedSkill.value!.id,
+      targetName: pendingReferenceTarget.value!.targetName,
+      rootPath: pendingReferenceTarget.value!.rootPath,
+      scope: pendingReferenceTarget.value!.scope,
+    }),
+  );
+  closeAddReferenceDialog();
+}
+
+function openDeleteReferenceDialog(reference: SkillReference) {
+  referenceToDelete.value = reference;
+  deleteReferenceDialogOpen.value = true;
+}
+
+function closeDeleteReferenceDialog() {
+  deleteReferenceDialogOpen.value = false;
+  referenceToDelete.value = null;
+}
+
+async function confirmDeleteReference() {
+  if (!referenceToDelete.value || !selectedSkill.value) return;
+  const reference = referenceToDelete.value;
+  if (reference.legacyCodex) {
+    await run(() => api.setSkillLinkEnabled(selectedSkill.value!.id, false));
+  } else {
+    await run(() => api.removeSkillReference(reference.id));
+  }
+  closeDeleteReferenceDialog();
 }
 
 function closeDeleteDialog() {
@@ -327,6 +489,16 @@ function closeDeleteDialog() {
 
           <section v-if="activeDetailTab === 'references'" class="reference-pane">
             <div class="reference-pane-header">
+              <button
+                class="icon-button icon-button--compact"
+                type="button"
+                :disabled="busy"
+                aria-label="新增引用"
+                title="新增引用"
+                @click="openAddReferenceDialog"
+              >
+                <Plus :size="16" />
+              </button>
               <div class="segmented-control segmented-control--compact" aria-label="引用视图切换">
                 <button
                   type="button"
@@ -357,7 +529,29 @@ function closeDeleteDialog() {
               >
                 <div class="reference-row-main">
                   <div class="reference-row-top">
-                    <strong>{{ reference.targetName }}</strong>
+                    <div class="reference-title">
+                      <span class="reference-app-icon" :title="reference.targetName" aria-hidden="true">
+                        <component :is="iconForTarget(reference.targetName)" :size="15" />
+                      </span>
+                      <strong>{{ reference.targetName }}</strong>
+                    </div>
+                    <div class="reference-actions">
+                      <span class="status-tag" :class="`status-tag--${reference.status}`">
+                        {{ referenceStatusLabels[reference.status] }}
+                      </span>
+                      <span class="status-tag">{{ scopeLabels[reference.scope] }}</span>
+                      <button
+                        v-if="reference.removable"
+                        class="ghost-icon-button ghost-icon-button--danger"
+                        type="button"
+                        :disabled="busy"
+                        aria-label="删除引用"
+                        title="删除引用"
+                        @click="openDeleteReferenceDialog(reference)"
+                      >
+                        <Trash2 :size="15" />
+                      </button>
+                    </div>
                   </div>
                   <code class="reference-path">{{ reference.symlinkPath }}</code>
                 </div>
@@ -380,6 +574,7 @@ function closeDeleteDialog() {
                   <div class="reference-node">
                     <div>
                       <strong>{{ reference.targetName }}</strong>
+                      <span>{{ referenceStatusLabels[reference.status] }}</span>
                     </div>
                     <small>{{ reference.symlinkPath }}</small>
                   </div>
@@ -449,6 +644,94 @@ function closeDeleteDialog() {
         <button class="danger-button" :disabled="busy" @click="confirmDelete">
           <Trash2 :size="16" />
           确认删除
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <div v-if="addReferenceDialogOpen" class="modal-backdrop" @click.self="closeAddReferenceDialog">
+    <section class="modal-card modal-card--compact">
+      <div class="modal-title-row">
+        <div>
+          <p class="eyebrow">Add Reference</p>
+          <h2>{{ pendingReferenceTarget ? "确认新增引用" : "新增引用" }}</h2>
+        </div>
+        <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeAddReferenceDialog">
+          <X :size="16" />
+        </button>
+      </div>
+
+      <template v-if="!pendingReferenceTarget">
+        <div class="target-grid">
+          <button
+            v-for="profile in targetProfiles"
+            :key="profile.id"
+            class="target-tile"
+            type="button"
+            :disabled="busy"
+            @click="selectTargetProfile(profile)"
+          >
+            <span class="target-tile-icon" aria-hidden="true">
+              <component :is="iconForTarget(profile.targetName)" :size="22" />
+            </span>
+            <strong>{{ profile.targetName }}</strong>
+          </button>
+        </div>
+
+        <button class="target-custom-button" type="button" :disabled="busy" @click="selectCustomReferenceRoot">
+          <Folder :size="18" />
+          选择 skills 目录
+        </button>
+      </template>
+
+      <template v-else>
+        <dl class="detail-kv detail-kv--wide">
+          <div>
+            <dt>目标路径</dt>
+            <dd>
+              <code class="reference-path">{{ pendingReferencePath }}</code>
+            </dd>
+          </div>
+        </dl>
+
+        <div class="button-row button-row--end">
+          <button class="secondary-button" :disabled="busy" @click="pendingReferenceTarget = null">返回</button>
+          <button class="primary-button" :disabled="busy" @click="confirmAddReference">
+            <Plus :size="16" />
+            新增引用
+          </button>
+        </div>
+      </template>
+    </section>
+  </div>
+
+  <div v-if="deleteReferenceDialogOpen && referenceToDelete" class="modal-backdrop" @click.self="closeDeleteReferenceDialog">
+    <section class="modal-card modal-card--compact">
+      <div class="modal-title-row">
+        <div>
+          <p class="eyebrow">Remove Reference</p>
+          <h2>删除引用</h2>
+        </div>
+        <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeDeleteReferenceDialog">
+          <X :size="16" />
+        </button>
+      </div>
+
+      <dl class="detail-kv detail-kv--wide">
+        <div>
+          <dt>目标路径</dt>
+          <dd>
+            <code class="reference-path">{{ referenceToDelete.symlinkPath }}</code>
+          </dd>
+        </div>
+      </dl>
+      <p class="modal-note">只移除这个托管引用，不会删除技能库中的 skill。</p>
+
+      <div class="button-row button-row--end">
+        <button class="secondary-button" :disabled="busy" @click="closeDeleteReferenceDialog">取消</button>
+        <button class="danger-button" :disabled="busy" @click="confirmDeleteReference">
+          <Trash2 :size="16" />
+          删除引用
         </button>
       </div>
     </section>

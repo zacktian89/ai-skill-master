@@ -1,4 +1,10 @@
-import type { AddProjectRequest, AppSnapshot, DeleteSkillPreview, SetProjectRuleRequest } from "./types";
+import type {
+  AddProjectRequest,
+  AddSkillReferenceRequest,
+  AppSnapshot,
+  DeleteSkillPreview,
+  SetProjectRuleRequest,
+} from "./types";
 import * as mockApi from "./mockApi";
 
 type TauriInvoke = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
@@ -49,6 +55,18 @@ export async function setSkillLinkEnabled(skillId: string, enabled: boolean): Pr
   return invoke
     ? invoke<AppSnapshot>("set_skill_link_enabled", { skillId, enabled })
     : mockApi.setSkillLinkEnabled(skillId, enabled);
+}
+
+export async function addSkillReference(request: AddSkillReferenceRequest): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<AppSnapshot>("add_skill_reference", { request }) : mockApi.addSkillReference(request);
+}
+
+export async function removeSkillReference(referenceId: string): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  return invoke
+    ? invoke<AppSnapshot>("remove_skill_reference", { referenceId })
+    : mockApi.removeSkillReference(referenceId);
 }
 
 export async function addProject(request: AddProjectRequest): Promise<AppSnapshot> {

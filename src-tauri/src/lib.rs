@@ -17,6 +17,8 @@ pub fn run() {
             commands::preview_delete_skill,
             commands::delete_skill,
             commands::set_skill_link_enabled,
+            commands::add_skill_reference,
+            commands::remove_skill_reference,
             commands::add_project,
             commands::set_project_rule,
             commands::set_current_project,

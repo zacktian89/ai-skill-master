@@ -6,8 +6,8 @@ use crate::codex_sync::{
 use crate::effective_state::effective_skill_ids;
 use crate::error::{Result, SkillMasterError};
 use crate::models::{
-    AppState, PendingSyncAction, PendingSyncActionKind, Project, ProjectRule, Skill, SkillConflict,
-    SyncPhase, SyncStatus,
+    AppState, PendingSyncAction, PendingSyncActionKind, Project, ProjectRule, ReferenceScope,
+    ReferenceStatus, Skill, SkillConflict, SkillReference, SyncPhase, SyncStatus,
 };
 use crate::skill_library::{
     delete_skill as delete_skill_from_library, import_skill as import_skill_into_library,
@@ -26,9 +26,19 @@ use tauri::{AppHandle, Manager};
 #[serde(rename_all = "camelCase")]
 pub struct AppSnapshot {
     pub state: AppState,
+    pub target_profiles: Vec<SkillTargetProfile>,
     pub diagnostics: Vec<DiagnosticItem>,
     pub paths: SnapshotPaths,
     pub state_load: StateLoadInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillTargetProfile {
+    pub id: String,
+    pub target_name: String,
+    pub root_path: PathBuf,
+    pub scope: ReferenceScope,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -83,6 +93,15 @@ pub struct SetProjectRuleRequest {
     pub project_id: String,
     pub skill_id: String,
     pub rule: ProjectRule,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddSkillReferenceRequest {
+    pub skill_id: String,
+    pub target_name: String,
+    pub root_path: PathBuf,
+    pub scope: ReferenceScope,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +160,7 @@ pub fn build_snapshot(
 
     for skill in &mut state.skills {
         skill.conflict = None;
+        refresh_reference_statuses(skill)?;
     }
 
     if !state.skill_library_path.exists() {
@@ -307,6 +327,7 @@ pub fn build_snapshot(
 
     Ok(AppSnapshot {
         state,
+        target_profiles: built_in_target_profiles(),
         diagnostics,
         paths: SnapshotPaths {
             state_file: paths.state_file.clone(),
@@ -325,6 +346,76 @@ pub fn build_snapshot(
             },
         },
     })
+}
+
+fn built_in_target_profiles() -> Vec<SkillTargetProfile> {
+    let home = user_home_path();
+    vec![
+        SkillTargetProfile {
+            id: "codex-user".to_string(),
+            target_name: "Codex".to_string(),
+            root_path: home.join(".agents").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "claude-user".to_string(),
+            target_name: "Claude Code".to_string(),
+            root_path: home.join(".claude").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "copilot-user".to_string(),
+            target_name: "GitHub Copilot".to_string(),
+            root_path: home.join(".copilot").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "cursor-user".to_string(),
+            target_name: "Cursor".to_string(),
+            root_path: home.join(".cursor").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "windsurf-user".to_string(),
+            target_name: "Windsurf".to_string(),
+            root_path: home.join(".codeium").join("windsurf").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "kiro-user".to_string(),
+            target_name: "Kiro".to_string(),
+            root_path: home.join(".kiro").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "opencode-user".to_string(),
+            target_name: "OpenCode".to_string(),
+            root_path: home.join(".config").join("opencode").join("skill"),
+            scope: ReferenceScope::User,
+        },
+    ]
+}
+
+fn user_home_path() -> PathBuf {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn refresh_reference_statuses(skill: &mut Skill) -> Result<()> {
+    let source = skill.library_path.clone();
+    for reference in &mut skill.references {
+        reference.status = match validate_managed_link(&source, &reference.target_path)? {
+            ManagedLinkValidation::Valid => ReferenceStatus::Healthy,
+            ManagedLinkValidation::Missing => ReferenceStatus::Missing,
+            ManagedLinkValidation::MissingSource => ReferenceStatus::Stale,
+            ManagedLinkValidation::WrongType | ManagedLinkValidation::WrongTarget { .. } => {
+                ReferenceStatus::Conflict
+            }
+        };
+    }
+    Ok(())
 }
 
 fn command_paths(app: &AppHandle) -> Result<AppPaths> {
@@ -458,9 +549,93 @@ fn delete_preview_from_state(state: &AppState, skill_id: &str) -> Result<DeleteS
             .codex
             .iter()
             .cloned()
+            .chain(
+                skill
+                    .references
+                    .iter()
+                    .map(|reference| reference.target_path.clone()),
+            )
             .collect::<Vec<_>>(),
         affected_projects,
     })
+}
+
+fn reference_id(target_path: &std::path::Path) -> String {
+    let raw = target_path.to_string_lossy();
+    format!("ref-{:x}", md5_like_hash(raw.as_bytes()))
+}
+
+fn add_skill_reference_to_state(
+    state: &mut AppState,
+    request: AddSkillReferenceRequest,
+) -> Result<()> {
+    let skill = state
+        .skills
+        .iter_mut()
+        .find(|skill| skill.id == request.skill_id)
+        .ok_or_else(|| SkillMasterError::SkillNotFound(request.skill_id.clone()))?;
+    let target_path = request.root_path.join(&skill.id);
+
+    if skill
+        .references
+        .iter()
+        .any(|reference| reference.target_path == target_path)
+    {
+        return Ok(());
+    }
+
+    match validate_managed_link(&skill.library_path, &target_path)? {
+        ManagedLinkValidation::Valid => {}
+        ManagedLinkValidation::Missing => create_directory_link(&skill.library_path, &target_path)?,
+        ManagedLinkValidation::MissingSource => {
+            return Err(SkillMasterError::MissingDirectory(
+                skill.library_path.clone(),
+            ));
+        }
+        validation => {
+            return Err(SkillMasterError::InvalidPath(managed_link_issue_message(
+                &target_path,
+                &validation,
+            )));
+        }
+    }
+
+    skill.references.push(SkillReference {
+        id: reference_id(&target_path),
+        target_name: request.target_name,
+        target_path,
+        scope: request.scope,
+        status: ReferenceStatus::Healthy,
+    });
+    Ok(())
+}
+
+fn remove_skill_reference_from_state(state: &mut AppState, reference_id: &str) -> Result<()> {
+    for skill in &mut state.skills {
+        let Some(index) = skill
+            .references
+            .iter()
+            .position(|reference| reference.id == reference_id)
+        else {
+            continue;
+        };
+        let reference = skill.references[index].clone();
+        match validate_managed_link(&skill.library_path, &reference.target_path)? {
+            ManagedLinkValidation::Valid => remove_managed_link(&reference.target_path)?,
+            ManagedLinkValidation::Missing => {}
+            validation => {
+                return Err(SkillMasterError::InvalidPath(managed_link_issue_message(
+                    &reference.target_path,
+                    &validation,
+                )));
+            }
+        }
+        skill.references.remove(index);
+        return Ok(());
+    }
+    Err(SkillMasterError::InvalidPath(format!(
+        "找不到引用：{reference_id}"
+    )))
 }
 
 #[tauri::command]
@@ -678,6 +853,40 @@ pub fn set_skill_link_enabled(
             }
         }
     }
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn add_skill_reference(
+    app: AppHandle,
+    request: AddSkillReferenceRequest,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    add_skill_reference_to_state(&mut command_state.state, request)
+        .map_err(|error| error.to_string())?;
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn remove_skill_reference(
+    app: AppHandle,
+    reference_id: String,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    remove_skill_reference_from_state(&mut command_state.state, &reference_id)
+        .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -960,6 +1169,7 @@ mod tests {
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
             source: Default::default(),
+            references: Vec::new(),
             managed_links: Default::default(),
             conflict: None,
         });
@@ -979,6 +1189,7 @@ mod tests {
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
             source: Default::default(),
+            references: Vec::new(),
             managed_links: crate::models::ManagedLinks {
                 codex: Some(dir.path().join("codex").join("writer")),
             },

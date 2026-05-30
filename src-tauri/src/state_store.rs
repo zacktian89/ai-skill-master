@@ -165,6 +165,7 @@ mod tests {
                 description: "Convert Markdown to WeChat HTML".to_string(),
                 library_path: dir.path().join("skills").join("markdown-go"),
                 source: SkillSource::default(),
+                references: Vec::new(),
                 managed_links: ManagedLinks {
                     codex: Some(dir.path().join("codex").join("markdown-go")),
                 },

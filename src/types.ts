@@ -3,9 +3,19 @@ export type DiagnosticLevel = "info" | "warning" | "error";
 export type SyncPhase = "idle" | "healthy" | "repairRequired";
 export type PendingSyncActionKind = "create" | "remove" | "inspect";
 export type StateLoadPhase = "clean" | "restoredFromBackup" | "rebuildRequired";
+export type ReferenceScope = "user" | "project" | "custom";
+export type ReferenceStatus = "healthy" | "missing" | "conflict" | "stale";
 
 export interface ManagedLinks {
   codex?: string | null;
+}
+
+export interface SkillReference {
+  id: string;
+  targetName: string;
+  targetPath: string;
+  scope: ReferenceScope;
+  status: ReferenceStatus;
 }
 
 export type SkillSourceKind = "local" | "github" | "openclawMarket" | "unknown";
@@ -53,6 +63,7 @@ export interface Skill {
   description: string;
   libraryPath: string;
   source?: SkillSource | null;
+  references?: SkillReference[];
   managedLinks: ManagedLinks;
   conflict?: SkillConflict | null;
 }
@@ -94,9 +105,17 @@ export interface StateLoadInfo {
 
 export interface AppSnapshot {
   state: AppState;
+  targetProfiles?: SkillTargetProfile[];
   diagnostics: DiagnosticItem[];
   paths: SnapshotPaths;
   stateLoad: StateLoadInfo;
+}
+
+export interface SkillTargetProfile {
+  id: string;
+  targetName: string;
+  rootPath: string;
+  scope: ReferenceScope;
 }
 
 export interface AddProjectRequest {
@@ -108,6 +127,13 @@ export interface SetProjectRuleRequest {
   projectId: string;
   skillId: string;
   rule: ProjectRule;
+}
+
+export interface AddSkillReferenceRequest {
+  skillId: string;
+  targetName: string;
+  rootPath: string;
+  scope: ReferenceScope;
 }
 
 export interface ProjectImpact {

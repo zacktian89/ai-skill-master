@@ -67,6 +67,7 @@ pub fn import_skill(state: &mut crate::models::AppState, source: &Path) -> Resul
         description: metadata.description,
         library_path: target,
         source: SkillSource::local(Some(source.to_path_buf())),
+        references: Vec::new(),
         managed_links: ManagedLinks::default(),
         conflict: None,
     });
@@ -96,6 +97,7 @@ pub fn scan_skill_library(root: &Path) -> Result<Vec<Skill>> {
             description: metadata.description,
             library_path: skill_dir,
             source: SkillSource::default(),
+            references: Vec::new(),
             managed_links: ManagedLinks::default(),
             conflict: None,
         });

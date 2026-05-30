@@ -1,5 +1,6 @@
 import type {
   AddProjectRequest,
+  AddSkillReferenceRequest,
   AppSnapshot,
   DeleteSkillPreview,
   ProjectRule,
@@ -29,6 +30,15 @@ const mockSnapshot: AppSnapshot = {
         name: "Writer Pro",
         description: "长文写作与风格控制",
         libraryPath: "/Users/demo/.skillmaster/skills/writer-pro",
+        references: [
+          {
+            id: "ref-claude-writer-pro",
+            targetName: "Claude Code",
+            targetPath: "/Users/demo/.claude/skills/writer-pro",
+            scope: "user",
+            status: "healthy",
+          },
+        ],
         managedLinks: {
           codex: "/Users/demo/.codex/skills/writer-pro",
         },
@@ -39,6 +49,7 @@ const mockSnapshot: AppSnapshot = {
         name: "UI Auditor",
         description: "检查界面层级、配色和布局一致性",
         libraryPath: "/Users/demo/.skillmaster/skills/ui-auditor",
+        references: [],
         managedLinks: {
           codex: "/Users/demo/.codex/skills/ui-auditor",
         },
@@ -49,6 +60,7 @@ const mockSnapshot: AppSnapshot = {
         name: "Deploy Guard",
         description: "发布前校验与回滚预案",
         libraryPath: "/Users/demo/.skillmaster/skills/deploy-guard",
+        references: [],
         managedLinks: {
           codex: null,
         },
@@ -59,6 +71,7 @@ const mockSnapshot: AppSnapshot = {
         name: "Legacy Review",
         description: "旧系统审计与兼容性分析",
         libraryPath: "/Users/demo/.skillmaster/skills/legacy-review",
+        references: [],
         managedLinks: {
           codex: "/Users/demo/.codex/skills/legacy-review",
         },
@@ -95,6 +108,50 @@ const mockSnapshot: AppSnapshot = {
       },
     ],
   },
+  targetProfiles: [
+    {
+      id: "codex-user",
+      targetName: "Codex",
+      rootPath: "/Users/demo/.agents/skills",
+      scope: "user",
+    },
+    {
+      id: "claude-user",
+      targetName: "Claude Code",
+      rootPath: "/Users/demo/.claude/skills",
+      scope: "user",
+    },
+    {
+      id: "copilot-user",
+      targetName: "GitHub Copilot",
+      rootPath: "/Users/demo/.copilot/skills",
+      scope: "user",
+    },
+    {
+      id: "cursor-user",
+      targetName: "Cursor",
+      rootPath: "/Users/demo/.cursor/skills",
+      scope: "user",
+    },
+    {
+      id: "windsurf-user",
+      targetName: "Windsurf",
+      rootPath: "/Users/demo/.codeium/windsurf/skills",
+      scope: "user",
+    },
+    {
+      id: "kiro-user",
+      targetName: "Kiro",
+      rootPath: "/Users/demo/.kiro/skills",
+      scope: "user",
+    },
+    {
+      id: "opencode-user",
+      targetName: "OpenCode",
+      rootPath: "/Users/demo/.config/opencode/skill",
+      scope: "user",
+    },
+  ],
   diagnostics: [
     {
       level: "warning",
@@ -156,6 +213,7 @@ export function importSkill(source: string): Promise<AppSnapshot> {
     name,
     description: "浏览器 mock 导入的示例 skill",
     libraryPath: `${mockSnapshot.state.skillLibraryPath}/${id}`,
+    references: [],
     managedLinks: {
       codex: null,
     },
@@ -192,7 +250,10 @@ export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview>
     skillId,
     skillName: skill.name,
     libraryPath: skill.libraryPath,
-    managedLinkTargets: skill.managedLinks.codex ? [skill.managedLinks.codex] : [],
+    managedLinkTargets: [
+      ...(skill.managedLinks.codex ? [skill.managedLinks.codex] : []),
+      ...(skill.references?.map((reference) => reference.targetPath) ?? []),
+    ],
     affectedProjects: mockSnapshot.state.projects
       .filter((project) => project.rules[skillId])
       .map((project) => ({
@@ -201,6 +262,10 @@ export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview>
         projectPath: project.path,
       })),
   });
+}
+
+function referenceId(path: string): string {
+  return `ref-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
 }
 
 export function setSkillLinkEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
@@ -212,6 +277,31 @@ export function setSkillLinkEnabled(skillId: string, enabled: boolean): Promise<
       message: enabled ? "Mock 托管链接已创建。" : "Mock 托管链接已移除。",
       pendingActions: [],
     };
+  }
+  return snapshot();
+}
+
+export function addSkillReference(request: AddSkillReferenceRequest): Promise<AppSnapshot> {
+  const skill = mockSnapshot.state.skills.find((item) => item.id === request.skillId);
+  if (skill) {
+    const targetPath = `${request.rootPath.replace(/[\\/]$/, "")}/${skill.id}`;
+    skill.references ??= [];
+    if (!skill.references.some((reference) => reference.targetPath === targetPath)) {
+      skill.references.push({
+        id: referenceId(targetPath),
+        targetName: request.targetName,
+        targetPath,
+        scope: request.scope,
+        status: "healthy",
+      });
+    }
+  }
+  return snapshot();
+}
+
+export function removeSkillReference(referenceId: string): Promise<AppSnapshot> {
+  for (const skill of mockSnapshot.state.skills) {
+    skill.references = skill.references?.filter((reference) => reference.id !== referenceId) ?? [];
   }
   return snapshot();
 }

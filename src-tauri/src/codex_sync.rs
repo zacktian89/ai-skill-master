@@ -200,6 +200,7 @@ mod tests {
             description: String::new(),
             library_path,
             source: SkillSource::default(),
+            references: Vec::new(),
             managed_links: ManagedLinks::default(),
             conflict: None,
         }

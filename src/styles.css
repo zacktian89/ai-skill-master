@@ -628,6 +628,31 @@ summary:focus-visible {
   font-size: 15px;
 }
 
+.reference-title,
+.reference-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.reference-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.reference-app-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--brand-700);
+}
+
 .reference-path {
   color: var(--text-primary);
   font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
@@ -939,6 +964,35 @@ summary:focus-visible {
   box-shadow: 0 8px 20px rgba(243, 138, 66, 0.2);
 }
 
+.icon-button--compact {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.ghost-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ghost-icon-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ghost-icon-button--danger {
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
 button:disabled {
   opacity: 0.55;
   cursor: default;
@@ -1084,6 +1138,25 @@ button:disabled {
   border-color: var(--success-border);
   background: var(--success-bg);
   color: var(--success-text);
+}
+
+.status-tag--healthy {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.status-tag--missing,
+.status-tag--stale {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.status-tag--conflict {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .status-tag--warning {
@@ -1357,6 +1430,86 @@ button:disabled {
   border-radius: 24px;
   background: rgba(28, 26, 26, 0.98);
   box-shadow: 0 24px 56px rgba(0, 0, 0, 0.4);
+}
+
+.modal-card--compact {
+  width: min(540px, 100%);
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modal-title-row h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 560;
+}
+
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.target-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.target-tile:hover,
+.target-custom-button:hover {
+  background: var(--bg-hover);
+}
+
+.target-tile-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--brand-700);
+}
+
+.target-tile strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.target-custom-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.modal-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 @media (max-width: 1280px) {

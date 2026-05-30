@@ -44,6 +44,7 @@ mod tests {
             description: String::new(),
             library_path,
             source: SkillSource::default(),
+            references: Vec::new(),
             managed_links: ManagedLinks {
                 codex: linked.then(|| tempdir().unwrap().path().join("codex").join(id)),
             },

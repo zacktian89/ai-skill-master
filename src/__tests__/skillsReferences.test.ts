@@ -9,7 +9,7 @@ import type { AppSnapshot } from "../types";
 const snapshot: AppSnapshot = {
   state: {
     schemaVersion: 1,
-    skillLibraryPath: "/skills",
+    skillLibraryPath: "/library",
     codexSkillsPath: "/codex/skills",
     currentProjectId: null,
     syncStatus: {
@@ -23,7 +23,16 @@ const snapshot: AppSnapshot = {
         id: "writer-pro",
         name: "Writer Pro",
         description: "长文写作与风格控制",
-        libraryPath: "/skills/writer-pro",
+        libraryPath: "/library/writer-pro",
+        references: [
+          {
+            id: "ref-claude-writer-pro",
+            targetName: "Claude Code",
+            targetPath: "/claude/skills/writer-pro",
+            scope: "user",
+            status: "healthy",
+          },
+        ],
         managedLinks: {
           codex: "/codex/skills/writer-pro",
         },
@@ -32,6 +41,14 @@ const snapshot: AppSnapshot = {
     ],
     projects: [],
   },
+  targetProfiles: [
+    {
+      id: "claude-user",
+      targetName: "Claude Code",
+      rootPath: "/claude/skills",
+      scope: "user",
+    },
+  ],
   diagnostics: [],
   paths: {
     stateFile: "/config/skillmaster.json",
@@ -56,6 +73,7 @@ describe("SkillsView references tab", () => {
     expect(wrapper.text()).not.toContain("软链接引用");
     expect(wrapper.text()).not.toContain("软链接已指向当前 skill");
     expect(wrapper.text()).toContain("/codex/skills/writer-pro");
+    expect(wrapper.text()).toContain("/claude/skills/writer-pro");
     expect(wrapper.find(".reference-row").exists()).toBe(true);
 
     await wrapper.find('button[aria-label="连线图"]').trigger("click");
@@ -67,5 +85,31 @@ describe("SkillsView references tab", () => {
 
     expect(wrapper.find(".description-pane").exists()).toBe(true);
     expect(wrapper.text()).toContain("长文写作与风格控制");
+  });
+
+  it("opens add and delete reference dialogs from the references list", async () => {
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot,
+        selectedSkillId: "writer-pro",
+      },
+    });
+
+    await wrapper.find('button[aria-label="新增引用"]').trigger("click");
+
+    expect(wrapper.text()).toContain("Claude Code");
+    expect(wrapper.text()).toContain("选择 skills 目录");
+
+    await wrapper.find(".target-tile").trigger("click");
+
+    expect(wrapper.text()).toContain("目标路径");
+    expect(wrapper.text()).toContain("/claude/skills/writer-pro");
+    expect(wrapper.text()).not.toContain("/library/writer-pro");
+
+    await wrapper.find('button[aria-label="关闭"]').trigger("click");
+    await wrapper.find('button[aria-label="删除引用"]').trigger("click");
+
+    expect(wrapper.text()).toContain("删除引用");
+    expect(wrapper.text()).toContain("只移除这个托管引用");
   });
 });
