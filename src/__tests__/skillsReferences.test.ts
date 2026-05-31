@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import SkillsView from "../components/SkillsView.vue";
 import type { AppSnapshot } from "../types";
@@ -111,5 +111,29 @@ describe("SkillsView references tab", () => {
 
     expect(wrapper.text()).toContain("删除引用");
     expect(wrapper.text()).toContain("只移除这个托管引用");
+  });
+
+  it("scans import candidates and defaults ready skills to selected", async () => {
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot,
+        selectedSkillId: "writer-pro",
+      },
+    });
+
+    await wrapper.find('button[aria-label="新增 Skill"]').trigger("click");
+    expect(wrapper.text()).toContain("新增 Skill");
+
+    await wrapper.findAll(".import-source-tabs button")[1].trigger("click");
+    await wrapper.find('input[placeholder="GitHub URL"]').setValue("https://github.com/acme/skills");
+    await wrapper.findAll(".secondary-button").find((button) => button.text() === "扫描")!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.findAll(".import-candidate-row")).toHaveLength(2);
+    expect(wrapper.find(".import-check-all input").element).toMatchObject({ checked: true });
+
+    await wrapper.find(".import-candidate-row input").setValue(false);
+
+    expect(wrapper.find(".import-check-all input").element).toMatchObject({ checked: false });
   });
 });

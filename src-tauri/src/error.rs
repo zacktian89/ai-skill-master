@@ -21,6 +21,8 @@ pub enum SkillMasterError {
     ProjectNotFound(String),
     #[error("路径无效：{0}")]
     InvalidPath(String),
+    #[error("命令执行失败：{0}")]
+    CommandFailed(String),
 }
 
 pub type Result<T> = std::result::Result<T, SkillMasterError>;

@@ -57,6 +57,23 @@ impl SkillSource {
             subdir: None,
         }
     }
+
+    pub fn github(
+        url: String,
+        source_ref: Option<String>,
+        commit: Option<String>,
+        subdir: Option<String>,
+    ) -> Self {
+        Self {
+            kind: SkillSourceKind::Github,
+            label: Some("GitHub".to_string()),
+            url: Some(url),
+            path: None,
+            source_ref,
+            commit,
+            subdir,
+        }
+    }
 }
 
 impl Default for SkillSource {

@@ -136,6 +136,39 @@ export interface AddSkillReferenceRequest {
   scope: ReferenceScope;
 }
 
+export type ImportSkillSource =
+  | {
+      kind: "local";
+      path: string;
+    }
+  | {
+      kind: "github";
+      url: string;
+      ref?: string | null;
+      subdir?: string | null;
+    };
+
+export type ImportSkillCandidateStatus = "ready" | "duplicate" | "conflict" | "invalid";
+
+export interface ImportSkillCandidate {
+  candidateId: string;
+  id: string;
+  name: string;
+  description: string;
+  relativePath: string;
+  status: ImportSkillCandidateStatus;
+  message?: string | null;
+}
+
+export interface ImportSkillPreview {
+  candidates: ImportSkillCandidate[];
+}
+
+export interface ConfirmImportSkillsRequest {
+  source: ImportSkillSource;
+  candidateIds: string[];
+}
+
 export interface ProjectImpact {
   projectId: string;
   projectName: string;

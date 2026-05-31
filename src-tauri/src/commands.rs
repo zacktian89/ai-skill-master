@@ -10,8 +10,9 @@ use crate::models::{
     ReferenceStatus, Skill, SkillConflict, SkillReference, SyncPhase, SyncStatus,
 };
 use crate::skill_library::{
-    delete_skill as delete_skill_from_library, import_skill as import_skill_into_library,
-    migrate_skill_library,
+    delete_skill as delete_skill_from_library, import_selected_skills,
+    import_skill as import_skill_into_library, migrate_skill_library,
+    preview_import_skills as preview_import_source, ImportSkillPreview, ImportSkillSource,
 };
 use crate::state_store::{
     load_or_create_state, rebuild_state_from_library, save_state, state_backup_path, LoadedState,
@@ -102,6 +103,13 @@ pub struct AddSkillReferenceRequest {
     pub target_name: String,
     pub root_path: PathBuf,
     pub scope: ReferenceScope,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfirmImportSkillsRequest {
+    pub source: ImportSkillSource,
+    pub candidate_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -654,6 +662,36 @@ pub fn import_skill(app: AppHandle, source: PathBuf) -> std::result::Result<AppS
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
     import_skill_into_library(&mut command_state.state, &source)
         .map_err(|error| error.to_string())?;
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn preview_import_skills(
+    app: AppHandle,
+    source: ImportSkillSource,
+) -> std::result::Result<ImportSkillPreview, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    preview_import_source(&command_state.state, &source).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn confirm_import_skills(
+    app: AppHandle,
+    request: ConfirmImportSkillsRequest,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    import_selected_skills(
+        &mut command_state.state,
+        &request.source,
+        &request.candidate_ids,
+    )
+    .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,

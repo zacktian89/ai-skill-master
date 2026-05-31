@@ -14,6 +14,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_snapshot,
             commands::import_skill,
+            commands::preview_import_skills,
+            commands::confirm_import_skills,
             commands::preview_delete_skill,
             commands::delete_skill,
             commands::set_skill_link_enabled,

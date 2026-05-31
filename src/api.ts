@@ -2,7 +2,10 @@ import type {
   AddProjectRequest,
   AddSkillReferenceRequest,
   AppSnapshot,
+  ConfirmImportSkillsRequest,
   DeleteSkillPreview,
+  ImportSkillPreview,
+  ImportSkillSource,
   SetProjectRuleRequest,
 } from "./types";
 import * as mockApi from "./mockApi";
@@ -36,6 +39,21 @@ export async function getSnapshot(): Promise<AppSnapshot> {
 export async function importSkill(source: string): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
   const next = invoke ? await invoke<AppSnapshot>("import_skill", { source }) : await mockApi.importSkill(source);
+  return autoSync(next);
+}
+
+export async function previewImportSkills(source: ImportSkillSource): Promise<ImportSkillPreview> {
+  const invoke = await resolveInvoke();
+  return invoke
+    ? invoke<ImportSkillPreview>("preview_import_skills", { source })
+    : mockApi.previewImportSkills(source);
+}
+
+export async function confirmImportSkills(request: ConfirmImportSkillsRequest): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  const next = invoke
+    ? await invoke<AppSnapshot>("confirm_import_skills", { request })
+    : await mockApi.confirmImportSkills(request);
   return autoSync(next);
 }
 

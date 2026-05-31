@@ -2,7 +2,11 @@ import type {
   AddProjectRequest,
   AddSkillReferenceRequest,
   AppSnapshot,
+  ConfirmImportSkillsRequest,
   DeleteSkillPreview,
+  ImportSkillCandidate,
+  ImportSkillPreview,
+  ImportSkillSource,
   ProjectRule,
   SetProjectRuleRequest,
   Skill,
@@ -230,6 +234,72 @@ export function importSkill(source: string): Promise<AppSnapshot> {
   ];
   mockSnapshot.state.syncStatus.phase = "repairRequired";
   mockSnapshot.state.syncStatus.message = "存在待同步项。";
+  return snapshot();
+}
+
+function mockImportCandidates(source: ImportSkillSource): ImportSkillCandidate[] {
+  const base =
+    source.kind === "local"
+      ? source.path.split(/[\\/]/).filter(Boolean).pop() || "local-pack"
+      : source.url.split("/").filter(Boolean).pop()?.replace(/\.git$/, "") || "github-pack";
+  const ids = [`${base}-writer`, `${base}-reviewer`].map((value) =>
+    value.toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
+  );
+  return ids.map((id, index) => {
+    const duplicate = mockSnapshot.state.skills.some((skill) => skill.id === id);
+    return {
+      candidateId: index === 0 ? "writer" : "reviewer",
+      id,
+      name: id
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+      description: index === 0 ? "Mock 扫描到的写作 skill" : "Mock 扫描到的审阅 skill",
+      relativePath: index === 0 ? "writer" : "reviewer",
+      status: duplicate ? "duplicate" : "ready",
+      message: duplicate ? "已存在" : null,
+    };
+  });
+}
+
+export function previewImportSkills(source: ImportSkillSource): Promise<ImportSkillPreview> {
+  return Promise.resolve({
+    candidates: mockImportCandidates(source),
+  });
+}
+
+export function confirmImportSkills(request: ConfirmImportSkillsRequest): Promise<AppSnapshot> {
+  const candidates = mockImportCandidates(request.source);
+  const selected = new Set(request.candidateIds);
+  for (const candidate of candidates) {
+    if (!selected.has(candidate.candidateId) || candidate.status !== "ready") continue;
+    mockSnapshot.state.skills.unshift({
+      id: candidate.id,
+      name: candidate.name,
+      description: candidate.description,
+      libraryPath: `${mockSnapshot.state.skillLibraryPath}/${candidate.id}`,
+      source:
+        request.source.kind === "github"
+          ? {
+              kind: "github",
+              label: "GitHub",
+              url: request.source.url,
+              ref: request.source.ref ?? null,
+              commit: "mock-commit",
+              subdir: candidate.relativePath,
+            }
+          : {
+              kind: "local",
+              label: "本地",
+              path: `${request.source.path}/${candidate.relativePath}`,
+            },
+      references: [],
+      managedLinks: {
+        codex: null,
+      },
+      conflict: null,
+    });
+  }
   return snapshot();
 }
 
