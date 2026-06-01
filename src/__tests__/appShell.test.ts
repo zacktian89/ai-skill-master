@@ -42,6 +42,7 @@ vi.mock("../api", () => ({
       message: null,
     },
   }),
+  readSkillFile: vi.fn().mockResolvedValue(""),
 }));
 
 describe("App shell", () => {

@@ -625,7 +625,11 @@ fn add_skill_reference_to_state(
     Ok(())
 }
 
-fn remove_skill_reference_from_state(state: &mut AppState, reference_id: &str) -> Result<()> {
+fn remove_skill_reference_from_state(
+    state: &mut AppState,
+    reference_id: &str,
+    remove_external_link: Option<bool>,
+) -> Result<()> {
     for skill in &mut state.skills {
         let Some(index) = skill
             .references
@@ -639,10 +643,18 @@ fn remove_skill_reference_from_state(state: &mut AppState, reference_id: &str) -
             ManagedLinkValidation::Valid => remove_managed_link(&reference.target_path)?,
             ManagedLinkValidation::Missing => {}
             validation => {
-                return Err(SkillMasterError::InvalidPath(managed_link_issue_message(
-                    &reference.target_path,
-                    &validation,
-                )));
+                match remove_external_link {
+                    Some(true) => {
+                        remove_managed_link(&reference.target_path)?;
+                    }
+                    Some(false) => {}
+                    None => {
+                        return Err(SkillMasterError::InvalidPath(managed_link_issue_message(
+                            &reference.target_path,
+                            &validation,
+                        )));
+                    }
+                }
             }
         }
         skill.references.remove(index);
@@ -825,10 +837,15 @@ pub fn add_skill_reference(
 pub fn remove_skill_reference(
     app: AppHandle,
     reference_id: String,
+    remove_external_link: Option<bool>,
 ) -> std::result::Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    remove_skill_reference_from_state(&mut command_state.state, &reference_id)
-        .map_err(|error| error.to_string())?;
+    remove_skill_reference_from_state(
+        &mut command_state.state,
+        &reference_id,
+        remove_external_link,
+    )
+    .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -1314,5 +1331,114 @@ mod tests {
 
         assert!(state.projects[0].rules.is_empty());
         assert_eq!(state.projects[1].rules.len(), 1);
+    }
+
+    #[test]
+    fn remove_reference_blocks_on_mismatch_without_force() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("skills");
+        let root = dir.path().join("claude").join("skills");
+        let other = dir.path().join("other-html-go");
+        std::fs::create_dir_all(library.join("html-go")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        let target = root.join("html-go");
+        create_directory_link(&other, &target).unwrap();
+
+        let mut state = default_state(library.clone(), None);
+        state.skills.push(Skill {
+            id: "html-go".to_string(),
+            name: "html-go".to_string(),
+            description: String::new(),
+            library_path: library.join("html-go"),
+            source: Default::default(),
+            references: vec![SkillReference {
+                id: "ref-id".to_string(),
+                target_name: "Claude".to_string(),
+                target_path: target.clone(),
+                scope: ReferenceScope::User,
+                status: ReferenceStatus::Conflict,
+            }],
+            managed_links: Default::default(),
+            conflict: None,
+        });
+
+        let result = remove_skill_reference_from_state(&mut state, "ref-id", None);
+
+        assert!(result.unwrap_err().to_string().contains("已指向其他位置"));
+        assert_eq!(std::fs::read_link(&target).unwrap(), other);
+        assert_eq!(state.skills[0].references.len(), 1);
+    }
+
+    #[test]
+    fn remove_reference_handles_mismatch_with_force_true() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("skills");
+        let root = dir.path().join("claude").join("skills");
+        let other = dir.path().join("other-html-go");
+        std::fs::create_dir_all(library.join("html-go")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        let target = root.join("html-go");
+        create_directory_link(&other, &target).unwrap();
+
+        let mut state = default_state(library.clone(), None);
+        state.skills.push(Skill {
+            id: "html-go".to_string(),
+            name: "html-go".to_string(),
+            description: String::new(),
+            library_path: library.join("html-go"),
+            source: Default::default(),
+            references: vec![SkillReference {
+                id: "ref-id".to_string(),
+                target_name: "Claude".to_string(),
+                target_path: target.clone(),
+                scope: ReferenceScope::User,
+                status: ReferenceStatus::Conflict,
+            }],
+            managed_links: Default::default(),
+            conflict: None,
+        });
+
+        remove_skill_reference_from_state(&mut state, "ref-id", Some(true)).unwrap();
+
+        assert!(!target.exists());
+        assert!(state.skills[0].references.is_empty());
+    }
+
+    #[test]
+    fn remove_reference_handles_mismatch_with_force_false() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("skills");
+        let root = dir.path().join("claude").join("skills");
+        let other = dir.path().join("other-html-go");
+        std::fs::create_dir_all(library.join("html-go")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        let target = root.join("html-go");
+        create_directory_link(&other, &target).unwrap();
+
+        let mut state = default_state(library.clone(), None);
+        state.skills.push(Skill {
+            id: "html-go".to_string(),
+            name: "html-go".to_string(),
+            description: String::new(),
+            library_path: library.join("html-go"),
+            source: Default::default(),
+            references: vec![SkillReference {
+                id: "ref-id".to_string(),
+                target_name: "Claude".to_string(),
+                target_path: target.clone(),
+                scope: ReferenceScope::User,
+                status: ReferenceStatus::Conflict,
+            }],
+            managed_links: Default::default(),
+            conflict: None,
+        });
+
+        remove_skill_reference_from_state(&mut state, "ref-id", Some(false)).unwrap();
+
+        assert_eq!(std::fs::read_link(&target).unwrap(), other);
+        assert!(state.skills[0].references.is_empty());
     }
 }

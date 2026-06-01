@@ -82,6 +82,7 @@ const pendingReferenceTarget = ref<PendingReferenceTarget | null>(null);
 const overwriteReferenceRequest = ref<AddSkillReferenceRequest | null>(null);
 const deleteReferenceDialogOpen = ref(false);
 const referenceToDelete = ref<SkillReference | null>(null);
+const removeReferenceConflictRequest = ref<{ referenceId: string; symlinkPath: string } | null>(null);
 const activeDetailTab = ref<DetailTab>("description");
 const referenceViewMode = ref<ReferenceViewMode>("list");
 
@@ -507,13 +508,42 @@ function openDeleteReferenceDialog(reference: SkillReference) {
 function closeDeleteReferenceDialog() {
   deleteReferenceDialogOpen.value = false;
   referenceToDelete.value = null;
+  removeReferenceConflictRequest.value = null;
 }
 
 async function confirmDeleteReference() {
   if (!referenceToDelete.value || !selectedSkill.value) return;
   const reference = referenceToDelete.value;
-  await run(() => api.removeSkillReference(reference.id));
-  closeDeleteReferenceDialog();
+  busy.value = true;
+  try {
+    emit("snapshot", await api.removeSkillReference(reference.id));
+    closeDeleteReferenceDialog();
+  } catch (cause) {
+    if (!isRetargetedLinkError(cause)) {
+      emit("error", String(cause));
+      return;
+    }
+    removeReferenceConflictRequest.value = {
+      referenceId: reference.id,
+      symlinkPath: reference.symlinkPath,
+    };
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
+  if (!removeReferenceConflictRequest.value) return;
+  const { referenceId } = removeReferenceConflictRequest.value;
+  busy.value = true;
+  try {
+    emit("snapshot", await api.removeSkillReference(referenceId, removeExternalLink));
+    closeDeleteReferenceDialog();
+  } catch (cause) {
+    emit("error", String(cause));
+  } finally {
+    busy.value = false;
+  }
 }
 
 function closeDeleteDialog() {
@@ -1053,23 +1083,48 @@ const renderedMarkdown = computed(() => {
         </button>
       </div>
 
-      <dl class="detail-kv detail-kv--wide">
-        <div>
-          <dt>目标路径</dt>
-          <dd>
-            <code class="reference-path">{{ referenceToDelete.symlinkPath }}</code>
-          </dd>
-        </div>
-      </dl>
-      <p class="modal-note">只移除这个托管引用，不会删除技能库中的 skill。</p>
+      <template v-if="removeReferenceConflictRequest">
+        <p class="modal-note">托管链接已指向其他位置（或存在内容冲突）。是否同时删除该外部链接？</p>
 
-      <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="busy" @click="closeDeleteReferenceDialog">取消</button>
-        <button class="danger-button" :disabled="busy" @click="confirmDeleteReference">
-          <Trash2 :size="16" />
-          删除引用
-        </button>
-      </div>
+        <dl class="detail-kv detail-kv--wide">
+          <div>
+            <dt>目标路径</dt>
+            <dd>
+              <code class="reference-path">{{ removeReferenceConflictRequest.symlinkPath }}</code>
+            </dd>
+          </div>
+        </dl>
+
+        <div class="button-row button-row--end">
+          <button class="secondary-button" :disabled="busy" @click="closeDeleteReferenceDialog">取消</button>
+          <button class="secondary-button" :disabled="busy" @click="confirmDeleteReferenceWithLink(false)">
+            否（只移除记录）
+          </button>
+          <button class="danger-button" :disabled="busy" @click="confirmDeleteReferenceWithLink(true)">
+            是（删除外部链接）
+          </button>
+        </div>
+      </template>
+
+      <template v-else>
+        <dl class="detail-kv detail-kv--wide">
+          <div>
+            <dt>目标路径</dt>
+            <dd>
+              <code class="reference-path">{{ referenceToDelete.symlinkPath }}</code>
+            </dd>
+          </div>
+        </dl>
+        <p class="modal-note">只移除这个托管引用，不会删除技能库中的 skill。</p>
+
+        <div class="button-row button-row--end">
+          <button class="secondary-button" :disabled="busy" @click="closeDeleteReferenceDialog">取消</button>
+          <button class="danger-button" :disabled="busy" @click="confirmDeleteReference">
+            <Trash2 :size="16" />
+            删除引用
+          </button>
+        </div>
+      </template>
     </section>
   </div>
 </template>

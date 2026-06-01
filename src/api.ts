@@ -73,11 +73,11 @@ export async function addSkillReference(request: AddSkillReferenceRequest): Prom
   return invoke ? invoke<AppSnapshot>("add_skill_reference", { request }) : mockApi.addSkillReference(request);
 }
 
-export async function removeSkillReference(referenceId: string): Promise<AppSnapshot> {
+export async function removeSkillReference(referenceId: string, removeExternalLink?: boolean): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
   return invoke
-    ? invoke<AppSnapshot>("remove_skill_reference", { referenceId })
-    : mockApi.removeSkillReference(referenceId);
+    ? invoke<AppSnapshot>("remove_skill_reference", { referenceId, removeExternalLink })
+    : mockApi.removeSkillReference(referenceId, removeExternalLink);
 }
 
 export async function addProject(request: AddProjectRequest): Promise<AppSnapshot> {

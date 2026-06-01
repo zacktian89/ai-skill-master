@@ -74,6 +74,8 @@ describe("SkillsView references tab", () => {
       },
     });
 
+    await wrapper.findAll(".detail-tab")[1].trigger("click");
+
     expect(wrapper.find(".detail-tab.active").text()).toBe("引用");
     expect(wrapper.text()).not.toContain("软链接引用");
     expect(wrapper.text()).not.toContain("软链接已指向当前 skill");
@@ -86,7 +88,8 @@ describe("SkillsView references tab", () => {
     expect(wrapper.find(".reference-graph").exists()).toBe(true);
     expect(wrapper.find(".reference-row").exists()).toBe(false);
 
-    await wrapper.findAll(".detail-tab")[1].trigger("click");
+    await wrapper.findAll(".detail-tab")[0].trigger("click");
+    await flushPromises();
 
     expect(wrapper.find(".description-pane").exists()).toBe(true);
     expect(wrapper.text()).toContain("长文写作与风格控制");
@@ -99,6 +102,8 @@ describe("SkillsView references tab", () => {
         selectedSkillId: "writer-pro",
       },
     });
+
+    await wrapper.findAll(".detail-tab")[1].trigger("click");
 
     await wrapper.find('button[aria-label="新增引用"]').trigger("click");
 
@@ -129,6 +134,8 @@ describe("SkillsView references tab", () => {
         selectedSkillId: "writer-pro",
       },
     });
+
+    await wrapper.findAll(".detail-tab")[1].trigger("click");
 
     await wrapper.find('button[aria-label="新增引用"]').trigger("click");
     await wrapper.find(".target-tile").trigger("click");
@@ -173,5 +180,40 @@ describe("SkillsView references tab", () => {
     await wrapper.find(".import-candidate-row input").setValue(false);
 
     expect(wrapper.find(".import-check-all input").element).toMatchObject({ checked: false });
+  });
+
+  it("shows delete confirmation prompt when deleting a reference link that points elsewhere", async () => {
+    const removeSkillReference = vi
+      .spyOn(api, "removeSkillReference")
+      .mockRejectedValueOnce("路径无效：托管链接已指向其他位置")
+      .mockResolvedValueOnce(snapshot);
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot,
+        selectedSkillId: "writer-pro",
+      },
+    });
+
+    // Go to references tab
+    await wrapper.findAll(".detail-tab")[1].trigger("click");
+
+    // Open delete dialog
+    await wrapper.find('button[aria-label="删除引用"]').trigger("click");
+    expect(wrapper.text()).toContain("删除引用");
+
+    // Confirm delete (triggers error because of mockRejectedValueOnce)
+    await wrapper.findAll("button").find((button) => button.text() === "删除引用")!.trigger("click");
+    await flushPromises();
+
+    // Check if the prompt for conflict/mismatch is displayed
+    expect(wrapper.text()).toContain("托管链接已指向其他位置（或存在内容冲突）");
+    expect(wrapper.text()).toContain("是否同时删除该外部链接？");
+
+    // Trigger click on "否（只移除记录）"
+    await wrapper.findAll("button").find((button) => button.text() === "否（只移除记录）")!.trigger("click");
+    await flushPromises();
+
+    expect(removeSkillReference).toHaveBeenCalledWith("ref-claude-writer-pro", false);
   });
 });

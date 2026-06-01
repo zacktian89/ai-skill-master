@@ -122,7 +122,7 @@ describe("ProjectsView", () => {
       },
     });
 
-    await wrapper.findAll("button").find((button) => button.text() === "添加技能")!.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "添加")!.trigger("click");
     expect(wrapper.text()).toContain("Deploy Guard");
 
     await wrapper.find(".project-skill-pick-row").trigger("click");

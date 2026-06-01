@@ -356,7 +356,7 @@ export function addSkillReference(request: AddSkillReferenceRequest): Promise<Ap
   return snapshot();
 }
 
-export function removeSkillReference(referenceId: string): Promise<AppSnapshot> {
+export function removeSkillReference(referenceId: string, _removeExternalLink?: boolean): Promise<AppSnapshot> {
   for (const skill of mockSnapshot.state.skills) {
     skill.references = skill.references?.filter((reference) => reference.id !== referenceId) ?? [];
   }
