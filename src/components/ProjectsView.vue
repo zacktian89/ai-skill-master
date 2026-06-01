@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { FolderPlus, Plus, Trash2, X, FolderOpen, RefreshCw, AlertTriangle } from "lucide-vue-next";
+import {
+  FolderPlus,
+  Plus,
+  Trash2,
+  X,
+  FolderOpen,
+  RefreshCw,
+  AlertTriangle,
+  SquareTerminal,
+  Bot,
+  Github,
+  Code2,
+  Cpu,
+  CircleHelp,
+  Folder,
+} from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
-import type { AppSnapshot, Project, ProjectRule, Skill, ScannedCategory } from "../types";
-
-type ProjectSkillRule = Exclude<ProjectRule, "inherit">;
+import type { AppSnapshot, Project, ProjectRule, ScannedCategory, ReferenceScope } from "../types";
 
 const props = defineProps<{
   snapshot: AppSnapshot;
@@ -24,17 +37,28 @@ const addSkillDialogOpen = ref(false);
 const addSkillQuery = ref("");
 const busy = ref(false);
 
+const selectedAddDir = ref("");
+const selectedAddScope = ref<ReferenceScope>("project");
+const selectedAddTargetName = ref("");
+const selectedSkillIds = ref<string[]>([]);
+
+const targetIcons: Record<string, any> = {
+  Codex: SquareTerminal,
+  "Claude Code": Bot,
+  "GitHub Copilot": Github,
+  Cursor: Code2,
+  Windsurf: Github, // Windsurf icon fallback or we can use custom
+  Kiro: Cpu,
+  OpenCode: CircleHelp,
+  自定义目录: Folder,
+};
+
+function iconForTarget(targetName: string) {
+  return targetIcons[targetName] ?? CircleHelp;
+}
+
 function projectSkillCount(project: Project): number {
   return Object.values(project.rules).filter((rule) => rule === "enable" || rule === "disable").length;
-}
-
-
-function projectRuleLabel(rule: ProjectRule): string {
-  return rule === "disable" ? "停用" : "启用";
-}
-
-function projectRuleTone(rule: ProjectRule): "success" | "muted" {
-  return rule === "disable" ? "muted" : "success";
 }
 
 const projects = computed(() => {
@@ -51,40 +75,50 @@ const projects = computed(() => {
 });
 
 const selectedProject = computed(
-  () => projects.value.find((project) => project.id === props.selectedProjectId) ?? projects.value[0] ?? null,
+    () => projects.value.find((project) => project.id === props.selectedProjectId) ?? projects.value[0] ?? null
 );
 
-const allSkills = computed(() => [...props.snapshot.state.skills].sort((left, right) => left.name.localeCompare(right.name, "zh-CN")));
-
-const projectSkillRows = computed(() => {
+const projectProfiles = computed(() => {
   if (!selectedProject.value) return [];
-  const normalized = skillQuery.value.trim().toLowerCase();
-  return Object.entries(selectedProject.value.rules)
-    .map(([skillId, rule]) => {
-      if (rule !== "enable" && rule !== "disable") return null;
-      const skill = props.snapshot.state.skills.find((item) => item.id === skillId);
-      if (!skill) return null;
-      return { skill, rule: rule as ProjectSkillRule };
-    })
-    .filter((item): item is { skill: Skill; rule: ProjectSkillRule } => Boolean(item))
-    .filter(({ skill }) => {
-      if (!normalized) return true;
-      return `${skill.name} ${skill.description} ${skill.id}`.toLowerCase().includes(normalized);
-    })
-    .sort((left, right) => left.skill.name.localeCompare(right.skill.name, "zh-CN"));
+  const projectRoot = selectedProject.value.path;
+  return (props.snapshot.targetProfiles || []).map((profile) => {
+    let relPath = "";
+    switch (profile.targetName) {
+      case "Codex":
+        relPath = ".agents/skills";
+        break;
+      case "Claude Code":
+        relPath = ".claude/skills";
+        break;
+      case "GitHub Copilot":
+        relPath = ".copilot/skills";
+        break;
+      case "Cursor":
+        relPath = ".cursor/skills";
+        break;
+      case "Windsurf":
+        relPath = ".codeium/windsurf/skills";
+        break;
+      case "Kiro":
+        relPath = ".kiro/skills";
+        break;
+      default:
+        const match = profile.rootPath.match(/[\\/](\.[^\\/]+[\\/].*)$/);
+        if (match) {
+          relPath = match[1];
+        } else {
+          relPath = "skills";
+        }
+    }
+    const fullPath = `${projectRoot}/${relPath}`.replace(/[\\/]+/g, "/");
+    return {
+      ...profile,
+      rootPath: fullPath,
+      scope: "project" as const,
+    };
+  });
 });
 
-const availableSkills = computed(() => {
-  if (!selectedProject.value) return [];
-  const normalized = addSkillQuery.value.trim().toLowerCase();
-  const configured = new Set(Object.keys(selectedProject.value.rules));
-  return allSkills.value
-    .filter((skill) => !configured.has(skill.id))
-    .filter((skill) => {
-      if (!normalized) return true;
-      return `${skill.name} ${skill.description} ${skill.id}`.toLowerCase().includes(normalized);
-    });
-});
 
 async function run(action: () => Promise<AppSnapshot>) {
   busy.value = true;
@@ -111,35 +145,104 @@ async function addProject() {
 }
 
 function openAddSkillDialog() {
+  selectedAddDir.value = "";
+  selectedAddScope.value = "project";
+  selectedAddTargetName.value = "";
+  selectedSkillIds.value = [];
   addSkillQuery.value = "";
   addSkillDialogOpen.value = true;
 }
 
 function closeAddSkillDialog() {
   addSkillDialogOpen.value = false;
+  selectedAddDir.value = "";
+  selectedAddScope.value = "project";
+  selectedAddTargetName.value = "";
+  selectedSkillIds.value = [];
   addSkillQuery.value = "";
 }
 
-async function addSkillToProject(skillId: string) {
-  if (!selectedProject.value) return;
-  await run(() =>
-    api.setProjectRule({
-      projectId: selectedProject.value!.id,
-      skillId,
-      rule: "enable",
-    }),
-  );
-  closeAddSkillDialog();
+function selectAddProfile(profile: any) {
+  selectedAddDir.value = profile.rootPath;
+  selectedAddScope.value = profile.scope;
+  selectedAddTargetName.value = profile.targetName;
 }
 
-function setSkillRule(skillId: string, rule: ProjectSkillRule) {
+async function selectCustomAddDir() {
+  try {
+    const selected = await openDirectory({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      selectedAddDir.value = selected;
+      const projectPath = selectedProject.value?.path || "";
+      const isInsideProject = selected.replace(/[\\/]+/g, "/").toLowerCase().startsWith(projectPath.replace(/[\\/]+/g, "/").toLowerCase());
+      if (isInsideProject) {
+        selectedAddScope.value = "project";
+        selectedAddTargetName.value = selectedProject.value?.name || "项目目录";
+      } else {
+        selectedAddScope.value = "custom";
+        selectedAddTargetName.value = "自定义目录";
+      }
+    }
+  } catch (cause) {
+    emit("error", String(cause));
+  }
+}
+
+const filteredLibrarySkills = computed(() => {
+  const normalized = addSkillQuery.value.trim().toLowerCase();
+  const allSkills = props.snapshot.state.skills || [];
+  if (!normalized) return allSkills;
+  return allSkills.filter(
+    (skill) =>
+      skill.name.toLowerCase().includes(normalized) ||
+      skill.id.toLowerCase().includes(normalized) ||
+      skill.description.toLowerCase().includes(normalized)
+  );
+});
+
+function toggleAllLibrarySkills(checked: boolean) {
+  if (checked) {
+    selectedSkillIds.value = filteredLibrarySkills.value.map((s) => s.id);
+  } else {
+    selectedSkillIds.value = [];
+  }
+}
+
+async function confirmAddSkillReferences() {
+  if (!selectedAddDir.value || selectedSkillIds.value.length === 0) return;
+  busy.value = true;
+  try {
+    let currentSnapshot = props.snapshot;
+    for (const skillId of selectedSkillIds.value) {
+      const request = {
+        skillId,
+        targetName: selectedAddTargetName.value,
+        rootPath: selectedAddDir.value,
+        scope: selectedAddScope.value,
+        overwrite: true,
+      };
+      currentSnapshot = await api.addSkillReference(request);
+    }
+    emit("snapshot", currentSnapshot);
+    closeAddSkillDialog();
+    await refreshScan();
+  } catch (cause) {
+    emit("error", String(cause));
+  } finally {
+    busy.value = false;
+  }
+}
+
+function setSkillRule(skillId: string, rule: ProjectRule) {
   if (!selectedProject.value) return;
   return run(() => api.setProjectRule({ projectId: selectedProject.value!.id, skillId, rule }));
 }
 
-function removeSkillFromProject(skillId: string) {
+async function toggleSkillRule(skillId: string) {
   if (!selectedProject.value) return;
-  return run(() => api.setProjectRule({ projectId: selectedProject.value!.id, skillId, rule: "inherit" }));
+  const isCurrentlyDisabled = selectedProject.value.rules[skillId] === "disable";
+  const newRule = isCurrentlyDisabled ? "enable" : "disable";
+  await setSkillRule(skillId, newRule);
 }
 
 const scannedCategories = ref<ScannedCategory[]>([]);
@@ -158,13 +261,56 @@ async function refreshScan() {
   }
 }
 
+const filteredScannedCategories = computed(() => {
+  const normalized = skillQuery.value.trim().toLowerCase();
+  if (!normalized) return scannedCategories.value;
+  return scannedCategories.value
+    .map((category) => {
+      const skills = category.skills.filter((skill) => {
+        return (
+          skill.name.toLowerCase().includes(normalized) ||
+          skill.id.toLowerCase().includes(normalized) ||
+          (skill.description && skill.description.toLowerCase().includes(normalized)) ||
+          skill.path.toLowerCase().includes(normalized)
+        );
+      });
+      return { ...category, skills };
+    })
+    .filter((category) => category.skills.length > 0);
+});
+
+function findReferenceIdForScannedSkill(skillId: string, skillPath: string): string | null {
+  const skill = props.snapshot.state.skills.find(s => s.id === skillId);
+  if (!skill || !skill.references) return null;
+  return skill.references.find(r => r.targetPath.replace(/[\\/]+/g, "/").toLowerCase() === skillPath.replace(/[\\/]+/g, "/").toLowerCase())?.id ?? null;
+}
+
+async function removeManagedSkillReference(skillId: string, skillPath: string) {
+  const refId = findReferenceIdForScannedSkill(skillId, skillPath);
+  if (!refId) {
+    emit("error", "无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
+    return;
+  }
+  await run(() => api.removeSkillReference(refId, true));
+  await refreshScan();
+}
+
 watch(
-  () => [selectedProject.value?.id, props.snapshot.state.skills],
-  () => {
-    scannedCategories.value = [];
+  () => selectedProject.value?.id,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      scannedCategories.value = [];
+    }
     refreshScan();
   },
   { immediate: true }
+);
+
+watch(
+  () => props.snapshot.state.skills,
+  () => {
+    refreshScan();
+  }
 );
 
 async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "keep_existing") {
@@ -219,11 +365,6 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
             <strong>{{ project.name }}</strong>
             <small>{{ project.path }}</small>
           </div>
-          <div class="list-row-meta">
-            <span class="status-tag" :class="projectSkillCount(project) ? 'status-tag--neutral' : 'status-tag--muted'">
-              {{ projectSkillCount(project) }} 个技能
-            </span>
-          </div>
         </button>
       </div>
 
@@ -237,72 +378,22 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
             <h2>{{ selectedProject.name }}</h2>
             <p>{{ selectedProject.path }}</p>
           </div>
-          <button class="primary-button" :disabled="busy" @click="openAddSkillDialog">
+          <button class="primary-button" :disabled="busy" aria-label="添加" @click="openAddSkillDialog">
             <Plus :size="16" />
-            添加
           </button>
         </div>
 
         <section class="detail-section">
-          <div class="project-skill-toolbar">
-            <input v-model="skillQuery" class="search-input" placeholder="搜索技能" />
-          </div>
-
-          <div v-if="projectSkillRows.length" class="project-skill-list">
-            <article v-for="item in projectSkillRows" :key="item.skill.id" class="project-skill-row">
-              <div class="project-skill-copy">
-                <strong>{{ item.skill.name }}</strong>
-                <small>
-                  <code>{{ item.skill.id }}</code>
-                  <span v-if="item.skill.description">{{ item.skill.description }}</span>
-                </small>
-              </div>
-
-              <div class="project-skill-actions">
-                <span
-                  class="status-tag"
-                  :class="[
-                    `status-tag--${projectRuleTone(item.rule)}`,
-                    busy ? 'status-tag--disabled' : 'status-tag--interactive'
-                  ]"
-                  @click="!busy && setSkillRule(item.skill.id, item.rule === 'enable' ? 'disable' : 'enable')"
-                >
-                  {{ projectRuleLabel(item.rule) }}
-                </span>
-                <button
-                  class="ghost-icon-button ghost-icon-button--danger"
-                  type="button"
-                  :disabled="busy"
-                  aria-label="从项目移除技能"
-                  title="从项目移除技能"
-                  @click="removeSkillFromProject(item.skill.id)"
-                >
-                  <Trash2 :size="15" />
-                </button>
-              </div>
-            </article>
-          </div>
-
-          <div v-else class="content-empty content-empty--compact">
-            这个项目还没有技能。
-          </div>
-        </section>
-
-        <!-- 本地目录扫描区域 -->
-        <section class="detail-section detail-section-divider">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
-            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-              <FolderOpen :size="16" />
-              本地模块目录扫描
-            </h3>
+          <div class="project-skill-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px;">
+            <input v-model="skillQuery" class="search-input" placeholder="搜索技能" style="flex: 1;" />
             <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
               <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />
             </button>
           </div>
 
-          <div v-if="scannedCategories.length" class="scanned-categories-list">
-            <div v-for="category in scannedCategories" :key="category.path" class="scanned-category-item">
-              <div class="scanned-category-title">
+          <div v-if="filteredScannedCategories.length" class="scanned-categories-list">
+            <div v-for="category in filteredScannedCategories" :key="category.path" class="scanned-category-item" style="margin-bottom: 20px;">
+              <div class="scanned-category-title" style="margin-bottom: 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">
                 <span>📁 模块:</span>
                 <code>{{ category.name }}</code>
               </div>
@@ -312,41 +403,56 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
                   <div class="project-skill-copy">
                     <div style="display: flex; align-items: center; gap: 8px;">
                       <strong>{{ skill.name }}</strong>
-                      <span class="status-tag" :class="skill.isManaged ? 'status-tag--success' : 'status-tag--neutral'">
-                        {{ skill.isManaged ? '已管理' : '未管理' }}
-                      </span>
                     </div>
                     <small>
                       <code>{{ skill.id }}</code>
                       <span v-if="skill.description"> · {{ skill.description }}</span>
                     </small>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: monospace; word-break: break-all;">
-                      路径: {{ skill.path }}
-                    </div>
                   </div>
 
-                  <div class="project-skill-actions" v-if="!skill.isManaged">
-                    <button
-                      class="primary-button"
-                      type="button"
-                      :disabled="busy"
-                      style="font-size: 12px; height: 28px; padding: 0 10px;"
-                      @click="handleImportSkill(skill.path)"
-                    >
-                      导入并引用
-                    </button>
+                  <div class="project-skill-actions">
+                    <!-- If managed, show Enable/Disable switch + Delete reference button -->
+                    <template v-if="skill.isManaged">
+                      <label class="switch-toggle" title="控制是否启用此技能" style="margin-right: 4px;">
+                        <input
+                          type="checkbox"
+                          :checked="selectedProject.rules[skill.id] !== 'disable'"
+                          :disabled="busy"
+                          @change="toggleSkillRule(skill.id)"
+                        />
+                        <span class="switch-slider"></span>
+                      </label>
+
+                      <button
+                        class="ghost-icon-button ghost-icon-button--danger"
+                        type="button"
+                        :disabled="busy"
+                        aria-label="从项目移除技能引用"
+                        title="从项目移除技能引用"
+                        @click="removeManagedSkillReference(skill.id, skill.path)"
+                      >
+                        <Trash2 :size="15" />
+                      </button>
+                    </template>
+
+                    <!-- If unmanaged, show 托管 button -->
+                    <template v-else>
+                      <button
+                        class="primary-button"
+                        type="button"
+                        :disabled="busy"
+                        style="font-size: 12px; height: 28px; padding: 0 10px;"
+                        @click="handleImportSkill(skill.path)"
+                      >
+                        托管
+                      </button>
+                    </template>
                   </div>
                 </article>
               </div>
             </div>
           </div>
 
-          <div v-else-if="scanning" class="content-empty content-empty--compact">
-            正在扫描本地技能目录...
-          </div>
-          <div v-else class="content-empty content-empty--compact">
-            未在当前项目目录下扫描到任何含有 skills 文件夹的模块。
-          </div>
         </section>
       </template>
 
@@ -356,7 +462,7 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
 
   <div v-if="addSkillDialogOpen && selectedProject" class="modal-backdrop" @click.self="closeAddSkillDialog">
     <section class="modal-card modal-card--compact">
-      <div class="modal-title-row">
+      <div class="modal-title-row" style="margin-bottom: 16px;">
         <div>
           <h2>添加技能</h2>
         </div>
@@ -365,29 +471,122 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
         </button>
       </div>
 
-      <input v-model="addSkillQuery" class="search-input" placeholder="搜索可添加技能" />
+      <!-- Step 1: Select directory if selectedAddDir is empty -->
+      <div v-if="!selectedAddDir" class="modal-step-section">
+        <p class="modal-instruction-text" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+          请选择要添加技能引用的目标目录：
+        </p>
 
-      <div v-if="availableSkills.length" class="project-skill-picker">
+        <!-- Quick Select Agent Profiles -->
+        <div class="target-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px;">
+          <button
+            v-for="profile in projectProfiles"
+            :key="profile.id"
+            class="target-tile"
+            type="button"
+            :disabled="busy"
+            @click="selectAddProfile(profile)"
+          >
+            <span class="target-tile-icon" aria-hidden="true">
+              <component :is="iconForTarget(profile.targetName)" :size="20" />
+            </span>
+            <strong style="font-size: 13px;">{{ profile.targetName }}</strong>
+            <small style="font-size: 10px; color: var(--text-muted); font-family: monospace; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px;">
+              {{ profile.rootPath }}
+            </small>
+          </button>
+        </div>
+
+        <!-- Custom Directory Picker Button -->
         <button
-          v-for="skill in availableSkills"
-          :key="skill.id"
-          class="project-skill-pick-row"
+          class="target-custom-button"
           type="button"
           :disabled="busy"
-          @click="addSkillToProject(skill.id)"
+          @click="selectCustomAddDir"
+          style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1px dashed var(--border-default); border-radius: 8px; background: none; color: var(--text-primary); cursor: pointer;"
         >
-          <span>
-            <strong>{{ skill.name }}</strong>
-            <small>
-              <code>{{ skill.id }}</code>
-              <template v-if="skill.description"> · {{ skill.description }}</template>
-            </small>
-          </span>
-          <Plus :size="16" />
+          <FolderOpen :size="16" />
+          选择自定义目录
         </button>
       </div>
 
-      <div v-else class="content-empty content-empty--compact">没有可添加的技能。</div>
+      <!-- Step 2: Show selected path and skill checklist if selectedAddDir is NOT empty -->
+      <div v-else class="modal-step-section">
+        <!-- Header displaying chosen path -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-panel-muted); padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 8px; margin-bottom: 14px;">
+          <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden; flex: 1; margin-right: 8px;">
+            <span style="font-size: 11px; color: var(--text-secondary);">目标引用目录:</span>
+            <code style="font-size: 12px; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-family: monospace;">
+              {{ selectedAddDir }}
+            </code>
+          </div>
+          <button
+            class="secondary-button"
+            type="button"
+            style="font-size: 11px; height: 24px; padding: 0 8px; min-height: 24px;"
+            :disabled="busy"
+            @click="selectedAddDir = ''"
+          >
+            修改目录
+          </button>
+        </div>
+
+        <!-- Search box inside dialog -->
+        <input v-model="addSkillQuery" class="search-input" placeholder="搜索技能" style="margin-bottom: 12px;" />
+
+        <!-- Check all / Selected count -->
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; padding: 0 4px;">
+          <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input
+              type="checkbox"
+              :checked="filteredLibrarySkills.length > 0 && selectedSkillIds.length === filteredLibrarySkills.length"
+              :disabled="filteredLibrarySkills.length === 0 || busy"
+              @change="toggleAllLibrarySkills(($event.target as HTMLInputElement).checked)"
+            />
+            <span>全选</span>
+          </label>
+          <span>已选择 {{ selectedSkillIds.length }} / {{ filteredLibrarySkills.length }} 个技能</span>
+        </div>
+
+        <!-- Skill list with checkboxes -->
+        <div v-if="filteredLibrarySkills.length" class="project-skill-picker" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: 8px; padding: 4px;">
+          <label
+            v-for="skill in filteredLibrarySkills"
+            :key="skill.id"
+            class="project-skill-pick-row"
+            style="display: flex; align-items: flex-start; gap: 10px; padding: 8px; border-bottom: 1px solid var(--border-default); cursor: pointer; transition: background 0.15s;"
+            :class="{ disabled: busy }"
+          >
+            <input
+              type="checkbox"
+              :value="skill.id"
+              v-model="selectedSkillIds"
+              :disabled="busy"
+              style="margin-top: 3px;"
+            />
+            <span style="display: flex; flex-direction: column; gap: 2px;">
+              <strong>{{ skill.name }}</strong>
+              <small style="font-size: 11px; color: var(--text-secondary);">
+                <code>{{ skill.id }}</code>
+                <span v-if="skill.description"> · {{ skill.description }}</span>
+              </small>
+            </span>
+          </label>
+        </div>
+        <div v-else class="content-empty content-empty--compact">没有匹配的技能。</div>
+      </div>
+
+      <div class="button-row button-row--end" style="margin-top: 18px; border-top: 1px solid var(--border-default); padding-top: 14px;">
+        <button class="secondary-button" :disabled="busy" @click="closeAddSkillDialog">取消</button>
+        <button
+          v-if="selectedAddDir"
+          class="primary-button"
+          :disabled="busy || selectedSkillIds.length === 0"
+          @click="confirmAddSkillReferences"
+        >
+          确定
+        </button>
+      </div>
     </section>
   </div>
 
