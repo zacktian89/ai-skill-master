@@ -157,16 +157,21 @@ summary:focus-visible {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 200px) minmax(0, 1fr);
   height: 100vh;
   background: var(--bg-app);
   color: var(--text-primary);
   overflow: hidden;
   min-width: 960px;
+  transition: grid-template-columns 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-shell.app-shell--dragging {
+  transition: none;
 }
 
 .app-shell.app-shell--sidebar-collapsed {
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 54px minmax(0, 1fr);
 }
 
 .sidebar-rail {
@@ -174,7 +179,7 @@ summary:focus-visible {
   flex-direction: column;
   gap: 18px;
   min-width: 0;
-  padding: 18px 10px 14px;
+  padding: 18px 8px 14px;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-default);
   overflow: visible;
@@ -182,9 +187,6 @@ summary:focus-visible {
 }
 
 .sidebar-rail--collapsed {
-  align-items: center;
-  gap: 18px;
-  padding: 24px 10px 16px;
   overflow: visible;
 }
 
@@ -192,14 +194,7 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 8px 12px 6px;
-}
-
-.sidebar-rail--collapsed .rail-brand {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  padding: 0;
+  padding: 8px 3px 6px;
 }
 
 .rail-brand-mark {
@@ -220,7 +215,7 @@ summary:focus-visible {
 
 .rail-brand-copy strong {
   font-size: 15px;
-  font-weight: 640;
+  font-weight: 400;
   letter-spacing: 0;
 }
 
@@ -230,36 +225,6 @@ summary:focus-visible {
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.35;
-}
-
-.rail-collapse-button {
-  position: absolute;
-  top: 26px;
-  right: -16px;
-  z-index: 100;
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--border-default);
-  border-radius: 50%;
-  background: var(--bg-panel-muted);
-  color: var(--text-secondary);
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.sidebar-rail--collapsed .rail-collapse-button {
-  top: 24px;
-}
-
-.rail-collapse-button:hover {
-  border-color: var(--border-focus);
-  background: var(--bg-hover);
-  color: var(--text-primary);
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .rail-brand-copy,
@@ -277,10 +242,9 @@ summary:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.rail-brand-copy strong {
-  font-size: 15px;
-  font-weight: 640;
-  letter-spacing: 0;
+.rail-brand-copy strong,
+.rail-nav-copy strong {
+  font-weight: 400;
 }
 
 .rail-brand-copy small,
@@ -306,7 +270,7 @@ summary:focus-visible {
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   padding: 8px 10px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -314,14 +278,6 @@ summary:focus-visible {
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-}
-
-.sidebar-rail--collapsed .rail-nav-button {
-  justify-content: center;
-  width: 48px;
-  min-height: 48px;
-  padding: 0;
-  border-radius: 8px;
 }
 
 .rail-nav-button svg {
@@ -350,17 +306,49 @@ summary:focus-visible {
 
 .rail-footer {
   margin-top: auto;
-  padding: 12px;
+  padding: 12px 8px;
   border-top: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sidebar-rail--collapsed .rail-footer {
   width: 100%;
   padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .rail-nav-button--footer {
-  min-height: 44px;
+  min-height: 40px;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 100;
+}
+
+.sidebar-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 2px;
+  height: 100%;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resize-handle:hover::after {
+  background-color: var(--border-focus);
 }
 
 .workspace-shell {

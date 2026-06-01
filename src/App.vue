@@ -23,6 +23,8 @@ const snapshot = ref<AppSnapshot | null>(null);
 const selectedSkillId = ref<string | null>(null);
 const selectedProjectId = ref<string | null>(null);
 const sidebarCollapsed = ref(false);
+const sidebarWidth = ref(200);
+const isDragging = ref(false);
 const themeMode = ref<ThemeMode>(readThemeMode());
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -78,10 +80,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-shell" :data-theme="themeMode" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }">
+  <div
+    class="app-shell"
+    :data-theme="themeMode"
+    :class="{
+      'app-shell--sidebar-collapsed': sidebarCollapsed,
+      'app-shell--dragging': isDragging
+    }"
+    :style="{ '--sidebar-width': `${sidebarCollapsed ? 54 : sidebarWidth}px` }"
+  >
     <Sidebar
       v-model:active-section="activeSection"
       v-model:collapsed="sidebarCollapsed"
+      v-model:sidebar-width="sidebarWidth"
+      v-model:is-dragging="isDragging"
       :snapshot="snapshot"
     />
 

@@ -16,11 +16,15 @@ const props = defineProps<{
   activeSection: Section;
   collapsed: boolean;
   snapshot: AppSnapshot | null;
+  sidebarWidth: number;
+  isDragging: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   "update:activeSection": [value: Section];
   "update:collapsed": [value: boolean];
+  "update:sidebarWidth": [value: number];
+  "update:isDragging": [value: boolean];
 }>();
 
 const workspaceState = computed(() => {
@@ -58,6 +62,40 @@ const navItems = computed(() => [
     icon: FolderKanban,
   },
 ]);
+
+const startResize = (e: MouseEvent) => {
+  e.preventDefault();
+  emit("update:isDragging", true);
+  const startX = e.clientX;
+  const startWidth = props.collapsed ? 54 : props.sidebarWidth;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const deltaX = moveEvent.clientX - startX;
+    const nextWidth = startWidth + deltaX;
+
+    if (props.collapsed) {
+      if (nextWidth > 100) {
+        emit("update:collapsed", false);
+        emit("update:sidebarWidth", Math.max(150, nextWidth));
+      }
+    } else {
+      if (nextWidth < 120) {
+        emit("update:collapsed", true);
+      } else {
+        emit("update:sidebarWidth", Math.min(300, Math.max(150, nextWidth)));
+      }
+    }
+  };
+
+  const onMouseUp = () => {
+    emit("update:isDragging", false);
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  };
+
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
+};
 </script>
 
 <template>
@@ -74,17 +112,6 @@ const navItems = computed(() => [
       </div>
     </div>
 
-    <button
-      class="rail-collapse-button"
-      type="button"
-      :aria-label="collapsed ? '展开侧边栏' : '折叠侧边栏'"
-      :title="collapsed ? '展开侧边栏' : '折叠侧边栏'"
-      @click="$emit('update:collapsed', !collapsed)"
-    >
-      <PanelLeftOpen v-if="collapsed" :size="17" />
-      <PanelLeftClose v-else :size="17" />
-    </button>
-
     <nav class="rail-nav" aria-label="Primary">
       <button
         v-for="item in navItems"
@@ -93,7 +120,7 @@ const navItems = computed(() => [
         :class="{ active: activeSection === item.id }"
         :title="collapsed ? `${item.title} (${item.count})` : undefined"
         :aria-label="collapsed ? `${item.title} (${item.count})` : undefined"
-        @click="$emit('update:activeSection', item.id)"
+        @click="emit('update:activeSection', item.id)"
       >
         <component :is="item.icon" :size="18" />
         <span class="rail-nav-copy">
@@ -104,11 +131,22 @@ const navItems = computed(() => [
 
     <div class="rail-footer">
       <button
+        v-if="collapsed"
+        class="rail-nav-button rail-expand-button-narrow"
+        type="button"
+        aria-label="展开侧边栏"
+        title="展开侧边栏"
+        @click="emit('update:collapsed', false)"
+      >
+        <PanelLeftOpen :size="18" />
+      </button>
+
+      <button
         class="rail-nav-button rail-nav-button--footer"
         :class="{ active: activeSection === 'settings' }"
         :title="collapsed ? (workspaceState.title !== '链接状态正常' ? `Settings · ${workspaceState.title}` : 'Settings') : undefined"
         :aria-label="collapsed ? (workspaceState.title !== '链接状态正常' ? `Settings · ${workspaceState.title}` : 'Settings') : undefined"
-        @click="$emit('update:activeSection', 'settings')"
+        @click="emit('update:activeSection', 'settings')"
       >
         <Settings :size="18" />
         <span class="rail-nav-copy">
@@ -117,5 +155,8 @@ const navItems = computed(() => [
         </span>
       </button>
     </div>
+
+    <!-- Resize Handle -->
+    <div class="sidebar-resize-handle" @mousedown="startResize"></div>
   </aside>
 </template>
