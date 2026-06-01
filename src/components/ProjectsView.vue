@@ -28,13 +28,6 @@ function projectSkillCount(project: Project): number {
   return Object.values(project.rules).filter((rule) => rule === "enable" || rule === "disable").length;
 }
 
-function enabledProjectSkills(project: Project): number {
-  return Object.values(project.rules).filter((rule) => rule === "enable").length;
-}
-
-function disabledProjectSkills(project: Project): number {
-  return Object.values(project.rules).filter((rule) => rule === "disable").length;
-}
 
 function projectRuleLabel(rule: ProjectRule): string {
   return rule === "disable" ? "停用" : "启用";
@@ -154,11 +147,10 @@ function removeSkillFromProject(skillId: string) {
   <div class="split-content">
     <section class="list-panel">
       <div class="list-panel-head">
-        <div class="toolbar toolbar--stack">
+        <div class="list-search-row">
           <input v-model="projectQuery" class="search-input" placeholder="搜索项目名称或路径" />
-          <button class="primary-button" :disabled="busy" @click="addProject">
-            <FolderPlus :size="16" />
-            添加项目
+          <button class="icon-button" type="button" :disabled="busy" aria-label="添加项目" @click="addProject">
+            <FolderPlus :size="18" />
           </button>
         </div>
       </div>
@@ -195,24 +187,9 @@ function removeSkillFromProject(skillId: string) {
           </div>
           <button class="primary-button" :disabled="busy" @click="openAddSkillDialog">
             <Plus :size="16" />
-            添加技能
+            添加
           </button>
         </div>
-
-        <section class="project-skill-summary" aria-label="项目技能统计">
-          <div>
-            <strong>{{ projectSkillCount(selectedProject) }}</strong>
-            <span>技能</span>
-          </div>
-          <div>
-            <strong>{{ enabledProjectSkills(selectedProject) }}</strong>
-            <span>启用</span>
-          </div>
-          <div>
-            <strong>{{ disabledProjectSkills(selectedProject) }}</strong>
-            <span>停用</span>
-          </div>
-        </section>
 
         <section class="detail-section">
           <div class="project-skill-toolbar">
@@ -230,17 +207,16 @@ function removeSkillFromProject(skillId: string) {
               </div>
 
               <div class="project-skill-actions">
-                <span class="status-tag" :class="`status-tag--${projectRuleTone(item.rule)}`">
+                <span
+                  class="status-tag"
+                  :class="[
+                    `status-tag--${projectRuleTone(item.rule)}`,
+                    busy ? 'status-tag--disabled' : 'status-tag--interactive'
+                  ]"
+                  @click="!busy && setSkillRule(item.skill.id, item.rule === 'enable' ? 'disable' : 'enable')"
+                >
                   {{ projectRuleLabel(item.rule) }}
                 </span>
-                <div class="segmented-control segmented-control--binary">
-                  <button :class="{ active: item.rule === 'enable' }" :disabled="busy" @click="setSkillRule(item.skill.id, 'enable')">
-                    启用
-                  </button>
-                  <button :class="{ active: item.rule === 'disable' }" :disabled="busy" @click="setSkillRule(item.skill.id, 'disable')">
-                    停用
-                  </button>
-                </div>
                 <button
                   class="ghost-icon-button ghost-icon-button--danger"
                   type="button"
