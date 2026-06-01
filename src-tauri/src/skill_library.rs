@@ -493,7 +493,7 @@ fn collect_skill_entries_recursive(
     Ok(())
 }
 
-fn should_skip_scan_dir(name: &str) -> bool {
+pub(crate) fn should_skip_scan_dir(name: &str) -> bool {
     matches!(
         name,
         ".git"
@@ -565,7 +565,7 @@ fn combined_subdir(base: Option<&str>, relative: &str) -> Option<String> {
     }
 }
 
-fn copy_dir_all(source: &Path, target: &Path) -> Result<()> {
+pub(crate) fn copy_dir_all(source: &Path, target: &Path) -> Result<()> {
     fs::create_dir_all(target)?;
     for entry in fs::read_dir(source)? {
         let entry = entry?;

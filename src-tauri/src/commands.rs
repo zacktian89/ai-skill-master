@@ -467,7 +467,7 @@ fn project_id_from_path(path: &std::path::Path) -> String {
     format!("{:x}", md5_like_hash(raw.as_bytes()))
 }
 
-fn md5_like_hash(bytes: &[u8]) -> u64 {
+pub(crate) fn md5_like_hash(bytes: &[u8]) -> u64 {
     let mut hash = 1469598103934665603u64;
     for byte in bytes {
         hash ^= u64::from(*byte);
@@ -1139,6 +1139,64 @@ pub fn read_skill_file(
     let content = fs::read_to_string(&canonical_target)
         .map_err(|error| format!("读取文件失败：{}", error))?;
     Ok(content)
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ImportProjectSkillResult {
+    Success {
+        snapshot: AppSnapshot,
+    },
+    Conflict {
+        skill_id: String,
+        library_name: String,
+        project_name: String,
+    },
+}
+
+#[tauri::command]
+pub fn scan_project_skills(
+    app: AppHandle,
+    project_path: PathBuf,
+) -> std::result::Result<Vec<crate::project_scan::ScannedCategory>, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    crate::project_scan::scan_project_skills(&command_state.state, &project_path)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn import_project_skill(
+    app: AppHandle,
+    project_name: String,
+    skill_path: PathBuf,
+    strategy: Option<String>,
+) -> std::result::Result<ImportProjectSkillResult, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    let internal_result = crate::project_scan::import_project_skill(
+        &mut command_state.state,
+        &project_name,
+        &skill_path,
+        strategy.as_deref(),
+    )
+    .map_err(|error| error.to_string())?;
+
+    match internal_result {
+        crate::project_scan::InternalImportResult::Success => {
+            persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+            let snapshot = build_snapshot(&command_state.paths, command_state.state, &StateLoadStatus::Clean)
+                .map_err(|error| error.to_string())?;
+            Ok(ImportProjectSkillResult::Success { snapshot })
+        }
+        crate::project_scan::InternalImportResult::Conflict {
+            skill_id,
+            library_name,
+            project_name,
+        } => Ok(ImportProjectSkillResult::Conflict {
+            skill_id,
+            library_name,
+            project_name,
+        }),
+    }
 }
 
 #[cfg(test)]

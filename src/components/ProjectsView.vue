@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { FolderPlus, Plus, Trash2, X } from "lucide-vue-next";
+import { computed, ref, watch } from "vue";
+import { FolderPlus, Plus, Trash2, X, FolderOpen, RefreshCw, AlertTriangle } from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
-import type { AppSnapshot, Project, ProjectRule, Skill } from "../types";
+import type { AppSnapshot, Project, ProjectRule, Skill, ScannedCategory } from "../types";
 
 type ProjectSkillRule = Exclude<ProjectRule, "inherit">;
 
@@ -141,6 +141,58 @@ function removeSkillFromProject(skillId: string) {
   if (!selectedProject.value) return;
   return run(() => api.setProjectRule({ projectId: selectedProject.value!.id, skillId, rule: "inherit" }));
 }
+
+const scannedCategories = ref<ScannedCategory[]>([]);
+const scanning = ref(false);
+const conflictState = ref<{ skillId: string; libraryName: string; projectName: string; skillPath: string } | null>(null);
+
+async function refreshScan() {
+  if (!selectedProject.value) return;
+  scanning.value = true;
+  try {
+    scannedCategories.value = await api.scanProjectSkills(selectedProject.value.path);
+  } catch (cause) {
+    emit("error", String(cause));
+  } finally {
+    scanning.value = false;
+  }
+}
+
+watch(
+  () => [selectedProject.value?.id, props.snapshot.state.skills],
+  () => {
+    scannedCategories.value = [];
+    refreshScan();
+  },
+  { immediate: true }
+);
+
+async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "keep_existing") {
+  if (!selectedProject.value) return;
+  busy.value = true;
+  try {
+    const result = await api.importProjectSkill(
+      selectedProject.value.name,
+      skillPath,
+      strategy
+    );
+    if (result.type === "success") {
+      emit("snapshot", result.snapshot);
+      conflictState.value = null;
+    } else if (result.type === "conflict") {
+      conflictState.value = {
+        skillId: result.skillId,
+        libraryName: result.libraryName,
+        projectName: result.projectName,
+        skillPath,
+      };
+    }
+  } catch (cause) {
+    emit("error", String(cause));
+  } finally {
+    busy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -235,6 +287,67 @@ function removeSkillFromProject(skillId: string) {
             这个项目还没有技能。
           </div>
         </section>
+
+        <!-- 本地目录扫描区域 -->
+        <section class="detail-section detail-section-divider">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+            <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+              <FolderOpen :size="16" />
+              本地模块目录扫描
+            </h3>
+            <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
+              <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />
+            </button>
+          </div>
+
+          <div v-if="scannedCategories.length" class="scanned-categories-list">
+            <div v-for="category in scannedCategories" :key="category.path" class="scanned-category-item">
+              <div class="scanned-category-title">
+                <span>📁 模块:</span>
+                <code>{{ category.name }}</code>
+              </div>
+
+              <div class="scanned-skills-list">
+                <article v-for="skill in category.skills" :key="skill.path" class="project-skill-row">
+                  <div class="project-skill-copy">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <strong>{{ skill.name }}</strong>
+                      <span class="status-tag" :class="skill.isManaged ? 'status-tag--success' : 'status-tag--neutral'">
+                        {{ skill.isManaged ? '已管理' : '未管理' }}
+                      </span>
+                    </div>
+                    <small>
+                      <code>{{ skill.id }}</code>
+                      <span v-if="skill.description"> · {{ skill.description }}</span>
+                    </small>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: monospace; word-break: break-all;">
+                      路径: {{ skill.path }}
+                    </div>
+                  </div>
+
+                  <div class="project-skill-actions" v-if="!skill.isManaged">
+                    <button
+                      class="primary-button"
+                      type="button"
+                      :disabled="busy"
+                      style="font-size: 12px; height: 28px; padding: 0 10px;"
+                      @click="handleImportSkill(skill.path)"
+                    >
+                      导入并引用
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="scanning" class="content-empty content-empty--compact">
+            正在扫描本地技能目录...
+          </div>
+          <div v-else class="content-empty content-empty--compact">
+            未在当前项目目录下扫描到任何含有 skills 文件夹的模块。
+          </div>
+        </section>
       </template>
 
       <div v-else class="content-empty">选择左侧项目查看技能列表。</div>
@@ -275,6 +388,52 @@ function removeSkillFromProject(skillId: string) {
       </div>
 
       <div v-else class="content-empty content-empty--compact">没有可添加的技能。</div>
+    </section>
+  </div>
+
+  <div v-if="conflictState" class="modal-backdrop" @click.self="conflictState = null">
+    <section class="conflict-modal-card">
+      <div class="modal-title-row" style="margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px; color: var(--warning-text);">
+          <AlertTriangle :size="20" />
+          <h2 class="conflict-modal-title">导入冲突检测</h2>
+        </div>
+        <button class="ghost-icon-button" type="button" aria-label="关闭" @click="conflictState = null">
+          <X :size="16" />
+        </button>
+      </div>
+
+      <div class="conflict-modal-body">
+        <p>技能库中已存在同名技能 (ID: <code>{{ conflictState.skillId }}</code>)，请选择处理策略：</p>
+        
+        <div class="conflict-compare-box">
+          <div class="conflict-compare-item">
+            <span class="conflict-compare-label">项目本地版本名称：</span>
+            <span class="conflict-compare-value">{{ conflictState.projectName }}</span>
+          </div>
+          <div class="conflict-compare-item">
+            <span class="conflict-compare-label">技能库已有版本名称：</span>
+            <span class="conflict-compare-value">{{ conflictState.libraryName }}</span>
+          </div>
+        </div>
+        
+        <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+          <strong>覆盖已有</strong>：使用本项目本地的版本覆盖统一技能库中的版本（建议在本项目版本有最新修改时使用）。<br/>
+          <strong>保留已有</strong>：保留技能库中的现有版本，丢弃项目中的修改，直接将本项目该目录链接至技能库现有技能。
+        </p>
+      </div>
+
+      <div class="conflict-modal-footer">
+        <button class="ghost-button" :disabled="busy" @click="conflictState = null">
+          取消
+        </button>
+        <button class="primary-button" :disabled="busy" @click="handleImportSkill(conflictState.skillPath, 'keep_existing')">
+          保留已有
+        </button>
+        <button class="primary-button" :disabled="busy" @click="handleImportSkill(conflictState.skillPath, 'overwrite')" style="background-color: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border);">
+          覆盖已有
+        </button>
+      </div>
     </section>
   </div>
 </template>

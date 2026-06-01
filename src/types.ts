@@ -189,3 +189,27 @@ export function ruleLabel(rule: ProjectRule | undefined): string {
   if (rule === "disable") return "在此项目停用";
   return "跟随默认";
 }
+
+export interface ScannedSkill {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+  isManaged: boolean;
+}
+
+export interface ScannedCategory {
+  name: string;
+  path: string;
+  skills: ScannedSkill[];
+}
+
+export type ImportProjectSkillResult =
+  | { type: "success"; snapshot: AppSnapshot }
+  | {
+      type: "conflict";
+      skillId: string;
+      libraryName: string;
+      projectName: string;
+    };
+

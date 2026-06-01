@@ -6,6 +6,7 @@ pub mod error;
 pub mod models;
 pub mod skill_library;
 pub mod state_store;
+pub mod project_scan;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -29,7 +30,9 @@ pub fn run() {
             commands::migrate_library,
             commands::rebuild_state,
             commands::sync_codex,
-            commands::read_skill_file
+            commands::read_skill_file,
+            commands::scan_project_skills,
+            commands::import_project_skill
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SkillMaster");

@@ -7,6 +7,8 @@ import type {
   ImportSkillPreview,
   ImportSkillSource,
   SetProjectRuleRequest,
+  ScannedCategory,
+  ImportProjectSkillResult,
 } from "./types";
 import * as mockApi from "./mockApi";
 
@@ -141,3 +143,24 @@ async function autoSync(snapshot: AppSnapshot): Promise<AppSnapshot> {
   if (!snapshot.state.codexSkillsPath) return snapshot;
   return syncCodex();
 }
+
+export async function scanProjectSkills(projectPath: string): Promise<ScannedCategory[]> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<ScannedCategory[]>("scan_project_skills", { projectPath }) : [];
+}
+
+export async function importProjectSkill(
+  projectName: string,
+  skillPath: string,
+  strategy?: "overwrite" | "keep_existing"
+): Promise<ImportProjectSkillResult> {
+  const invoke = await resolveInvoke();
+  return invoke
+    ? invoke<ImportProjectSkillResult>("import_project_skill", {
+        projectName,
+        skillPath,
+        strategy: strategy || null,
+      })
+    : { type: "success", snapshot: await getSnapshot() };
+}
+
