@@ -8,16 +8,11 @@ import {
   FolderOpen,
   RefreshCw,
   AlertTriangle,
-  SquareTerminal,
-  Bot,
-  Github,
-  Code2,
-  Cpu,
-  CircleHelp,
-  Folder,
 } from "lucide-vue-next";
 import * as api from "../api";
+import AgentIcon from "./AgentIcon.vue";
 import { openDirectory } from "../dialog";
+import { useScrollableList } from "../useScrollableList";
 import type { AppSnapshot, Project, ProjectRule, ScannedCategory, ReferenceScope } from "../types";
 
 const props = defineProps<{
@@ -42,20 +37,7 @@ const selectedAddScope = ref<ReferenceScope>("project");
 const selectedAddTargetName = ref("");
 const selectedSkillIds = ref<string[]>([]);
 
-const targetIcons: Record<string, any> = {
-  Codex: SquareTerminal,
-  "Claude Code": Bot,
-  "GitHub Copilot": Github,
-  Cursor: Code2,
-  Windsurf: Github, // Windsurf icon fallback or we can use custom
-  Kiro: Cpu,
-  OpenCode: CircleHelp,
-  自定义目录: Folder,
-};
 
-function iconForTarget(targetName: string) {
-  return targetIcons[targetName] ?? CircleHelp;
-}
 
 function projectSkillCount(project: Project): number {
   return Object.values(project.rules).filter((rule) => rule === "enable" || rule === "disable").length;
@@ -73,6 +55,8 @@ const projects = computed(() => {
       return skillBias || left.name.localeCompare(right.name, "zh-CN");
     });
 });
+
+const { listStackRef, listStackScrollable } = useScrollableList(projects);
 
 const selectedProject = computed(
     () => projects.value.find((project) => project.id === props.selectedProjectId) ?? projects.value[0] ?? null
@@ -396,7 +380,7 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
         </div>
       </div>
 
-      <div v-if="projects.length" class="list-stack">
+      <div v-if="projects.length" ref="listStackRef" class="list-stack" :class="{ 'list-stack--scrollable': listStackScrollable }">
         <button
           v-for="project in projects"
           :key="project.id"
@@ -544,7 +528,7 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
             @click="selectAddProfile(profile)"
           >
             <span class="target-tile-icon" aria-hidden="true">
-              <component :is="iconForTarget(profile.targetName)" :size="20" />
+              <AgentIcon :name="profile.targetName" :size="20" />
             </span>
             <strong style="font-size: 13px;">{{ profile.targetName }}</strong>
             <small style="font-size: 10px; color: var(--text-muted); font-family: monospace; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px;">

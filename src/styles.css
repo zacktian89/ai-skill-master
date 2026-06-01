@@ -1391,6 +1391,10 @@ button:disabled {
   cursor: pointer;
 }
 
+.list-stack--scrollable .list-row {
+  width: calc(100% + var(--scrollbar-size));
+}
+
 .list-row:hover {
   background: var(--bg-hover-row);
 }
@@ -1402,6 +1406,38 @@ button:disabled {
 
 .list-row-copy {
   min-width: 0;
+  flex: 1;
+}
+
+.list-row--agent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.list-row-agent-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-panel-muted);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.list-row--agent:hover .list-row-agent-icon {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.list-row--agent.active .list-row-agent-icon {
+  background: var(--bg-hover-row);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .list-row-copy small {
@@ -2744,6 +2780,8 @@ button:disabled {
   color: var(--text-secondary);
   margin-bottom: 2px;
   display: inline-flex;
+  align-items: center;
+    justify-content: center;
 }
 
 @keyframes spin {

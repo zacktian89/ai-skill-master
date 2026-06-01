@@ -2,23 +2,20 @@
 import { computed, ref, watch } from "vue";
 import { marked } from "marked";
 import {
-  Bot,
   CircleHelp,
-  Code2,
-  Cpu,
   Folder,
   Github,
   List,
   Network,
   Plus,
   ShoppingBag,
-  SquareTerminal,
   Trash2,
-  Wind,
   X,
 } from "lucide-vue-next";
 import * as api from "../api";
+import AgentIcon from "./AgentIcon.vue";
 import { openDirectory } from "../dialog";
+import { useScrollableList } from "../useScrollableList";
 import type {
   AddSkillReferenceRequest,
   AppSnapshot,
@@ -100,16 +97,7 @@ const sourceLabels = {
   unknown: "未知来源",
 } satisfies Record<SkillSourceKind, string>;
 
-const targetIcons: Record<string, unknown> = {
-  Codex: SquareTerminal,
-  "Claude Code": Bot,
-  "GitHub Copilot": Github,
-  Cursor: Code2,
-  Windsurf: Wind,
-  Kiro: Cpu,
-  OpenCode: CircleHelp,
-  自定义目录: Folder,
-};
+
 
 const scopeLabels = {
   user: "个人目录",
@@ -162,6 +150,8 @@ const skills = computed(() => {
     })
     .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
 });
+
+const { listStackRef, listStackScrollable } = useScrollableList(skills);
 
 const selectedSkill = computed(
   () => skills.value.find((skill) => skill.id === props.selectedSkillId) ?? skills.value[0] ?? null,
@@ -298,9 +288,7 @@ function referencesForSkill(skill: Skill): SkillReference[] {
   return references;
 }
 
-function iconForTarget(targetName: string) {
-  return targetIcons[targetName] ?? CircleHelp;
-}
+
 
 function joinPath(root: string, child: string): string {
   const normalized = root.replace(/[\\/]+$/, "");
@@ -622,7 +610,7 @@ const renderedMarkdown = computed(() => {
         </div>
       </div>
 
-      <div v-if="skills.length" class="list-stack">
+      <div v-if="skills.length" ref="listStackRef" class="list-stack" :class="{ 'list-stack--scrollable': listStackScrollable }">
         <button
           v-for="skill in skills"
           :key="skill.id"
@@ -750,7 +738,7 @@ const renderedMarkdown = computed(() => {
                   <div class="reference-row-top">
                     <div class="reference-title">
                       <span class="reference-app-icon" :title="reference.targetName" aria-hidden="true">
-                        <component :is="iconForTarget(reference.targetName)" :size="15" />
+                        <AgentIcon :name="reference.targetName" :size="15" />
                       </span>
                       <strong>{{ reference.targetName }}</strong>
                     </div>
@@ -1039,7 +1027,7 @@ const renderedMarkdown = computed(() => {
             @click="selectTargetProfile(profile)"
           >
             <span class="target-tile-icon" aria-hidden="true">
-              <component :is="iconForTarget(profile.targetName)" :size="22" />
+              <AgentIcon :name="profile.targetName" :size="22" />
             </span>
             <strong>{{ profile.targetName }}</strong>
           </button>

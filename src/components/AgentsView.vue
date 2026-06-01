@@ -8,16 +8,11 @@ import {
   FolderOpen,
   RefreshCw,
   AlertTriangle,
-  SquareTerminal,
-  Bot,
-  Github,
-  Code2,
-  Cpu,
-  CircleHelp,
-  Folder,
 } from "lucide-vue-next";
 import * as api from "../api";
+import AgentIcon from "./AgentIcon.vue";
 import { openDirectory } from "../dialog";
+import { useScrollableList } from "../useScrollableList";
 import type { AppSnapshot, Agent, ScannedCategory } from "../types";
 
 const props = defineProps<{
@@ -59,22 +54,7 @@ const PRESET_AGENTS = [
   { name: "自定义 Agent", defaultPath: "", targetName: "自定义" },
 ];
 
-const targetIcons: Record<string, any> = {
-  Codex: SquareTerminal,
-  "Claude Code": Bot,
-  "Gemini CLI": Bot,
-  "GitHub Copilot": Github,
-  Cursor: Code2,
-  WorkBuddy: Bot,
-  Windsurf: Github,
-  Kiro: Cpu,
-  OpenCode: CircleHelp,
-  自定义: Folder,
-};
 
-function iconForTarget(targetName: string) {
-  return targetIcons[targetName] ?? CircleHelp;
-}
 
 // Compute active skills count for each agent
 function agentSkillCount(agent: Agent): number {
@@ -94,6 +74,8 @@ const agents = computed(() => {
       return skillBias || left.name.localeCompare(right.name, "zh-CN");
     });
 });
+
+const { listStackRef, listStackScrollable } = useScrollableList(agents);
 
 const selectedAgent = computed(
   () => agents.value.find((agent) => agent.id === props.selectedAgentId) ?? agents.value[0] ?? null
@@ -375,14 +357,17 @@ watch(
         </div>
       </div>
 
-      <div v-if="agents.length" class="list-stack">
+      <div v-if="agents.length" ref="listStackRef" class="list-stack" :class="{ 'list-stack--scrollable': listStackScrollable }">
         <button
           v-for="agent in agents"
           :key="agent.id"
-          class="list-row"
+          class="list-row list-row--agent"
           :class="{ active: selectedAgent?.id === agent.id }"
           @click="emit('select-agent', agent.id)"
         >
+          <div class="list-row-agent-icon">
+            <AgentIcon :name="agent.name" :size="20" />
+          </div>
           <div class="list-row-copy">
             <strong>{{ agent.name }}</strong>
             <small>{{ agent.path }}</small>
@@ -500,7 +485,7 @@ watch(
             @click="selectPreset(index)"
           >
             <span class="target-tile-icon" aria-hidden="true">
-              <component :is="iconForTarget(preset.targetName)" :size="20" />
+              <AgentIcon :name="preset.targetName" :size="20" />
             </span>
             <strong style="font-size: 12px;">{{ preset.name }}</strong>
           </button>
