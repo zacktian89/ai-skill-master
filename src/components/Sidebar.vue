@@ -56,16 +56,16 @@ const navItems = computed(() => [
     icon: Library,
   },
   {
-    id: "projects" as const,
-    title: "Projects",
-    count: props.snapshot?.state.projects.length ?? 0,
-    icon: FolderKanban,
-  },
-  {
     id: "agents" as const,
     title: "Agents",
     count: props.snapshot?.state.agents?.length ?? 0,
     icon: Bot,
+  },
+  {
+    id: "projects" as const,
+    title: "Projects",
+    count: props.snapshot?.state.projects.length ?? 0,
+    icon: FolderKanban,
   },
 ]);
 
@@ -113,8 +113,7 @@ const startResize = (e: MouseEvent) => {
         <Sparkles :size="18" />
       </div>
       <div class="rail-brand-copy">
-        <strong>ai-skill-master</strong>
-        <small>SkillMaster workspace</small>
+        <strong>SkillMaster</strong>
       </div>
     </div>
 

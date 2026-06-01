@@ -111,7 +111,7 @@ onUnmounted(() => {
             <span>{{ error }}</span>
           </div>
 
-          <section v-if="loading" class="workspace-empty">正在加载 ai-skill-master 工作区</section>
+          <section v-if="loading" class="workspace-empty">正在加载 SkillMaster 工作区</section>
 
           <SkillsView
             v-else-if="activeSection === 'skills' && snapshot"
@@ -122,20 +122,20 @@ onUnmounted(() => {
             @error="error = $event"
           />
 
-          <ProjectsView
-            v-else-if="activeSection === 'projects' && snapshot"
-            :snapshot="snapshot"
-            :selected-project-id="selectedProjectId"
-            @select-project="selectedProjectId = $event"
-            @snapshot="applySnapshot"
-            @error="error = $event"
-          />
-
           <AgentsView
             v-else-if="activeSection === 'agents' && snapshot"
             :snapshot="snapshot"
             :selected-agent-id="selectedAgentId"
             @select-agent="selectedAgentId = $event"
+            @snapshot="applySnapshot"
+            @error="error = $event"
+          />
+
+          <ProjectsView
+            v-else-if="activeSection === 'projects' && snapshot"
+            :snapshot="snapshot"
+            :selected-project-id="selectedProjectId"
+            @select-project="selectedProjectId = $event"
             @snapshot="applySnapshot"
             @error="error = $event"
           />
