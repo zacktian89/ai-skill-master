@@ -153,6 +153,49 @@ function openAddSkillDialog() {
   addSkillDialogOpen.value = true;
 }
 
+function openAddSkillDialogForCategory(category: ScannedCategory) {
+  const rootPath = `${category.path}/skills`.replace(/[\\/]+/g, "/");
+  selectedAddDir.value = rootPath;
+  selectedSkillIds.value = [];
+  addSkillQuery.value = "";
+
+  const matchingProfile = projectProfiles.value.find(
+    (profile) => profile.rootPath.replace(/[\\/]+/g, "/").toLowerCase() === rootPath.toLowerCase()
+  );
+
+  if (matchingProfile) {
+    selectedAddScope.value = matchingProfile.scope;
+    selectedAddTargetName.value = matchingProfile.targetName;
+  } else {
+    const projectPath = selectedProject.value?.path || "";
+    const isInsideProject = rootPath.toLowerCase().startsWith(projectPath.replace(/[\\/]+/g, "/").toLowerCase());
+    if (isInsideProject) {
+      selectedAddScope.value = "project";
+      const nameMap: Record<string, string> = {
+        ".agent": "Codex",
+        ".agents": "Codex",
+        ".claude": "Claude Code",
+        ".copilot": "GitHub Copilot",
+        ".cursor": "Cursor",
+        ".codeium/windsurf": "Windsurf",
+        ".kiro": "Kiro",
+        ".opencode": "OpenCode",
+      };
+      const mappedName = nameMap[category.name];
+      if (mappedName) {
+        selectedAddTargetName.value = mappedName;
+      } else {
+        selectedAddTargetName.value = category.name === "." ? (selectedProject.value?.name || "项目目录") : category.name;
+      }
+    } else {
+      selectedAddScope.value = "custom";
+      selectedAddTargetName.value = "自定义目录";
+    }
+  }
+
+  addSkillDialogOpen.value = true;
+}
+
 function closeAddSkillDialog() {
   addSkillDialogOpen.value = false;
   selectedAddDir.value = "";
@@ -393,9 +436,22 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
 
           <div v-if="filteredScannedCategories.length" class="scanned-categories-list">
             <div v-for="category in filteredScannedCategories" :key="category.path" class="scanned-category-item" style="margin-bottom: 20px;">
-              <div class="scanned-category-title" style="margin-bottom: 8px; font-weight: 600; font-size: 13px; color: var(--text-muted);">
-                <span>📁 模块:</span>
-                <code>{{ category.name }}</code>
+              <div class="scanned-category-title" style="margin-bottom: 8px; font-weight: 600; font-size: 13px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span>📁 模块:</span>
+                  <code>{{ category.name }}</code>
+                </div>
+                <button
+                  class="ghost-icon-button"
+                  type="button"
+                  :disabled="busy"
+                  aria-label="向此模块添加skill"
+                  title="向此模块添加skill"
+                  style="width: 24px; height: 24px; border-radius: 6px;"
+                  @click="openAddSkillDialogForCategory(category)"
+                >
+                  <Plus :size="12" />
+                </button>
               </div>
 
               <div class="scanned-skills-list">
