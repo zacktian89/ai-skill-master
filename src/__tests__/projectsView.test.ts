@@ -106,7 +106,7 @@ describe("ProjectsView", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("技能列表");
+    expect(wrapper.text()).not.toContain("技能列表");
     expect(wrapper.text()).toContain("Writer Pro");
     expect(wrapper.text()).toContain("Reviewer");
     expect(wrapper.text()).not.toContain("当前上下文");

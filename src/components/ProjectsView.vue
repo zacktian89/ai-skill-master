@@ -154,14 +154,6 @@ function removeSkillFromProject(skillId: string) {
   <div class="split-content">
     <section class="list-panel">
       <div class="list-panel-head">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Projects</p>
-            <h1 class="panel-title">项目</h1>
-          </div>
-          <span class="panel-count">{{ projects.length }}</span>
-        </div>
-
         <div class="toolbar toolbar--stack">
           <input v-model="projectQuery" class="search-input" placeholder="搜索项目名称或路径" />
           <button class="primary-button" :disabled="busy" @click="addProject">
@@ -198,7 +190,6 @@ function removeSkillFromProject(skillId: string) {
       <template v-if="selectedProject">
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Project Skills</p>
             <h2>{{ selectedProject.name }}</h2>
             <p>{{ selectedProject.path }}</p>
           </div>
@@ -225,9 +216,6 @@ function removeSkillFromProject(skillId: string) {
 
         <section class="detail-section">
           <div class="project-skill-toolbar">
-            <div class="section-heading">
-              <h3>技能列表</h3>
-            </div>
             <input v-model="skillQuery" class="search-input" placeholder="搜索技能" />
           </div>
 
@@ -281,7 +269,6 @@ function removeSkillFromProject(skillId: string) {
     <section class="modal-card modal-card--compact">
       <div class="modal-title-row">
         <div>
-          <p class="eyebrow">Add Skill</p>
           <h2>添加技能</h2>
         </div>
         <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeAddSkillDialog">

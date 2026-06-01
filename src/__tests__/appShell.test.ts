@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App.vue";
 vi.mock("../api", () => ({
   getSnapshot: vi.fn().mockResolvedValue({
@@ -17,7 +17,19 @@ vi.mock("../api", () => ({
         pendingActions: [],
       },
       migrationNotice: null,
-      skills: [],
+      skills: [
+        {
+          id: "writer-pro",
+          name: "Writer Pro",
+          description: "长文写作",
+          libraryPath: "D:/skills/writer-pro",
+          references: [],
+          managedLinks: {
+            codex: null,
+          },
+          conflict: null,
+        },
+      ],
       projects: [],
     },
     diagnostics: [],
@@ -33,6 +45,10 @@ vi.mock("../api", () => ({
 }));
 
 describe("App shell", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("renders the SkillMaster navigation after loading a snapshot", async () => {
     const wrapper = mount(App);
 
@@ -42,5 +58,34 @@ describe("App shell", () => {
     expect(wrapper.text()).toContain("Skills");
     expect(wrapper.text()).toContain("Projects");
     expect(wrapper.text()).toContain("Settings");
+  });
+
+  it("defaults to the dark theme", async () => {
+    const wrapper = mount(App);
+
+    await vi.dynamicImportSettled();
+
+    expect(wrapper.find(".app-shell").attributes("data-theme")).toBe("dark");
+  });
+
+  it("switches theme from settings and persists the preference", async () => {
+    const wrapper = mount(App);
+
+    await vi.dynamicImportSettled();
+    await wrapper.findAll("button").find((button) => button.text().includes("Settings"))!.trigger("click");
+    await wrapper.vm.$nextTick();
+    await wrapper.findAll("button").find((button) => button.text().includes("白色"))!.trigger("click");
+
+    expect(wrapper.find(".app-shell").attributes("data-theme")).toBe("light");
+    expect(localStorage.getItem("skillmaster-theme")).toBe("light");
+  });
+
+  it("does not render redundant skills headings", async () => {
+    const wrapper = mount(App);
+
+    await vi.dynamicImportSettled();
+
+    expect(wrapper.text()).not.toContain("技能库");
+    expect(wrapper.text()).not.toContain("Skill Detail");
   });
 });

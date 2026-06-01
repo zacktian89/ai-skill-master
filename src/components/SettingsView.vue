@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { FolderOpen, RotateCcw, Wrench } from "lucide-vue-next";
+import { FolderOpen, Moon, RotateCcw, Sun, Wrench } from "lucide-vue-next";
 import * as api from "../api";
 import { openDirectory } from "../dialog";
 import type { AppSnapshot, DiagnosticItem } from "../types";
 
-type SettingsGroupId = "storage" | "codex" | "issues";
+type SettingsGroupId = "appearance" | "storage" | "codex" | "issues";
+type ThemeMode = "dark" | "light";
 
-const props = defineProps<{ snapshot: AppSnapshot }>();
+const props = defineProps<{
+  snapshot: AppSnapshot;
+  themeMode: ThemeMode;
+}>();
 
 const emit = defineEmits<{
   snapshot: [value: AppSnapshot];
   error: [value: string];
+  "update:theme-mode": [value: ThemeMode];
 }>();
 
 const busy = ref(false);
-const selectedGroup = ref<SettingsGroupId>("storage");
+const selectedGroup = ref<SettingsGroupId>("appearance");
 
 const canRebuild = computed(() => props.snapshot.stateLoad.phase === "rebuildRequired");
 
@@ -51,6 +56,12 @@ const applyState = computed(() => {
 });
 
 const settingsGroups = computed(() => [
+  {
+    id: "appearance" as const,
+    title: "外观",
+    description: "黑白主题",
+    issueCount: 0,
+  },
   {
     id: "storage" as const,
     title: "存储位置",
@@ -153,13 +164,6 @@ async function chooseLibraryTarget() {
 <template>
   <div class="split-content">
     <section class="list-panel">
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">Settings</p>
-          <h1 class="panel-title">路径与存储</h1>
-        </div>
-      </div>
-
       <div class="list-stack">
         <button
           v-for="group in settingsGroups"
@@ -180,10 +184,38 @@ async function chooseLibraryTarget() {
     </section>
 
     <section class="detail-panel">
-      <template v-if="selectedGroup === 'storage'">
+      <template v-if="selectedGroup === 'appearance'">
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Storage</p>
+            <h2>外观</h2>
+          </div>
+        </div>
+
+        <section class="detail-section">
+          <div class="segmented-control segmented-control--binary theme-toggle" aria-label="主题切换">
+            <button
+              type="button"
+              :class="{ active: themeMode === 'dark' }"
+              @click="emit('update:theme-mode', 'dark')"
+            >
+              <Moon :size="15" />
+              黑色
+            </button>
+            <button
+              type="button"
+              :class="{ active: themeMode === 'light' }"
+              @click="emit('update:theme-mode', 'light')"
+            >
+              <Sun :size="15" />
+              白色
+            </button>
+          </div>
+        </section>
+      </template>
+
+      <template v-else-if="selectedGroup === 'storage'">
+        <div class="detail-header">
+          <div>
             <h2>存储位置</h2>
           </div>
         </div>
@@ -231,7 +263,6 @@ async function chooseLibraryTarget() {
       <template v-else-if="selectedGroup === 'codex'">
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Codex</p>
             <h2>路径与链接</h2>
           </div>
           <div class="tag-row">
@@ -285,7 +316,6 @@ async function chooseLibraryTarget() {
       <template v-else>
         <div class="detail-header">
           <div>
-            <p class="eyebrow">Issues</p>
             <h2>问题与修复</h2>
           </div>
         </div>

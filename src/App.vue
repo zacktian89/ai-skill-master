@@ -9,12 +9,21 @@ import SkillsView from "./components/SkillsView.vue";
 import type { AppSnapshot } from "./types";
 
 type Section = "skills" | "projects" | "settings";
+type ThemeMode = "dark" | "light";
+
+const themeStorageKey = "skillmaster-theme";
+
+function readThemeMode(): ThemeMode {
+  if (typeof localStorage === "undefined") return "dark";
+  return localStorage.getItem(themeStorageKey) === "light" ? "light" : "dark";
+}
 
 const activeSection = ref<Section>("skills");
 const snapshot = ref<AppSnapshot | null>(null);
 const selectedSkillId = ref<string | null>(null);
 const selectedProjectId = ref<string | null>(null);
 const sidebarCollapsed = ref(false);
+const themeMode = ref<ThemeMode>(readThemeMode());
 const loading = ref(true);
 const error = ref<string | null>(null);
 
@@ -43,11 +52,16 @@ function applySnapshot(next: AppSnapshot) {
   }
 }
 
+function setThemeMode(next: ThemeMode) {
+  themeMode.value = next;
+  localStorage.setItem(themeStorageKey, next);
+}
+
 onMounted(refresh);
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }">
+  <div class="app-shell" :data-theme="themeMode" :class="{ 'app-shell--sidebar-collapsed': sidebarCollapsed }">
     <Sidebar
       v-model:active-section="activeSection"
       v-model:collapsed="sidebarCollapsed"
@@ -85,8 +99,10 @@ onMounted(refresh);
           <SettingsView
             v-else-if="activeSection === 'settings' && snapshot"
             :snapshot="snapshot"
+            :theme-mode="themeMode"
             @snapshot="applySnapshot"
             @error="error = $event"
+            @update:theme-mode="setThemeMode"
           />
         </section>
       </main>
