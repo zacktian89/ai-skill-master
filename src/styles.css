@@ -1371,6 +1371,7 @@ button:disabled {
   gap: 2px;
   overflow-y: auto;
   margin-right: calc(var(--scrollbar-size) * -1);
+  padding-right: var(--scrollbar-size);
   flex: 1;
   min-height: 0;
 }
