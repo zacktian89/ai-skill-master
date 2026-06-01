@@ -32,7 +32,11 @@ pub fn run() {
             commands::sync_codex,
             commands::read_skill_file,
             commands::scan_project_skills,
-            commands::import_project_skill
+            commands::import_project_skill,
+            commands::add_agent,
+            commands::delete_agent,
+            commands::set_agent_rule,
+            commands::scan_agent_skills
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SkillMaster");

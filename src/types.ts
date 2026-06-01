@@ -75,6 +75,19 @@ export interface Project {
   rules: Record<string, ProjectRule>;
 }
 
+export interface Agent {
+  id: string;
+  name: string;
+  path: string;
+  rules: Record<string, ProjectRule>;
+}
+
+export interface SetAgentRuleRequest {
+  agentId: string;
+  skillId: string;
+  rule: ProjectRule;
+}
+
 export interface AppState {
   schemaVersion: number;
   skillLibraryPath: string;
@@ -84,6 +97,7 @@ export interface AppState {
   migrationNotice?: MigrationNotice | null;
   skills: Skill[];
   projects: Project[];
+  agents: Agent[];
 }
 
 export interface DiagnosticItem {

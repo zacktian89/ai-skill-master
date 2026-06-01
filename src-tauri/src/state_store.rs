@@ -14,6 +14,7 @@ pub fn default_state(skill_library_path: PathBuf, codex_skills_path: Option<Path
         migration_notice: None,
         skills: Vec::new(),
         projects: Vec::new(),
+        agents: Vec::new(),
     }
 }
 
@@ -177,6 +178,7 @@ mod tests {
                 path: dir.path().to_path_buf(),
                 rules,
             }],
+            agents: Vec::new(),
         };
 
         save_state(&path, &state).unwrap();

@@ -639,6 +639,12 @@ fn remove_skill_reference_from_state(
             continue;
         };
         let reference = skill.references[index].clone();
+        for agent in &mut state.agents {
+            let target_path = agent.path.join(&skill.id);
+            if target_path == reference.target_path {
+                agent.rules.remove(&skill.id);
+            }
+        }
         match validate_managed_link(&skill.library_path, &reference.target_path)? {
             ManagedLinkValidation::Valid => remove_managed_link(&reference.target_path)?,
             ManagedLinkValidation::Missing => {}
@@ -1196,6 +1202,222 @@ pub fn import_project_skill(
             library_name,
             project_name,
         }),
+    }
+}
+
+fn resolve_path_with_home(path: PathBuf) -> PathBuf {
+    let path_str = path.to_string_lossy();
+    if path_str.starts_with('~') {
+        let home = user_home_path();
+        if path_str == "~" {
+            home
+        } else {
+            let remainder = &path_str[1..];
+            let remainder_clean = remainder.trim_start_matches('/').trim_start_matches('\\');
+            home.join(remainder_clean)
+        }
+    } else {
+        path
+    }
+}
+
+#[tauri::command]
+pub fn add_agent(
+    app: AppHandle,
+    name: String,
+    path: PathBuf,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    let resolved_path = resolve_path_with_home(path);
+    let id = project_id_from_path(&resolved_path);
+    if !command_state
+        .state
+        .agents
+        .iter()
+        .any(|agent| agent.id == id)
+    {
+        command_state.state.agents.push(crate::models::Agent {
+            id,
+            name,
+            path: resolved_path,
+            rules: BTreeMap::new(),
+        });
+    }
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn delete_agent(
+    app: AppHandle,
+    agent_id: String,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    command_state.state.agents.retain(|agent| agent.id != agent_id);
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetAgentRuleRequest {
+    pub agent_id: String,
+    pub skill_id: String,
+    pub rule: ProjectRule,
+}
+
+#[tauri::command]
+pub fn set_agent_rule(
+    app: AppHandle,
+    request: SetAgentRuleRequest,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    let agent = command_state.state.agents.iter_mut()
+        .find(|a| a.id == request.agent_id)
+        .ok_or_else(|| format!("找不到 Agent：{}", request.agent_id))?;
+        
+    let agent_path = agent.path.clone();
+    let agent_name = agent.name.clone();
+    
+    agent.rules.insert(request.skill_id.clone(), request.rule);
+    
+    let target_path = agent_path.join(&request.skill_id);
+    let skill = command_state.state.skills.iter_mut()
+        .find(|s| s.id == request.skill_id)
+        .ok_or_else(|| format!("找不到 Skill：{}", request.skill_id))?;
+        
+    match request.rule {
+        ProjectRule::Disable => {
+            if target_path.exists() {
+                remove_managed_link(&target_path).map_err(|e| e.to_string())?;
+            }
+        }
+        ProjectRule::Enable | ProjectRule::Inherit => {
+            match validate_managed_link(&skill.library_path, &target_path).map_err(|e| e.to_string())? {
+                ManagedLinkValidation::Valid => {}
+                ManagedLinkValidation::Missing => {
+                    create_directory_link(&skill.library_path, &target_path).map_err(|e| e.to_string())?;
+                }
+                ManagedLinkValidation::WrongTarget { .. } => {
+                    remove_managed_link(&target_path).map_err(|e| e.to_string())?;
+                    create_directory_link(&skill.library_path, &target_path).map_err(|e| e.to_string())?;
+                }
+                validation => {
+                    return Err(managed_link_issue_message(&target_path, &validation));
+                }
+            }
+            let ref_id = reference_id(&target_path);
+            if !skill.references.iter().any(|r| r.id == ref_id) {
+                skill.references.push(SkillReference {
+                    id: ref_id,
+                    target_name: agent_name,
+                    target_path,
+                    scope: ReferenceScope::User,
+                    status: ReferenceStatus::Healthy,
+                });
+            }
+        }
+    }
+    
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn scan_agent_skills(
+    app: AppHandle,
+    agent_path: PathBuf,
+) -> std::result::Result<Vec<crate::project_scan::ScannedCategory>, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    let resolved_path = resolve_path_with_home(agent_path);
+    if !resolved_path.is_dir() {
+        return Ok(Vec::new());
+    }
+    let scan_dir = if resolved_path.join("skills").is_dir() {
+        resolved_path.join("skills")
+    } else {
+        resolved_path.clone()
+    };
+    
+    let mut scanned_skills = Vec::new();
+    let entries = fs::read_dir(&scan_dir).map_err(|error| error.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let skill_path = entry.path();
+        if !skill_path.is_dir() {
+            continue;
+        }
+        if skill_path.join("SKILL.md").exists() {
+            if let Ok(metadata) = crate::skill_library::read_skill_metadata(&skill_path) {
+                let mut is_managed = false;
+                if let Some(matching_skill) = command_state.state.skills.iter().find(|s| s.id == metadata.id) {
+                    if let Ok(validation) = validate_managed_link(&matching_skill.library_path, &skill_path) {
+                        if validation == ManagedLinkValidation::Valid {
+                            is_managed = true;
+                        }
+                    }
+                }
+                scanned_skills.push(crate::project_scan::ScannedSkill {
+                    id: metadata.id,
+                    name: metadata.name,
+                    description: metadata.description,
+                    path: skill_path,
+                    is_managed,
+                });
+            }
+        }
+    }
+    
+    let agent_rules_and_refs: Vec<String> = command_state.state.skills.iter()
+        .filter(|s| {
+            let has_rule = command_state.state.agents.iter()
+                .any(|a| a.path == resolved_path && a.rules.contains_key(&s.id));
+            let has_ref = s.references.iter()
+                .any(|r| r.target_path.parent() == Some(&scan_dir) || r.target_path.parent() == Some(&resolved_path));
+            has_rule || has_ref
+        })
+        .map(|s| s.id.clone())
+        .collect();
+
+    for skill_id in agent_rules_and_refs {
+        if !scanned_skills.iter().any(|s| s.id == skill_id) {
+            if let Some(skill) = command_state.state.skills.iter().find(|s| s.id == skill_id) {
+                let skill_path = scan_dir.join(&skill.id);
+                scanned_skills.push(crate::project_scan::ScannedSkill {
+                    id: skill.id.clone(),
+                    name: skill.name.clone(),
+                    description: skill.description.clone(),
+                    path: skill_path,
+                    is_managed: true,
+                });
+            }
+        }
+    }
+
+    if scanned_skills.is_empty() {
+        Ok(Vec::new())
+    } else {
+        scanned_skills.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(vec![crate::project_scan::ScannedCategory {
+            name: ".".to_string(),
+            path: scan_dir,
+            skills: scanned_skills,
+        }])
     }
 }
 

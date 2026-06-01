@@ -10,6 +10,8 @@ import type {
   ProjectRule,
   SetProjectRuleRequest,
   Skill,
+  SetAgentRuleRequest,
+  ScannedCategory,
 } from "./types";
 
 function clone<T>(value: T): T {
@@ -108,6 +110,23 @@ const mockSnapshot: AppSnapshot = {
         id: "ops-kit",
         name: "Ops Kit",
         path: "/work/internal/ops-kit",
+        rules: {},
+      },
+    ],
+    agents: [
+      {
+        id: "codex-agent",
+        name: "Codex",
+        path: "/Users/demo/.agents/skills",
+        rules: {
+          "writer-pro": "enable",
+          "legacy-review": "disable",
+        },
+      },
+      {
+        id: "claude-agent",
+        name: "Claude Code",
+        path: "/Users/demo/.claude/skills",
         rules: {},
       },
     ],
@@ -483,6 +502,63 @@ function run() {
 }
 \`\`\`
 `);
+}
+
+export function addAgent(name: string, path: string): Promise<AppSnapshot> {
+  const id = name.toLowerCase().replace(/[^a-z0-9-]+/g, "-") + "-agent";
+  if (!mockSnapshot.state.agents) {
+    mockSnapshot.state.agents = [];
+  }
+  if (!mockSnapshot.state.agents.some((agent) => agent.id === id)) {
+    mockSnapshot.state.agents.push({
+      id,
+      name,
+      path,
+      rules: {},
+    });
+  }
+  return snapshot();
+}
+
+export function deleteAgent(agentId: string): Promise<AppSnapshot> {
+  if (mockSnapshot.state.agents) {
+    mockSnapshot.state.agents = mockSnapshot.state.agents.filter((agent) => agent.id !== agentId);
+  }
+  return snapshot();
+}
+
+export function setAgentRule(request: SetAgentRuleRequest): Promise<AppSnapshot> {
+  if (mockSnapshot.state.agents) {
+    const agent = mockSnapshot.state.agents.find((item) => item.id === request.agentId);
+    if (agent) {
+      if (request.rule === "inherit") {
+        delete agent.rules[request.skillId];
+      } else {
+        agent.rules[request.skillId] = request.rule;
+      }
+    }
+  }
+  return snapshot();
+}
+
+export function scanAgentSkills(agentPath: string): Promise<ScannedCategory[]> {
+  const skills = mockSnapshot.state.skills.map((skill, index) => {
+    const isManaged = index < 3;
+    return {
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      path: `${agentPath}/${skill.id}`,
+      isManaged,
+    };
+  });
+  return Promise.resolve([
+    {
+      name: ".",
+      path: agentPath,
+      skills,
+    },
+  ]);
 }
 
 export type { ProjectRule };

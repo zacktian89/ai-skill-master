@@ -81,6 +81,7 @@ const snapshot: AppSnapshot = {
         },
       },
     ],
+    agents: [],
   },
   targetProfiles: [
     {

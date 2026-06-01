@@ -9,6 +9,7 @@ import type {
   SetProjectRuleRequest,
   ScannedCategory,
   ImportProjectSkillResult,
+  SetAgentRuleRequest,
 } from "./types";
 import * as mockApi from "./mockApi";
 
@@ -162,5 +163,25 @@ export async function importProjectSkill(
         strategy: strategy || null,
       })
     : { type: "success", snapshot: await getSnapshot() };
+}
+
+export async function addAgent(name: string, path: string): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<AppSnapshot>("add_agent", { name, path }) : mockApi.addAgent(name, path);
+}
+
+export async function deleteAgent(agentId: string): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<AppSnapshot>("delete_agent", { agentId }) : mockApi.deleteAgent(agentId);
+}
+
+export async function setAgentRule(request: SetAgentRuleRequest): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<AppSnapshot>("set_agent_rule", { request }) : mockApi.setAgentRule(request);
+}
+
+export async function scanAgentSkills(agentPath: string): Promise<ScannedCategory[]> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<ScannedCategory[]>("scan_agent_skills", { agentPath }) : mockApi.scanAgentSkills(agentPath);
 }
 

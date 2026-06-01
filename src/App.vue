@@ -6,9 +6,10 @@ import Sidebar from "./components/Sidebar.vue";
 import ProjectsView from "./components/ProjectsView.vue";
 import SettingsView from "./components/SettingsView.vue";
 import SkillsView from "./components/SkillsView.vue";
+import AgentsView from "./components/AgentsView.vue";
 import type { AppSnapshot } from "./types";
 
-type Section = "skills" | "projects" | "settings";
+type Section = "skills" | "projects" | "agents" | "settings";
 type ThemeMode = "dark" | "light";
 
 const themeStorageKey = "skillmaster-theme";
@@ -22,6 +23,7 @@ const activeSection = ref<Section>("skills");
 const snapshot = ref<AppSnapshot | null>(null);
 const selectedSkillId = ref<string | null>(null);
 const selectedProjectId = ref<string | null>(null);
+const selectedAgentId = ref<string | null>(null);
 const sidebarCollapsed = ref(false);
 const sidebarWidth = ref(200);
 const isDragging = ref(false);
@@ -37,6 +39,7 @@ async function refresh() {
     snapshot.value = next;
     selectedSkillId.value = next.state.skills[0]?.id ?? null;
     selectedProjectId.value = next.state.currentProjectId ?? next.state.projects[0]?.id ?? null;
+    selectedAgentId.value = next.state.agents?.[0]?.id ?? null;
   } catch (cause) {
     error.value = String(cause);
   } finally {
@@ -51,6 +54,9 @@ function applySnapshot(next: AppSnapshot) {
   }
   if (!selectedProjectId.value || !next.state.projects.some((project) => project.id === selectedProjectId.value)) {
     selectedProjectId.value = next.state.currentProjectId ?? next.state.projects[0]?.id ?? null;
+  }
+  if (!selectedAgentId.value || !next.state.agents?.some((agent) => agent.id === selectedAgentId.value)) {
+    selectedAgentId.value = next.state.agents?.[0]?.id ?? null;
   }
 }
 
@@ -121,6 +127,15 @@ onUnmounted(() => {
             :snapshot="snapshot"
             :selected-project-id="selectedProjectId"
             @select-project="selectedProjectId = $event"
+            @snapshot="applySnapshot"
+            @error="error = $event"
+          />
+
+          <AgentsView
+            v-else-if="activeSection === 'agents' && snapshot"
+            :snapshot="snapshot"
+            :selected-agent-id="selectedAgentId"
+            @select-agent="selectedAgentId = $event"
             @snapshot="applySnapshot"
             @error="error = $event"
           />

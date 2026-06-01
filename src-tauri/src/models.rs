@@ -15,6 +15,8 @@ pub struct AppState {
     pub migration_notice: Option<MigrationNotice>,
     pub skills: Vec<Skill>,
     pub projects: Vec<Project>,
+    #[serde(default)]
+    pub agents: Vec<Agent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -204,4 +206,14 @@ pub enum ProjectRule {
     Inherit,
     Enable,
     Disable,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Agent {
+    pub id: String,
+    pub name: String,
+    pub path: PathBuf,
+    #[serde(default)]
+    pub rules: BTreeMap<String, ProjectRule>,
 }

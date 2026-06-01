@@ -3,14 +3,14 @@ import { computed } from "vue";
 import {
   FolderKanban,
   Library,
-  PanelLeftClose,
   PanelLeftOpen,
   Settings,
   Sparkles,
+  Bot,
 } from "lucide-vue-next";
 import type { AppSnapshot } from "../types";
 
-type Section = "skills" | "projects" | "settings";
+type Section = "skills" | "projects" | "agents" | "settings";
 
 const props = defineProps<{
   activeSection: Section;
@@ -60,6 +60,12 @@ const navItems = computed(() => [
     title: "Projects",
     count: props.snapshot?.state.projects.length ?? 0,
     icon: FolderKanban,
+  },
+  {
+    id: "agents" as const,
+    title: "Agents",
+    count: props.snapshot?.state.agents?.length ?? 0,
+    icon: Bot,
   },
 ]);
 
