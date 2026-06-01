@@ -273,6 +273,9 @@ async function toggleSkillRule(skillId: string) {
 }
 
 const scannedCategories = ref<ScannedCategory[]>([]);
+const scannedSkillsCount = computed(() => {
+  return scannedCategories.value.reduce((acc, cat) => acc + cat.skills.length, 0);
+});
 const scanning = ref(false);
 const conflictState = ref<{ skillId: string; libraryName: string; projectName: string; skillPath: string } | null>(null);
 
@@ -372,7 +375,8 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
   <div class="split-content">
     <section class="list-panel">
       <div class="list-panel-head">
-        <div class="list-search-row">
+        <div class="list-search-row" style="display: grid; grid-template-columns: auto minmax(0, 1fr) 30px; gap: 8px; align-items: center;">
+          <span class="search-row-count" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; font-family: ui-monospace, monospace; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-input); border: 1px solid var(--border-default); border-radius: 6px; flex-shrink: 0;">{{ snapshot.state.projects.length }}</span>
           <input v-model="projectQuery" class="search-input" placeholder="搜索项目名称或路径" />
           <button class="icon-button" type="button" :disabled="busy" aria-label="添加项目" @click="addProject">
             <FolderPlus :size="18" />
@@ -412,6 +416,7 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
 
         <section class="detail-section">
           <div class="project-skill-toolbar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px;">
+            <span class="search-row-count" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; font-family: ui-monospace, monospace; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-input); border: 1px solid var(--border-default); border-radius: 6px; flex-shrink: 0;">{{ scannedSkillsCount }}</span>
             <input v-model="skillQuery" class="search-input" placeholder="搜索技能" style="flex: 1;" />
             <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
               <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />

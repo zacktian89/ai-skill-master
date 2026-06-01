@@ -123,13 +123,13 @@ const startResize = (e: MouseEvent) => {
         :key="item.id"
         class="rail-nav-button"
         :class="{ active: activeSection === item.id }"
-        :title="collapsed ? `${item.title} (${item.count})` : undefined"
-        :aria-label="collapsed ? `${item.title} (${item.count})` : undefined"
+        :title="collapsed ? item.title : undefined"
+        :aria-label="collapsed ? item.title : undefined"
         @click="emit('update:activeSection', item.id)"
       >
         <component :is="item.icon" :size="18" />
         <span class="rail-nav-copy">
-          <strong>{{ item.title }} ({{ item.count }})</strong>
+          <strong>{{ item.title }}</strong>
         </span>
       </button>
     </nav>

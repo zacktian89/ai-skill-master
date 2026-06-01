@@ -166,6 +166,33 @@ describe("ProjectsView", () => {
     expect(wrapper.text()).not.toContain("全部规则");
   });
 
+  it("shows the total project count in the list header", async () => {
+    const wrapper = mount(ProjectsView, {
+      props: {
+        snapshot: {
+          ...snapshot,
+          state: {
+            ...snapshot.state,
+            projects: [
+              ...snapshot.state.projects,
+              {
+                id: "beta",
+                name: "Beta",
+                path: "/work/beta",
+                rules: {},
+              },
+            ],
+          },
+        },
+        selectedProjectId: "acme",
+      },
+    });
+
+    await flushPromises();
+
+    expect(wrapper.find(".list-panel-head .search-row-count").text()).toBe("2");
+  });
+
   it("toggles rules, adds and removes skills references", async () => {
     const wrapper = mount(ProjectsView, {
       props: {

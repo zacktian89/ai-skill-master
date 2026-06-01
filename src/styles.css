@@ -771,8 +771,6 @@ summary:focus-visible {
   line-height: 1.45;
 }
 
-}
-
 .issue-strip strong {
   font-size: 13px;
 }
@@ -1139,7 +1137,7 @@ summary:focus-visible {
 
 .list-search-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
+  grid-template-columns: auto minmax(0, 1fr) 30px;
   gap: 8px;
   align-items: center;
 }
@@ -1148,6 +1146,22 @@ summary:focus-visible {
   width: 30px;
   height: 30px;
   border-radius: 6px;
+}
+
+.search-row-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .select-input {

@@ -602,7 +602,8 @@ const renderedMarkdown = computed(() => {
   <div class="split-content">
     <section class="list-panel">
       <div class="list-panel-head">
-        <div class="list-search-row">
+        <div class="list-search-row" style="display: grid; grid-template-columns: auto minmax(0, 1fr) 30px; gap: 8px; align-items: center;">
+          <span class="search-row-count" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; font-family: ui-monospace, monospace; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-input); border: 1px solid var(--border-default); border-radius: 6px; flex-shrink: 0;">{{ snapshot.state.skills.length }}</span>
           <input v-model="query" class="search-input" placeholder="搜索已安装 Skill" />
           <button class="icon-button" type="button" :disabled="busy" aria-label="新增 Skill" @click="openImportDialog">
             <Plus :size="18" />
