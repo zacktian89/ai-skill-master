@@ -104,7 +104,6 @@ body {
   margin: 0;
   height: 100vh;
   overflow: hidden;
-  overflow-x: auto;
   color: var(--text-primary);
   background: var(--bg-app);
 }
