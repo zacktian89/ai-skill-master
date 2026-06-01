@@ -103,6 +103,8 @@ pub struct AddSkillReferenceRequest {
     pub target_name: String,
     pub root_path: PathBuf,
     pub scope: ReferenceScope,
+    #[serde(default)]
+    pub overwrite: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -595,6 +597,10 @@ fn add_skill_reference_to_state(
     match validate_managed_link(&skill.library_path, &target_path)? {
         ManagedLinkValidation::Valid => {}
         ManagedLinkValidation::Missing => create_directory_link(&skill.library_path, &target_path)?,
+        ManagedLinkValidation::WrongTarget { .. } if request.overwrite => {
+            remove_managed_link(&target_path)?;
+            create_directory_link(&skill.library_path, &target_path)?;
+        }
         ManagedLinkValidation::MissingSource => {
             return Err(SkillMasterError::MissingDirectory(
                 skill.library_path.clone(),
@@ -1265,6 +1271,90 @@ mod tests {
 
         assert!(state.projects.is_empty());
         assert_eq!(state.current_project_id, None);
+    }
+
+    #[test]
+    fn add_reference_keeps_retargeted_link_without_overwrite() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("skills");
+        let root = dir.path().join("claude").join("skills");
+        let other = dir.path().join("other-html-go");
+        std::fs::create_dir_all(library.join("html-go")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        let target = root.join("html-go");
+        create_directory_link(&other, &target).unwrap();
+
+        let mut state = default_state(library.clone(), None);
+        state.skills.push(Skill {
+            id: "html-go".to_string(),
+            name: "html-go".to_string(),
+            description: String::new(),
+            library_path: library.join("html-go"),
+            source: Default::default(),
+            references: Vec::new(),
+            managed_links: Default::default(),
+            conflict: None,
+        });
+
+        let result = add_skill_reference_to_state(
+            &mut state,
+            AddSkillReferenceRequest {
+                skill_id: "html-go".to_string(),
+                target_name: "Claude".to_string(),
+                root_path: root,
+                scope: ReferenceScope::User,
+                overwrite: false,
+            },
+        );
+
+        assert!(result.unwrap_err().to_string().contains("已指向其他位置"));
+        assert_eq!(std::fs::read_link(&target).unwrap(), other);
+        assert!(state.skills[0].references.is_empty());
+    }
+
+    #[test]
+    fn add_reference_replaces_retargeted_link_with_overwrite() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("skills");
+        let root = dir.path().join("claude").join("skills");
+        let other = dir.path().join("other-html-go");
+        std::fs::create_dir_all(library.join("html-go")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&other).unwrap();
+        let target = root.join("html-go");
+        create_directory_link(&other, &target).unwrap();
+
+        let mut state = default_state(library.clone(), None);
+        state.skills.push(Skill {
+            id: "html-go".to_string(),
+            name: "html-go".to_string(),
+            description: String::new(),
+            library_path: library.join("html-go"),
+            source: Default::default(),
+            references: Vec::new(),
+            managed_links: Default::default(),
+            conflict: None,
+        });
+
+        add_skill_reference_to_state(
+            &mut state,
+            AddSkillReferenceRequest {
+                skill_id: "html-go".to_string(),
+                target_name: "Claude".to_string(),
+                root_path: root,
+                scope: ReferenceScope::User,
+                overwrite: true,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            std::fs::canonicalize(std::fs::read_link(&target).unwrap()).unwrap(),
+            std::fs::canonicalize(library.join("html-go")).unwrap()
+        );
+        assert_eq!(state.skills[0].references.len(), 1);
+        assert_eq!(state.skills[0].references[0].target_path, target);
     }
 
     #[test]

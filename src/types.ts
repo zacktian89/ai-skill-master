@@ -134,6 +134,7 @@ export interface AddSkillReferenceRequest {
   targetName: string;
   rootPath: string;
   scope: ReferenceScope;
+  overwrite?: boolean;
 }
 
 export type ImportSkillSource =

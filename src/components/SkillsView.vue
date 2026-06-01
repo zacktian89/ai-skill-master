@@ -19,6 +19,7 @@ import {
 import * as api from "../api";
 import { openDirectory } from "../dialog";
 import type {
+  AddSkillReferenceRequest,
   AppSnapshot,
   DeleteSkillPreview,
   ImportSkillCandidate,
@@ -77,6 +78,7 @@ const selectedImportCandidateIds = ref<string[]>([]);
 const importScanned = ref(false);
 const addReferenceDialogOpen = ref(false);
 const pendingReferenceTarget = ref<PendingReferenceTarget | null>(null);
+const overwriteReferenceRequest = ref<AddSkillReferenceRequest | null>(null);
 const deleteReferenceDialogOpen = ref(false);
 const referenceToDelete = ref<SkillReference | null>(null);
 const activeDetailTab = ref<DetailTab>("references");
@@ -192,6 +194,11 @@ const targetProfiles = computed<SkillTargetProfile[]>(() => props.snapshot.targe
 const pendingReferencePath = computed(() => {
   if (!selectedSkill.value || !pendingReferenceTarget.value) return "";
   return joinPath(pendingReferenceTarget.value.rootPath, selectedSkill.value.id);
+});
+
+const addReferenceTitle = computed(() => {
+  if (overwriteReferenceRequest.value) return "覆盖引用链接";
+  return pendingReferenceTarget.value ? "确认新增引用" : "新增引用";
 });
 
 const importReadyCandidates = computed(() => importCandidates.value.filter((candidate) => candidate.status === "ready"));
@@ -419,9 +426,11 @@ function openAddReferenceDialog() {
 function closeAddReferenceDialog() {
   addReferenceDialogOpen.value = false;
   pendingReferenceTarget.value = null;
+  overwriteReferenceRequest.value = null;
 }
 
 function selectTargetProfile(profile: SkillTargetProfile) {
+  overwriteReferenceRequest.value = null;
   pendingReferenceTarget.value = {
     targetName: profile.targetName,
     rootPath: profile.rootPath,
@@ -433,6 +442,7 @@ async function selectCustomReferenceRoot() {
   try {
     const selected = await openDirectory({ directory: true, multiple: false });
     if (typeof selected === "string") {
+      overwriteReferenceRequest.value = null;
       pendingReferenceTarget.value = {
         targetName: "自定义目录",
         rootPath: selected,
@@ -446,15 +456,46 @@ async function selectCustomReferenceRoot() {
 
 async function confirmAddReference() {
   if (!selectedSkill.value || !pendingReferenceTarget.value) return;
-  await run(() =>
-    api.addSkillReference({
-      skillId: selectedSkill.value!.id,
-      targetName: pendingReferenceTarget.value!.targetName,
-      rootPath: pendingReferenceTarget.value!.rootPath,
-      scope: pendingReferenceTarget.value!.scope,
-    }),
-  );
-  closeAddReferenceDialog();
+  const request: AddSkillReferenceRequest = {
+    skillId: selectedSkill.value.id,
+    targetName: pendingReferenceTarget.value.targetName,
+    rootPath: pendingReferenceTarget.value.rootPath,
+    scope: pendingReferenceTarget.value.scope,
+  };
+  busy.value = true;
+  try {
+    emit("snapshot", await api.addSkillReference(request));
+    closeAddReferenceDialog();
+  } catch (cause) {
+    if (!isRetargetedLinkError(cause)) {
+      emit("error", String(cause));
+      return;
+    }
+    overwriteReferenceRequest.value = request;
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function confirmOverwriteReference() {
+  if (!overwriteReferenceRequest.value) return;
+  busy.value = true;
+  try {
+    emit("snapshot", await api.addSkillReference({ ...overwriteReferenceRequest.value, overwrite: true }));
+    closeAddReferenceDialog();
+  } catch (cause) {
+    emit("error", String(cause));
+  } finally {
+    busy.value = false;
+  }
+}
+
+function cancelOverwriteReference() {
+  overwriteReferenceRequest.value = null;
+}
+
+function isRetargetedLinkError(cause: unknown): boolean {
+  return String(cause).includes("已指向其他位置");
 }
 
 function openDeleteReferenceDialog(reference: SkillReference) {
@@ -488,14 +529,6 @@ function closeDeleteDialog() {
   <div class="split-content">
     <section class="list-panel">
       <div class="list-panel-head">
-        <div class="panel-header">
-          <div>
-            <p class="eyebrow">Skills</p>
-            <h1 class="panel-title">技能库</h1>
-          </div>
-          <span class="panel-count">{{ skills.length }}</span>
-        </div>
-
         <div class="list-search-row">
           <input v-model="query" class="search-input" placeholder="搜索已安装 Skill" />
           <button class="icon-button" type="button" :disabled="busy" aria-label="新增 Skill" @click="openImportDialog">
@@ -545,7 +578,6 @@ function closeDeleteDialog() {
                 <component :is="sourceIcons[sourceKind(selectedSkill)]" :size="28" />
               </div>
               <div class="extension-title-group">
-                <p class="eyebrow">Skill Detail</p>
                 <h2>{{ selectedSkill.name }}</h2>
                 <div class="extension-meta">
                   <code>{{ selectedSkill.id }}</code>
@@ -713,7 +745,6 @@ function closeDeleteDialog() {
     <section class="modal-card import-modal">
       <div class="modal-title-row">
         <div>
-          <p class="eyebrow">Add Skill</p>
           <h2>新增 Skill</h2>
         </div>
         <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeImportDialog">
@@ -829,7 +860,6 @@ function closeDeleteDialog() {
     <section class="modal-card">
       <div class="detail-header">
         <div>
-          <p class="eyebrow">Confirm Delete</p>
           <h2>删除 {{ deletePreview.skillName }}</h2>
           <p>确认前不会修改任何文件。</p>
         </div>
@@ -880,15 +910,35 @@ function closeDeleteDialog() {
     <section class="modal-card modal-card--compact">
       <div class="modal-title-row">
         <div>
-          <p class="eyebrow">Add Reference</p>
-          <h2>{{ pendingReferenceTarget ? "确认新增引用" : "新增引用" }}</h2>
+          <h2>{{ addReferenceTitle }}</h2>
         </div>
         <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeAddReferenceDialog">
           <X :size="16" />
         </button>
       </div>
 
-      <template v-if="!pendingReferenceTarget">
+      <template v-if="overwriteReferenceRequest">
+        <p class="modal-note">引用链接已存在，且指向其他位置。覆盖后会把它改为当前 skill 的托管链接。</p>
+
+        <dl class="detail-kv detail-kv--wide">
+          <div>
+            <dt>目标路径</dt>
+            <dd>
+              <code class="reference-path">{{ pendingReferencePath }}</code>
+            </dd>
+          </div>
+        </dl>
+
+        <div class="button-row button-row--end">
+          <button class="secondary-button" :disabled="busy" @click="cancelOverwriteReference">取消</button>
+          <button class="primary-button" :disabled="busy" @click="confirmOverwriteReference">
+            <Plus :size="16" />
+            覆盖引用
+          </button>
+        </div>
+      </template>
+
+      <template v-else-if="!pendingReferenceTarget">
         <div class="target-grid">
           <button
             v-for="profile in targetProfiles"
@@ -936,7 +986,6 @@ function closeDeleteDialog() {
     <section class="modal-card modal-card--compact">
       <div class="modal-title-row">
         <div>
-          <p class="eyebrow">Remove Reference</p>
           <h2>删除引用</h2>
         </div>
         <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeDeleteReferenceDialog">

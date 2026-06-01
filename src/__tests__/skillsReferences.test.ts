@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { flushPromises, mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as api from "../api";
 import SkillsView from "../components/SkillsView.vue";
 import type { AppSnapshot } from "../types";
 
@@ -61,6 +62,10 @@ const snapshot: AppSnapshot = {
 };
 
 describe("SkillsView references tab", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("opens references first and toggles between list, graph, and detail views", async () => {
     const wrapper = mount(SkillsView, {
       props: {
@@ -111,6 +116,39 @@ describe("SkillsView references tab", () => {
 
     expect(wrapper.text()).toContain("删除引用");
     expect(wrapper.text()).toContain("只移除这个托管引用");
+  });
+
+  it("shows an in-app overwrite confirmation when a reference link points elsewhere", async () => {
+    const addSkillReference = vi
+      .spyOn(api, "addSkillReference")
+      .mockRejectedValueOnce("路径无效：托管链接已指向其他位置")
+      .mockResolvedValueOnce(snapshot);
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot,
+        selectedSkillId: "writer-pro",
+      },
+    });
+
+    await wrapper.find('button[aria-label="新增引用"]').trigger("click");
+    await wrapper.find(".target-tile").trigger("click");
+    await wrapper.findAll("button").find((button) => button.text() === "新增引用")!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("覆盖引用链接");
+    expect(wrapper.text()).toContain("引用链接已存在，且指向其他位置");
+    expect(wrapper.text()).toContain("/claude/skills/writer-pro");
+
+    await wrapper.findAll("button").find((button) => button.text() === "覆盖引用")!.trigger("click");
+    await flushPromises();
+
+    expect(addSkillReference).toHaveBeenLastCalledWith({
+      skillId: "writer-pro",
+      targetName: "Claude Code",
+      rootPath: "/claude/skills",
+      scope: "user",
+      overwrite: true,
+    });
   });
 
   it("scans import candidates and defaults ready skills to selected", async () => {
