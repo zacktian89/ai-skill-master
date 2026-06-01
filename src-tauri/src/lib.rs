@@ -28,7 +28,8 @@ pub fn run() {
             commands::set_codex_path,
             commands::migrate_library,
             commands::rebuild_state,
-            commands::sync_codex
+            commands::sync_codex,
+            commands::read_skill_file
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SkillMaster");

@@ -132,6 +132,11 @@ export async function syncCodex(): Promise<AppSnapshot> {
   return invoke ? invoke<AppSnapshot>("sync_codex") : mockApi.syncCodex();
 }
 
+export async function readSkillFile(skillId: string): Promise<string> {
+  const invoke = await resolveInvoke();
+  return invoke ? invoke<string>("read_skill_file", { skillId }) : mockApi.readSkillFile(skillId);
+}
+
 async function autoSync(snapshot: AppSnapshot): Promise<AppSnapshot> {
   if (!snapshot.state.codexSkillsPath) return snapshot;
   return syncCodex();

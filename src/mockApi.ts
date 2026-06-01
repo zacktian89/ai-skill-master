@@ -450,4 +450,39 @@ export function syncCodex(): Promise<AppSnapshot> {
   return snapshot();
 }
 
+export function readSkillFile(skillId: string): Promise<string> {
+  const skill = mockSnapshot.state.skills.find((s) => s.id === skillId);
+  const name = skill?.name || skillId;
+  const desc = skill?.description || "暂无描述";
+
+  return Promise.resolve(`---
+name: "${name}"
+description: "${desc}"
+author: "SkillMaster Mock"
+version: "1.0.0"
+---
+
+# ${name}
+
+这是 ${name} 的详细技能描述文件，包含使用规则与清单。
+
+## 适用场景
+- 自动化工作流校验与辅助开发。
+- 当用户要求评估或执行 ${name} 相关任务时。
+
+## 执行清单
+- [ ] 校验项目上下文。
+- [ ] 根据定义的原则对任务进行评估与修正。
+- [ ] 导出检查报告。
+
+## 示例代码
+\`\`\`javascript
+// 示例代码
+function run() {
+  console.log("Running ${name}");
+}
+\`\`\`
+`);
+}
+
 export type { ProjectRule };

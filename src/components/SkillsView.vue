@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { marked } from "marked";
 import {
   Bot,
   CircleHelp,
@@ -81,7 +82,7 @@ const pendingReferenceTarget = ref<PendingReferenceTarget | null>(null);
 const overwriteReferenceRequest = ref<AddSkillReferenceRequest | null>(null);
 const deleteReferenceDialogOpen = ref(false);
 const referenceToDelete = ref<SkillReference | null>(null);
-const activeDetailTab = ref<DetailTab>("references");
+const activeDetailTab = ref<DetailTab>("description");
 const referenceViewMode = ref<ReferenceViewMode>("list");
 
 const sourceIcons = {
@@ -519,6 +520,64 @@ function closeDeleteDialog() {
   deleteDialogOpen.value = false;
   deletePreview.value = null;
 }
+
+const skillMarkdown = ref("");
+const isMarkdownLoading = ref(false);
+
+async function loadSkillMarkdown() {
+  if (!selectedSkill.value) {
+    skillMarkdown.value = "";
+    return;
+  }
+  isMarkdownLoading.value = true;
+  try {
+    const content = await api.readSkillFile(selectedSkill.value.id);
+    skillMarkdown.value = content;
+  } catch (err) {
+    console.error("加载 SKILL.md 失败", err);
+    skillMarkdown.value = "";
+  } finally {
+    isMarkdownLoading.value = false;
+  }
+}
+
+watch([selectedSkill, activeDetailTab], async ([newSkill, newTab]) => {
+  if (newSkill && newTab === "description") {
+    await loadSkillMarkdown();
+  }
+}, { immediate: true });
+
+function parseFrontMatter(content: string) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return { metadata: {} as Record<string, string>, body: content };
+  const yamlStr = match[1];
+  const body = content.slice(match[0].length).trim();
+  const metadata: Record<string, string> = {};
+  yamlStr.split(/\r?\n/).forEach(line => {
+    const idx = line.indexOf(':');
+    if (idx > -1) {
+      const key = line.slice(0, idx).trim();
+      const value = line.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+      if (key) metadata[key] = value;
+    }
+  });
+  return { metadata, body };
+}
+
+const parsedMarkdown = computed(() => {
+  const { metadata, body } = parseFrontMatter(skillMarkdown.value);
+  return { metadata, body };
+});
+
+const renderedMarkdown = computed(() => {
+  if (!parsedMarkdown.value.body) return "";
+  try {
+    return marked.parse(parsedMarkdown.value.body) as string;
+  } catch (err) {
+    console.error("Markdown 解析失败:", err);
+    return parsedMarkdown.value.body;
+  }
+});
 </script>
 
 <template>
@@ -601,19 +660,19 @@ function closeDeleteDialog() {
           <nav class="detail-tabs" aria-label="Skill detail tabs">
             <button
               class="detail-tab"
-              :class="{ active: activeDetailTab === 'references' }"
-              type="button"
-              @click="activeDetailTab = 'references'"
-            >
-              引用
-            </button>
-            <button
-              class="detail-tab"
               :class="{ active: activeDetailTab === 'description' }"
               type="button"
               @click="activeDetailTab = 'description'"
             >
               详情
+            </button>
+            <button
+              class="detail-tab"
+              :class="{ active: activeDetailTab === 'references' }"
+              type="button"
+              @click="activeDetailTab = 'references'"
+            >
+              引用
             </button>
           </nav>
 
@@ -718,7 +777,21 @@ function closeDeleteDialog() {
           </section>
 
           <section v-else class="description-pane">
-            <p v-if="selectedSkill.description">{{ selectedSkill.description }}</p>
+            <div v-if="isMarkdownLoading" class="preview-loading">
+              <span>加载中...</span>
+            </div>
+            <div v-else-if="skillMarkdown">
+              <!-- Front matter metadata tags -->
+              <div class="skill-meta-tags" v-if="Object.keys(parsedMarkdown.metadata).length">
+                <div v-for="(val, key) in parsedMarkdown.metadata" :key="key" class="skill-meta-tag">
+                  <span class="skill-meta-tag-key">{{ key }}</span>:
+                  <span class="skill-meta-tag-val">{{ val }}</span>
+                </div>
+              </div>
+
+              <!-- Markdown Body -->
+              <div class="markdown-body" v-html="renderedMarkdown"></div>
+            </div>
             <p v-else class="description-empty">暂无描述。</p>
           </section>
         </div>

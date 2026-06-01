@@ -20,6 +20,7 @@ use crate::state_store::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
@@ -1089,6 +1090,38 @@ pub fn sync_codex(app: AppHandle) -> std::result::Result<AppSnapshot, String> {
         &StateLoadStatus::Clean,
     )
     .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn read_skill_file(
+    app: AppHandle,
+    skill_id: String,
+) -> std::result::Result<String, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    let skill = command_state
+        .state
+        .skills
+        .iter()
+        .find(|skill| skill.id == skill_id)
+        .ok_or_else(|| format!("找不到 skill：{}", skill_id))?;
+
+    let target_path = skill.library_path.join("SKILL.md");
+    if !target_path.exists() {
+        return Err(format!("找不到 SKILL.md 文件：{}", target_path.display()));
+    }
+
+    let canonical_library = skill.library_path.canonicalize()
+        .map_err(|e| format!("无法解析技能目录：{}", e))?;
+    let canonical_target = target_path.canonicalize()
+        .map_err(|e| format!("无法解析 target 文件：{}", e))?;
+
+    if !canonical_target.starts_with(&canonical_library) {
+        return Err("安全错误：非法路径访问".to_string());
+    }
+
+    let content = fs::read_to_string(&canonical_target)
+        .map_err(|error| format!("读取文件失败：{}", error))?;
+    Ok(content)
 }
 
 #[cfg(test)]
