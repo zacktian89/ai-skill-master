@@ -375,6 +375,12 @@ fn built_in_target_profiles() -> Vec<SkillTargetProfile> {
             scope: ReferenceScope::User,
         },
         SkillTargetProfile {
+            id: "gemini-user".to_string(),
+            target_name: "Gemini CLI".to_string(),
+            root_path: home.join(".gemini").join("config").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
             id: "copilot-user".to_string(),
             target_name: "GitHub Copilot".to_string(),
             root_path: home.join(".copilot").join("skills"),
@@ -384,6 +390,12 @@ fn built_in_target_profiles() -> Vec<SkillTargetProfile> {
             id: "cursor-user".to_string(),
             target_name: "Cursor".to_string(),
             root_path: home.join(".cursor").join("skills"),
+            scope: ReferenceScope::User,
+        },
+        SkillTargetProfile {
+            id: "workbuddy-user".to_string(),
+            target_name: "WorkBuddy".to_string(),
+            root_path: home.join(".workbuddy").join("skills"),
             scope: ReferenceScope::User,
         },
         SkillTargetProfile {
@@ -1480,6 +1492,22 @@ mod tests {
         assert_eq!(preview.skill_name, "Writer");
         assert_eq!(preview.managed_link_targets.len(), 1);
         assert_eq!(preview.affected_projects.len(), 1);
+    }
+
+    #[test]
+    fn built_in_profiles_include_new_agent_skill_paths() {
+        let profiles = built_in_target_profiles();
+
+        assert!(profiles.iter().any(|profile| {
+            profile.target_name == "Gemini CLI"
+                && profile
+                    .root_path
+                    .ends_with(std::path::Path::new(".gemini").join("config").join("skills"))
+        }));
+        assert!(profiles.iter().any(|profile| {
+            profile.target_name == "WorkBuddy"
+                && profile.root_path.ends_with(std::path::Path::new(".workbuddy").join("skills"))
+        }));
     }
 
     #[test]

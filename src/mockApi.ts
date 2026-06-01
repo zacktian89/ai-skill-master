@@ -145,6 +145,12 @@ const mockSnapshot: AppSnapshot = {
       scope: "user",
     },
     {
+      id: "gemini-user",
+      targetName: "Gemini CLI",
+      rootPath: "/Users/demo/.gemini/config/skills",
+      scope: "user",
+    },
+    {
       id: "copilot-user",
       targetName: "GitHub Copilot",
       rootPath: "/Users/demo/.copilot/skills",
@@ -154,6 +160,12 @@ const mockSnapshot: AppSnapshot = {
       id: "cursor-user",
       targetName: "Cursor",
       rootPath: "/Users/demo/.cursor/skills",
+      scope: "user",
+    },
+    {
+      id: "workbuddy-user",
+      targetName: "WorkBuddy",
+      rootPath: "/Users/demo/.workbuddy/skills",
       scope: "user",
     },
     {

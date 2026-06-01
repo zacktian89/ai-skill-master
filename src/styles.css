@@ -1307,6 +1307,7 @@ button:disabled {
 .reference-pane::-webkit-scrollbar,
 .list-stack::-webkit-scrollbar,
 .project-skill-picker::-webkit-scrollbar,
+.modal-step-section--scroll::-webkit-scrollbar,
 .import-modal::-webkit-scrollbar,
 .import-candidate-list::-webkit-scrollbar,
 .markdown-body pre::-webkit-scrollbar {
@@ -1319,6 +1320,7 @@ button:disabled {
 .reference-pane::-webkit-scrollbar-track,
 .list-stack::-webkit-scrollbar-track,
 .project-skill-picker::-webkit-scrollbar-track,
+.modal-step-section--scroll::-webkit-scrollbar-track,
 .import-modal::-webkit-scrollbar-track,
 .import-candidate-list::-webkit-scrollbar-track,
 .markdown-body pre::-webkit-scrollbar-track {
@@ -1330,6 +1332,7 @@ button:disabled {
 .reference-pane::-webkit-scrollbar-thumb,
 .list-stack::-webkit-scrollbar-thumb,
 .project-skill-picker::-webkit-scrollbar-thumb,
+.modal-step-section--scroll::-webkit-scrollbar-thumb,
 .import-modal::-webkit-scrollbar-thumb,
 .import-candidate-list::-webkit-scrollbar-thumb,
 .markdown-body pre::-webkit-scrollbar-thumb {
@@ -1347,6 +1350,8 @@ button:disabled {
 .list-stack:focus-within::-webkit-scrollbar-thumb,
 .project-skill-picker:hover::-webkit-scrollbar-thumb,
 .project-skill-picker:focus-within::-webkit-scrollbar-thumb,
+.modal-step-section--scroll:hover::-webkit-scrollbar-thumb,
+.modal-step-section--scroll:focus-within::-webkit-scrollbar-thumb,
 .import-modal:hover::-webkit-scrollbar-thumb,
 .import-modal:focus-within::-webkit-scrollbar-thumb,
 .import-candidate-list:hover::-webkit-scrollbar-thumb,
@@ -1937,6 +1942,90 @@ button:disabled {
 
 .modal-card--compact {
   width: min(540px, 100%);
+}
+
+.modal-card--agent {
+  width: min(760px, 100%);
+  max-height: min(700px, calc(100vh - 40px));
+  gap: 12px;
+  padding: 16px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.modal-step-section--scroll {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.target-grid.target-grid--agent-presets {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.target-grid--agent-presets .target-tile {
+  min-height: 60px;
+  padding: 6px 7px;
+  gap: 5px;
+}
+
+.target-grid--agent-presets .target-tile-icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0;
+}
+
+.target-grid--agent-presets .target-tile strong {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+@media (max-width: 980px) {
+  .target-grid.target-grid--agent-presets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.agent-form-grid,
+.field-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.field-stack label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.field-stack small {
+  margin-top: -2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.path-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.path-input-row .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.modal-footer-row {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
 }
 
 .import-modal {

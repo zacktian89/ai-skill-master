@@ -49,8 +49,10 @@ const selectedSkillIds = ref<string[]>([]);
 const PRESET_AGENTS = [
   { name: "Codex", defaultPath: "~/.agents/skills", targetName: "Codex" },
   { name: "Claude Code", defaultPath: "~/.claude/skills", targetName: "Claude Code" },
+  { name: "Gemini CLI", defaultPath: "~/.gemini/config/skills", targetName: "Gemini CLI" },
   { name: "GitHub Copilot", defaultPath: "~/.copilot/skills", targetName: "GitHub Copilot" },
   { name: "Cursor", defaultPath: "~/.cursor/skills", targetName: "Cursor" },
+  { name: "WorkBuddy", defaultPath: "~/.workbuddy/skills", targetName: "WorkBuddy" },
   { name: "Windsurf", defaultPath: "~/.codeium/windsurf/skills", targetName: "Windsurf" },
   { name: "Kiro", defaultPath: "~/.kiro/skills", targetName: "Kiro" },
   { name: "OpenCode", defaultPath: "~/.config/opencode/skill", targetName: "OpenCode" },
@@ -60,8 +62,10 @@ const PRESET_AGENTS = [
 const targetIcons: Record<string, any> = {
   Codex: SquareTerminal,
   "Claude Code": Bot,
+  "Gemini CLI": Bot,
   "GitHub Copilot": Github,
   Cursor: Code2,
+  WorkBuddy: Bot,
   Windsurf: Github,
   Kiro: Cpu,
   OpenCode: CircleHelp,
@@ -476,21 +480,16 @@ watch(
 
   <!-- Add Agent Dialog -->
   <div v-if="addAgentDialogOpen" class="modal-backdrop" @click.self="closeAddAgentDialog">
-    <section class="modal-card modal-card--compact" style="max-width: 580px;">
-      <div class="modal-title-row" style="margin-bottom: 16px;">
+    <section class="modal-card modal-card--agent">
+      <div class="modal-title-row">
         <h2>添加 Agent</h2>
         <button class="ghost-icon-button" type="button" aria-label="关闭" @click="closeAddAgentDialog">
           <X :size="16" />
         </button>
       </div>
 
-      <div class="modal-step-section">
-        <p class="modal-instruction-text" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-          选择预设主流 Agent，或配置自定义 Agent 目录路径：
-        </p>
-
-        <!-- Preset Grid -->
-        <div class="target-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-bottom: 20px;">
+      <div class="modal-step-section modal-step-section--scroll">
+        <div class="target-grid target-grid--agent-presets">
           <button
             v-for="(preset, index) in PRESET_AGENTS"
             :key="preset.name"
@@ -507,36 +506,31 @@ watch(
           </button>
         </div>
 
-        <!-- Custom Fields -->
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <label style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Agent 名称</label>
-            <input v-model="inputAgentName" class="search-input" placeholder="输入 Agent 名称" style="width: 100%;" />
+        <div class="agent-form-grid">
+          <div class="field-stack">
+            <label>Agent 名称</label>
+            <input v-model="inputAgentName" class="search-input" placeholder="输入 Agent 名称" />
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <label style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">技能引用根目录 (skills 目录)</label>
-            <div style="display: flex; gap: 8px;">
-              <input v-model="inputAgentPath" class="search-input" placeholder="输入或浏览目录路径（可使用 ~ 开头）" style="flex: 1;" />
+          <div class="field-stack">
+            <label>技能引用根目录 (skills 目录)</label>
+            <div class="path-input-row">
+              <input v-model="inputAgentPath" class="search-input" placeholder="输入或浏览目录路径（可使用 ~ 开头）" />
               <button
                 class="secondary-button"
                 type="button"
                 :disabled="busy"
                 @click="browseAgentPath"
-                style="height: 34px; padding: 0 12px; display: flex; align-items: center; gap: 6px;"
               >
                 <FolderOpen :size="16" />
                 <span>浏览</span>
               </button>
             </div>
-            <small style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-              提示：内置 Agent 将在后端自动将 <code>~</code> 解析为当前用户主文件夹（Home 目录）。
-            </small>
           </div>
         </div>
       </div>
 
-      <div class="button-row button-row--end" style="margin-top: 24px; border-top: 1px solid var(--border-default); padding-top: 14px;">
+      <div class="button-row button-row--end modal-footer-row">
         <button class="secondary-button" :disabled="busy" @click="closeAddAgentDialog">取消</button>
         <button class="primary-button" :disabled="busy || !inputAgentName.trim() || !inputAgentPath.trim()" @click="confirmAddAgent">
           确定
