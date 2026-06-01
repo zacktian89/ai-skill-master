@@ -1062,7 +1062,6 @@ summary:focus-visible {
 .eyebrow,
 .detail-header p,
 .inline-copy,
-.list-row-copy small,
 .rule-copy small {
   color: var(--text-secondary);
 }
@@ -1077,7 +1076,6 @@ summary:focus-visible {
 
 .detail-header p,
 .inline-copy,
-.list-row-copy small,
 .rule-copy small {
   margin: 6px 0 0;
   font-size: 14px;
@@ -1401,6 +1399,15 @@ button:disabled {
   min-width: 0;
 }
 
+.list-row-copy small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .list-row-main {
   display: grid;
   gap: 10px;
@@ -1419,7 +1426,8 @@ button:disabled {
   justify-content: space-between;
 }
 
-.list-row-top strong {
+.list-row-top strong,
+.list-row-copy strong {
   font-size: 15px;
   font-weight: 620;
   letter-spacing: -0.01em;
