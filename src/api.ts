@@ -68,13 +68,6 @@ export async function previewDeleteSkill(skillId: string): Promise<DeleteSkillPr
   return invoke ? invoke<DeleteSkillPreview>("preview_delete_skill", { skillId }) : mockApi.previewDeleteSkill(skillId);
 }
 
-export async function setSkillLinkEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
-  const invoke = await resolveInvoke();
-  return invoke
-    ? invoke<AppSnapshot>("set_skill_link_enabled", { skillId, enabled })
-    : mockApi.setSkillLinkEnabled(skillId, enabled);
-}
-
 export async function addSkillReference(request: AddSkillReferenceRequest): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
   return invoke ? invoke<AppSnapshot>("add_skill_reference", { request }) : mockApi.addSkillReference(request);

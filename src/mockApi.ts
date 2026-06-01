@@ -338,19 +338,6 @@ function referenceId(path: string): string {
   return `ref-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
 }
 
-export function setSkillLinkEnabled(skillId: string, enabled: boolean): Promise<AppSnapshot> {
-  const skill = mockSnapshot.state.skills.find((item) => item.id === skillId);
-  if (skill) {
-    skill.managedLinks.codex = enabled ? `${mockSnapshot.state.codexSkillsPath}/${skill.id}` : null;
-    mockSnapshot.state.syncStatus = {
-      phase: "healthy",
-      message: enabled ? "Mock 托管链接已创建。" : "Mock 托管链接已移除。",
-      pendingActions: [],
-    };
-  }
-  return snapshot();
-}
-
 export function addSkillReference(request: AddSkillReferenceRequest): Promise<AppSnapshot> {
   const skill = mockSnapshot.state.skills.find((item) => item.id === request.skillId);
   if (skill) {

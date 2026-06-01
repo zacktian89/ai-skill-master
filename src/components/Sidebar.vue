@@ -48,13 +48,13 @@ const navItems = computed(() => [
   {
     id: "skills" as const,
     title: "Skills",
-    subtitle: `${props.snapshot?.state.skills.length ?? 0} 个 skill`,
+    count: props.snapshot?.state.skills.length ?? 0,
     icon: Library,
   },
   {
     id: "projects" as const,
     title: "Projects",
-    subtitle: `${props.snapshot?.state.projects.length ?? 0} 个项目`,
+    count: props.snapshot?.state.projects.length ?? 0,
     icon: FolderKanban,
   },
 ]);
@@ -62,6 +62,8 @@ const navItems = computed(() => [
 
 <template>
   <aside class="sidebar-rail" :class="{ 'sidebar-rail--collapsed': collapsed }">
+    <span class="sr-only">SkillMaster</span>
+
     <div class="rail-brand" title="SkillMaster">
       <div class="rail-brand-mark">
         <Sparkles :size="18" />
@@ -70,17 +72,18 @@ const navItems = computed(() => [
         <strong>ai-skill-master</strong>
         <small>SkillMaster workspace</small>
       </div>
-      <button
-        class="rail-collapse-button"
-        type="button"
-        :aria-label="collapsed ? '展开侧边栏' : '折叠侧边栏'"
-        :title="collapsed ? '展开侧边栏' : '折叠侧边栏'"
-        @click="$emit('update:collapsed', !collapsed)"
-      >
-        <PanelLeftOpen v-if="collapsed" :size="17" />
-        <PanelLeftClose v-else :size="17" />
-      </button>
     </div>
+
+    <button
+      class="rail-collapse-button"
+      type="button"
+      :aria-label="collapsed ? '展开侧边栏' : '折叠侧边栏'"
+      :title="collapsed ? '展开侧边栏' : '折叠侧边栏'"
+      @click="$emit('update:collapsed', !collapsed)"
+    >
+      <PanelLeftOpen v-if="collapsed" :size="17" />
+      <PanelLeftClose v-else :size="17" />
+    </button>
 
     <nav class="rail-nav" aria-label="Primary">
       <button
@@ -88,14 +91,13 @@ const navItems = computed(() => [
         :key="item.id"
         class="rail-nav-button"
         :class="{ active: activeSection === item.id }"
-        :title="collapsed ? `${item.title} · ${item.subtitle}` : undefined"
-        :aria-label="collapsed ? `${item.title} · ${item.subtitle}` : undefined"
+        :title="collapsed ? `${item.title} (${item.count})` : undefined"
+        :aria-label="collapsed ? `${item.title} (${item.count})` : undefined"
         @click="$emit('update:activeSection', item.id)"
       >
         <component :is="item.icon" :size="18" />
         <span class="rail-nav-copy">
-          <strong>{{ item.title }}</strong>
-          <small>{{ item.subtitle }}</small>
+          <strong>{{ item.title }} ({{ item.count }})</strong>
         </span>
       </button>
     </nav>
@@ -104,14 +106,14 @@ const navItems = computed(() => [
       <button
         class="rail-nav-button rail-nav-button--footer"
         :class="{ active: activeSection === 'settings' }"
-        :title="collapsed ? `Settings · ${workspaceState.title}` : undefined"
-        :aria-label="collapsed ? `Settings · ${workspaceState.title}` : undefined"
+        :title="collapsed ? (workspaceState.title !== '链接状态正常' ? `Settings · ${workspaceState.title}` : 'Settings') : undefined"
+        :aria-label="collapsed ? (workspaceState.title !== '链接状态正常' ? `Settings · ${workspaceState.title}` : 'Settings') : undefined"
         @click="$emit('update:activeSection', 'settings')"
       >
         <Settings :size="18" />
         <span class="rail-nav-copy">
           <strong>Settings</strong>
-          <small>{{ workspaceState.title }}</small>
+          <small v-if="workspaceState.title !== '链接状态正常'">{{ workspaceState.title }}</small>
         </span>
       </button>
     </div>

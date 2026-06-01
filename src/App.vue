@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { AlertCircle } from "lucide-vue-next";
 import * as api from "./api";
 import Sidebar from "./components/Sidebar.vue";
@@ -57,7 +57,24 @@ function setThemeMode(next: ThemeMode) {
   localStorage.setItem(themeStorageKey, next);
 }
 
-onMounted(refresh);
+let wasSmall = false;
+const checkWidth = () => {
+  const isSmall = window.innerWidth <= 1200;
+  if (isSmall && !wasSmall) {
+    sidebarCollapsed.value = true;
+  }
+  wasSmall = isSmall;
+};
+
+onMounted(() => {
+  refresh();
+  checkWidth();
+  window.addEventListener("resize", checkWidth);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", checkWidth);
+});
 </script>
 
 <template>

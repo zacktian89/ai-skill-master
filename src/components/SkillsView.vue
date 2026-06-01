@@ -273,7 +273,7 @@ function referencesForSkill(skill: Skill): SkillReference[] {
         symlinkPath: skill.managedLinks.codex,
         scope: "user",
         status: "healthy",
-        removable: true,
+        removable: false,
         legacyCodex: true,
       },
     ]);
@@ -511,11 +511,7 @@ function closeDeleteReferenceDialog() {
 async function confirmDeleteReference() {
   if (!referenceToDelete.value || !selectedSkill.value) return;
   const reference = referenceToDelete.value;
-  if (reference.legacyCodex) {
-    await run(() => api.setSkillLinkEnabled(selectedSkill.value!.id, false));
-  } else {
-    await run(() => api.removeSkillReference(reference.id));
-  }
+  await run(() => api.removeSkillReference(reference.id));
   closeDeleteReferenceDialog();
 }
 
@@ -588,15 +584,6 @@ function closeDeleteDialog() {
 
             <div class="extension-command-panel">
               <div class="extension-actions">
-                <label class="switch-control">
-                  <span>启用</span>
-                  <input
-                    type="checkbox"
-                    :checked="linkEnabled(selectedSkill)"
-                    :disabled="busy"
-                    @change="run(() => api.setSkillLinkEnabled(selectedSkill!.id, ($event.target as HTMLInputElement).checked))"
-                  />
-                </label>
                 <button class="danger-button danger-button--icon" :disabled="busy" aria-label="删除 Skill" @click="openDeleteDialog">
                   <Trash2 :size="16" />
                 </button>
