@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject } from "vue";
 import { Plus, Folder, Github, FolderGit, ChevronRight } from "lucide-vue-next";
+import { marked } from "marked";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
 import SearchInput from "../../components/SearchInput.vue";
@@ -26,7 +27,7 @@ import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
 
 const { t } = useI18n();
 
-type DetailTab = "references" | "description";
+type DetailTab = "references" | "description" | "readme";
 
 const appStore = inject(AppStoreKey, null);
 const selectionStore = inject(SelectionStoreKey, null);
@@ -101,7 +102,20 @@ const skills = computed(() => {
     .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
 });
 
-const groupByGitHub = ref(false);
+const storageKey = "skillmaster-group-by-github";
+
+function readGroupByGitHub(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  return localStorage.getItem(storageKey) === "true";
+}
+
+const groupByGitHub = ref(readGroupByGitHub());
+
+watch(groupByGitHub, (newVal) => {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(storageKey, String(newVal));
+  }
+});
 
 function getGitHubRepo(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -216,10 +230,86 @@ function openDeleteReferenceDialog(reference: SkillReferenceDetail) {
   referenceDialogOpen.value = true;
 }
 
-// Watch selectedSkill to reset activeTab/reset detail description markdown loading
-watch(selectedSkill, () => {
-  // Let the useSkillMarkdown hook load markdown automatically
+const readmeMarkdown = ref("");
+const isReadmeLoading = ref(false);
+
+function getGitHubRepoAndOwner(url: string | null | undefined): { owner: string; repo: string } | null {
+  if (!url) return null;
+  const match = url.match(/(?:github\.com[/:])([^/]+)\/([^/.]+)(?:\.git)?/i);
+  if (match) {
+    return { owner: match[1], repo: match[2] };
+  }
+  return null;
+}
+
+async function loadReadme() {
+  const skill = selectedSkill.value;
+  if (!skill || skill.source?.kind !== "github") {
+    readmeMarkdown.value = "";
+    return;
+  }
+
+  const info = getGitHubRepoAndOwner(skill.source.url);
+  if (!info) {
+    readmeMarkdown.value = "";
+    return;
+  }
+
+  isReadmeLoading.value = true;
+  readmeMarkdown.value = "";
+
+  const branchOrCommit = skill.source.commit || skill.source.ref || "main";
+  const urlMain = `https://raw.githubusercontent.com/${info.owner}/${info.repo}/${branchOrCommit}/README.md`;
+  const urlMaster = `https://raw.githubusercontent.com/${info.owner}/${info.repo}/master/README.md`;
+
+  try {
+    const res = await fetch(urlMain);
+    if (!res.ok) {
+      if (res.status === 404 && !skill.source.commit && !skill.source.ref) {
+        const resMaster = await fetch(urlMaster);
+        if (resMaster.ok) {
+          readmeMarkdown.value = await resMaster.text();
+          return;
+        }
+      }
+      throw new Error(`Failed to fetch readme: ${res.statusText}`);
+    }
+    readmeMarkdown.value = await res.text();
+  } catch (err) {
+    console.error(err);
+    readmeMarkdown.value = `### 读取 README 失败\n\n无法从 GitHub 加载此技能的 README.md，请检查网络连接。`;
+  } finally {
+    isReadmeLoading.value = false;
+  }
+}
+
+const renderedReadme = computed(() => {
+  if (!readmeMarkdown.value) return "";
+  try {
+    return marked.parse(readmeMarkdown.value) as string;
+  } catch (err) {
+    console.error("Markdown 解析失败:", err);
+    return readmeMarkdown.value;
+  }
 });
+
+// Watch selectedSkill to reset activeTab/reset detail description markdown loading
+watch(selectedSkill, (newSkill) => {
+  if (activeDetailTab.value === "readme" && newSkill?.source?.kind !== "github") {
+    activeDetailTab.value = "description";
+  }
+});
+
+// Watch selectedSkill and activeDetailTab to load README
+watch(
+  [selectedSkill, activeDetailTab],
+  async ([newSkill, newTab]) => {
+    if (newSkill && newTab === "readme") {
+      await loadReadme();
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -305,6 +395,9 @@ watch(selectedSkill, () => {
         :skill-markdown="skillMarkdown"
         :parsed-markdown="parsedMarkdown"
         :rendered-markdown="renderedMarkdown"
+        :readme-markdown="readmeMarkdown"
+        :is-readme-loading="isReadmeLoading"
+        :rendered-readme="renderedReadme"
         :active-detail-tab="activeDetailTab"
         :busy="busy"
         @update:active-detail-tab="activeDetailTab = $event"

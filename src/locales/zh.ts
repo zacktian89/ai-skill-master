@@ -43,7 +43,8 @@ export const zh = {
     moreSkillActions: "更多技能操作",
     backToSkillList: "返回技能列表",
     groupByGithub: "按 GitHub 仓库聚合",
-    localGroup: "其他 / 本地",
+    localGroup: "本地",
+    tabReadme: "项目说明",
   },
   projects: {
     empty: "没有匹配的项目。",

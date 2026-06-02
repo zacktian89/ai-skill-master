@@ -46,6 +46,7 @@ export const en: TranslationKey = {
     backToSkillList: "Back to Skill List",
     groupByGithub: "Group by GitHub repository",
     localGroup: "Others / Local",
+    tabReadme: "Readme",
   },
   projects: {
     empty: "No matching projects.",

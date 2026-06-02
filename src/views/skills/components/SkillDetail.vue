@@ -7,7 +7,7 @@ import SkillReferencesTab from "./SkillReferencesTab.vue";
 import type { Skill, SkillSourceKind, SkillReferenceDetail } from "../../../types";
 import { useI18n } from "../../../composables/useI18n";
 
-type DetailTab = "references" | "description";
+type DetailTab = "references" | "description" | "readme";
 
 const props = defineProps<{
   selectedSkill: Skill;
@@ -20,6 +20,9 @@ const props = defineProps<{
     body: string;
   };
   renderedMarkdown: string;
+  readmeMarkdown: string | null;
+  isReadmeLoading: boolean;
+  renderedReadme: string;
   activeDetailTab: DetailTab;
   busy: boolean;
 }>();
@@ -257,6 +260,15 @@ onBeforeUnmount(closeMoreMenu);
         {{ t('skills.tabDetail') }}
       </button>
       <button
+        v-if="selectedSkill.source?.kind === 'github'"
+        class="detail-tab"
+        :class="{ active: activeDetailTab === 'readme' }"
+        type="button"
+        @click="$emit('update:activeDetailTab', 'readme')"
+      >
+        {{ t('skills.tabReadme') }}
+      </button>
+      <button
         class="detail-tab"
         :class="{ active: activeDetailTab === 'references' }"
         type="button"
@@ -273,6 +285,17 @@ onBeforeUnmount(closeMoreMenu);
       :busy="busy"
       @open-delete-reference="$emit('open-delete-reference', $event)"
     />
+
+    <section v-else-if="activeDetailTab === 'readme'" class="description-pane">
+      <div v-if="isReadmeLoading" class="preview-loading">
+        <span>{{ t('skills.loading') }}</span>
+      </div>
+      <div v-else-if="readmeMarkdown">
+        <!-- Markdown Body -->
+        <div class="markdown-body" v-html="renderedReadme"></div>
+      </div>
+      <p v-else class="description-empty">{{ t('skills.noDescription') }}</p>
+    </section>
 
     <SkillDescriptionTab
       v-else

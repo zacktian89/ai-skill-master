@@ -68,6 +68,7 @@ const snapshot: AppSnapshot = {
 
 describe("SkillsView references tab", () => {
   beforeEach(() => {
+    localStorage.clear();
     useI18n().locale.value = "zh";
   });
 
@@ -448,5 +449,182 @@ describe("SkillsView references tab", () => {
     // The skills should be visible again in the list
     expect(wrapper.find(".list-stack").text()).toContain("Skill A");
     expect(wrapper.find(".list-stack").text()).toContain("Skill B");
+  });
+
+  it("renders and switches to the Readme tab for GitHub-imported skills, fetching and parsing the raw README.md", async () => {
+    const githubSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "writer-git",
+            name: "Writer Git",
+            description: "Git 仓库里的写作技能",
+            libraryPath: "/library/writer-git",
+            source: {
+              kind: "github",
+              url: "https://github.com/test-owner/test-repo",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("# Git Repo README\nThis is the readme content."),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot: githubSnapshot,
+        selectedSkillId: "writer-git",
+      },
+    });
+
+    await flushPromises();
+
+    // Verify Readme tab button exists because it's a GitHub skill
+    const tabs = wrapper.findAll(".detail-tab");
+    const readmeTab = tabs.find((tab) => tab.text() === "Readme");
+    expect(readmeTab).toBeDefined();
+
+    // Click on Readme tab
+    await readmeTab!.trigger("click");
+    await flushPromises();
+
+    // Verify fetch was called with the correct raw github user content URL
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://raw.githubusercontent.com/test-owner/test-repo/main/README.md"
+    );
+
+    // Verify the README content is parsed and rendered inside the description pane
+    const pane = wrapper.find(".description-pane");
+    expect(pane.exists()).toBe(true);
+    expect(pane.html()).toContain("<h1>Git Repo README</h1>");
+    expect(pane.text()).toContain("This is the readme content.");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to the master branch if the fetch from main returns a 404", async () => {
+    const githubSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "writer-git",
+            name: "Writer Git",
+            description: "Git 仓库里的写作技能",
+            libraryPath: "/library/writer-git",
+            source: {
+              kind: "github",
+              url: "https://github.com/test-owner/test-repo",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/main/")) {
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          statusText: "Not Found",
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        text: () => Promise.resolve("# Legacy README\nMaster branch readme."),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot: githubSnapshot,
+        selectedSkillId: "writer-git",
+      },
+    });
+
+    await flushPromises();
+
+    const readmeTab = wrapper.findAll(".detail-tab").find((tab) => tab.text() === "Readme");
+    await readmeTab!.trigger("click");
+    await flushPromises();
+
+    // Verify fetch was tried for main, and then fell back to master
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://raw.githubusercontent.com/test-owner/test-repo/main/README.md"
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://raw.githubusercontent.com/test-owner/test-repo/master/README.md"
+    );
+
+    // Verify master branch content is rendered
+    expect(wrapper.find(".description-pane").html()).toContain("<h1>Legacy README</h1>");
+    expect(wrapper.find(".description-pane").text()).toContain("Master branch readme.");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("persists the groupByGitHub selection to localStorage and initializes it on mount", async () => {
+    // Set localStorage value to true initially
+    localStorage.setItem("skillmaster-group-by-github", "true");
+
+    const complexSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "skill-a",
+            name: "Skill A",
+            description: "GitHub Skill 1",
+            libraryPath: "/library/skill-a",
+            source: {
+              kind: "github",
+              url: "https://github.com/org-a/repo-1",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot: complexSnapshot,
+        selectedSkillId: "skill-a",
+      },
+    });
+
+    await flushPromises();
+
+    // Verify it is grouped on mount
+    expect(wrapper.find(".skill-group").exists()).toBe(true);
+
+    // Toggle it off
+    const toggleBtn = wrapper.find('button[aria-label="按 GitHub 仓库聚合"]');
+    await toggleBtn.trigger("click");
+    await flushPromises();
+
+    // Verify it is no longer grouped
+    expect(wrapper.find(".skill-group").exists()).toBe(false);
+
+    // Verify localStorage has been updated
+    expect(localStorage.getItem("skillmaster-group-by-github")).toBe("false");
   });
 });
