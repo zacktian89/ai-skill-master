@@ -44,6 +44,8 @@ export const en: TranslationKey = {
     openGithub: "Open GitHub",
     moreSkillActions: "More Skill Actions",
     backToSkillList: "Back to Skill List",
+    groupByGithub: "Group by GitHub repository",
+    localGroup: "Others / Local",
   },
   projects: {
     empty: "No matching projects.",

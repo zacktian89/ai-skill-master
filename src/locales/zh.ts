@@ -42,6 +42,8 @@ export const zh = {
     openGithub: "打开 GitHub",
     moreSkillActions: "更多技能操作",
     backToSkillList: "返回技能列表",
+    groupByGithub: "按 GitHub 仓库聚合",
+    localGroup: "其他 / 本地",
   },
   projects: {
     empty: "没有匹配的项目。",

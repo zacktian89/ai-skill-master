@@ -317,4 +317,136 @@ describe("SkillsView references tab", () => {
     await githubLink.trigger("click");
     expect(openUrlSpy).toHaveBeenCalledWith("https://github.com/test-owner/test-repo");
   });
+
+  it("aggregates skills from the same GitHub repository when toggle button is clicked", async () => {
+    const complexSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "skill-a",
+            name: "Skill A",
+            description: "GitHub Skill 1",
+            libraryPath: "/library/skill-a",
+            source: {
+              kind: "github",
+              url: "https://github.com/org-a/repo-1",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+          {
+            id: "skill-b",
+            name: "Skill B",
+            description: "GitHub Skill 2",
+            libraryPath: "/library/skill-b",
+            source: {
+              kind: "github",
+              url: "https://github.com/org-a/repo-1",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+          {
+            id: "skill-c",
+            name: "Skill C",
+            description: "GitHub Skill 3 from diff repo",
+            libraryPath: "/library/skill-c",
+            source: {
+              kind: "github",
+              url: "https://github.com/org-b/repo-2.git",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+          {
+            id: "skill-local",
+            name: "Skill Local",
+            description: "Local Skill",
+            libraryPath: "/library/skill-local",
+            source: {
+              kind: "local",
+              path: "/local/path",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot: complexSnapshot,
+        selectedSkillId: "skill-a",
+      },
+    });
+
+    await flushPromises();
+
+    // Verify non-grouped layout initially
+    expect(wrapper.find(".skill-group").exists()).toBe(false);
+    expect(wrapper.find(".list-stack").text()).toContain("Skill A");
+    expect(wrapper.find(".list-stack").text()).toContain("Skill B");
+    expect(wrapper.find(".list-stack").text()).toContain("Skill C");
+    expect(wrapper.find(".list-stack").text()).toContain("Skill Local");
+
+    // Click the toggle aggregation button
+    const toggleBtn = wrapper.find('button[aria-label="按 GitHub 仓库聚合"]');
+    expect(toggleBtn.exists()).toBe(true);
+    await toggleBtn.trigger("click");
+    await flushPromises();
+
+    // Grouping should be active now
+    expect(wrapper.find(".skill-group").exists()).toBe(true);
+
+    const groupHeaders = wrapper.findAll(".skill-group-header");
+    expect(groupHeaders).toHaveLength(3);
+
+    // Group 1: org-a/repo-1 (alphabetically sorted)
+    expect(groupHeaders[0].find(".skill-group-title").text()).toBe("org-a/repo-1");
+    expect(groupHeaders[0].find(".skill-group-count").text()).toBe("2");
+
+    // Group 2: org-b/repo-2
+    expect(groupHeaders[1].find(".skill-group-title").text()).toBe("org-b/repo-2");
+    expect(groupHeaders[1].find(".skill-group-count").text()).toBe("1");
+
+    // Group 3: Local/Others
+    expect(groupHeaders[2].find(".skill-group-title").text()).toBe("其他 / 本地");
+    expect(groupHeaders[2].find(".skill-group-count").text()).toBe("1");
+
+    // Verify skills are visible initially
+    expect(wrapper.find(".list-stack").text()).toContain("Skill A");
+    expect(wrapper.find(".list-stack").text()).toContain("Skill B");
+
+    // Click Group 1 header to collapse it
+    await groupHeaders[0].trigger("click");
+    await flushPromises();
+
+    // Verify chevron class has collapsed state
+    expect(groupHeaders[0].find(".skill-group-chevron").classes()).toContain("collapsed");
+
+    // The skills inside Group 1 (Skill A and Skill B) should be hidden in the list
+    expect(wrapper.find(".list-stack").text()).not.toContain("Skill A");
+    expect(wrapper.find(".list-stack").text()).not.toContain("Skill B");
+    // Other groups' skills should still be visible in the list
+    expect(wrapper.find(".list-stack").text()).toContain("Skill C");
+    expect(wrapper.find(".list-stack").text()).toContain("Skill Local");
+
+    // Click Group 1 header again to expand it
+    await groupHeaders[0].trigger("click");
+    await flushPromises();
+
+    // Verify chevron class has no collapsed state
+    expect(groupHeaders[0].find(".skill-group-chevron").classes()).not.toContain("collapsed");
+
+    // The skills should be visible again in the list
+    expect(wrapper.find(".list-stack").text()).toContain("Skill A");
+    expect(wrapper.find(".list-stack").text()).toContain("Skill B");
+  });
 });
