@@ -22,8 +22,4 @@ defineEmits<{
   </label>
 </template>
 
-<style scoped>
-.switch-toggle {
-  margin-right: 4px;
-}
-</style>
+

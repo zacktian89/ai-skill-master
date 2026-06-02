@@ -150,9 +150,4 @@ const normalizedName = computed(() => {
   />
 </template>
 
-<style scoped>
-svg {
-  display: block;
-  flex-shrink: 0;
-}
-</style>
+

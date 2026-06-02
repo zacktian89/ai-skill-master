@@ -78,7 +78,7 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
 </script>
 
 <template>
-  <div class="extension-detail">
+  <div class="extension-detail skill-preview-panel">
     <header class="extension-header">
       <div class="extension-identity">
         <button
@@ -130,16 +130,4 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
   </div>
 </template>
 
-<style scoped>
-.extension-identity {
-  grid-template-columns: auto 42px minmax(0, 1fr);
-}
 
-.skill-preview-back {
-  align-self: start;
-}
-
-.detail-tab {
-  cursor: default;
-}
-</style>

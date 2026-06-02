@@ -16,3 +16,14 @@
 @import "./components/import.css";
 @import "./components/form.css";
 @import "./components/detail-section.css";
+
+/* Extracted & Redesigned Component Styles */
+@import "./components/agent-icon.css";
+@import "./components/scanned-skill-list.css";
+@import "./components/skill-preview-panel.css";
+
+/* Extracted & Redesigned View Styles */
+@import "./views/skills.css";
+@import "./views/agents.css";
+@import "./views/projects.css";
+@import "./views/settings.css";

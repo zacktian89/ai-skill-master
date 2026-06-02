@@ -1,0 +1,11 @@
+.skill-preview-panel .extension-identity {
+  grid-template-columns: auto 42px minmax(0, 1fr);
+}
+
+.skill-preview-panel .skill-preview-back {
+  align-self: start;
+}
+
+.skill-preview-panel .detail-tab {
+  cursor: default;
+}
