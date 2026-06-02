@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProjectsView from "../views/projects/ProjectsView.vue";
 import type { AppSnapshot } from "../types";
 import * as api from "../api";
+import { clearSkillScannerCaches } from "../composables/useSkillScanner";
 
 const apiMocks = vi.hoisted(() => ({
   addProject: vi.fn(),
@@ -112,6 +113,7 @@ vi.mock("../utils/dialog", () => ({
 
 describe("ProjectsView", () => {
   beforeEach(() => {
+    clearSkillScannerCaches();
     apiMocks.addProject.mockReset();
     apiMocks.deleteProject.mockReset();
     apiMocks.deleteProject.mockResolvedValue({
@@ -195,6 +197,48 @@ describe("ProjectsView", () => {
     await flushPromises();
 
     expect(wrapper.find(".list-panel-head .search-row-count").exists()).toBe(false);
+  });
+
+  it("uses cached project scans until the rescan button is clicked", async () => {
+    const wrapper = mount(ProjectsView, {
+      props: {
+        snapshot,
+        selectedProjectId: "acme",
+      },
+    });
+
+    await flushPromises();
+
+    expect(api.scanProjectSkills).toHaveBeenCalledTimes(1);
+
+    await wrapper.setProps({
+      snapshot: {
+        ...snapshot,
+        state: {
+          ...snapshot.state,
+          skills: [
+            ...snapshot.state.skills,
+            {
+              id: "style-guide",
+              name: "Style Guide",
+              description: "写作规范",
+              libraryPath: "/library/style-guide",
+              references: [],
+              managedLinks: {},
+              conflict: null,
+            },
+          ],
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(api.scanProjectSkills).toHaveBeenCalledTimes(1);
+
+    await wrapper.find('button[aria-label="重新扫描"]').trigger("click");
+    await flushPromises();
+
+    expect(api.scanProjectSkills).toHaveBeenCalledTimes(2);
   });
 
   it("toggles rules, adds and removes skills references", async () => {

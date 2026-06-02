@@ -192,6 +192,7 @@ const {
   scannedCategories,
   scanning,
   scannedSkillsCount,
+  loadScan,
   refreshScan
 } = useSkillScanner(
   () => selectedAgent.value?.path,
@@ -264,7 +265,7 @@ async function toggleSkillRule(skillId: string) {
       rule: newRule,
     })
   );
-  await refreshScan();
+  await loadScan();
 }
 
 const conflictState = ref<{ skillId: string; libraryName: string; projectName: string; skillPath: string } | null>(null);
@@ -365,16 +366,9 @@ watch(
     if (newId !== oldId) {
       scannedCategories.value = [];
     }
-    refreshScan();
+    loadScan();
   },
   { immediate: true }
-);
-
-watch(
-  () => snapshot.value.state.skills,
-  () => {
-    refreshScan();
-  }
 );
 </script>
 

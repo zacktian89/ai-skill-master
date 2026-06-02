@@ -156,6 +156,7 @@ const {
   scannedCategories,
   scanning,
   scannedSkillsCount,
+  loadScan,
   refreshScan
 } = useSkillScanner(
   () => selectedProject.value?.path,
@@ -377,16 +378,9 @@ watch(
     if (newId !== oldId) {
       scannedCategories.value = [];
     }
-    refreshScan();
+    loadScan();
   },
   { immediate: true }
-);
-
-watch(
-  () => snapshot.value.state.skills,
-  () => {
-    refreshScan();
-  }
 );
 
 async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "keep_existing") {

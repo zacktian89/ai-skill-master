@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AgentsView from "../views/agents/AgentsView.vue";
 import type { AppSnapshot } from "../types";
 import * as api from "../api";
+import { clearSkillScannerCaches } from "../composables/useSkillScanner";
 
 const apiMocks = vi.hoisted(() => ({
   addAgent: vi.fn(),
@@ -57,6 +58,7 @@ const snapshot: AppSnapshot = {
 
 describe("AgentsView", () => {
   beforeEach(() => {
+    clearSkillScannerCaches();
     apiMocks.addAgent.mockReset();
     apiMocks.deleteAgent.mockReset();
     apiMocks.deleteAgent.mockResolvedValue(snapshot);
@@ -141,5 +143,61 @@ describe("AgentsView", () => {
     await flushPromises();
 
     expect(api.deleteAgent).toHaveBeenCalledWith("codex");
+  });
+
+  it("uses cached agent scans until the rescan button is clicked", async () => {
+    const agentSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        agents: [
+          {
+            id: "codex",
+            name: "Codex",
+            path: "~/.agents/skills",
+            rules: {},
+          },
+        ],
+      },
+    };
+
+    const wrapper = mount(AgentsView, {
+      props: {
+        snapshot: agentSnapshot,
+        selectedAgentId: "codex",
+      },
+    });
+
+    await flushPromises();
+
+    expect(api.scanAgentSkills).toHaveBeenCalledTimes(1);
+
+    await wrapper.setProps({
+      snapshot: {
+        ...agentSnapshot,
+        state: {
+          ...agentSnapshot.state,
+          skills: [
+            {
+              id: "writer-pro",
+              name: "Writer Pro",
+              description: "长文写作",
+              libraryPath: "/library/writer-pro",
+              references: [],
+              managedLinks: {},
+              conflict: null,
+            },
+          ],
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(api.scanAgentSkills).toHaveBeenCalledTimes(1);
+
+    await wrapper.find('button[aria-label="重新扫描"]').trigger("click");
+    await flushPromises();
+
+    expect(api.scanAgentSkills).toHaveBeenCalledTimes(2);
   });
 });
