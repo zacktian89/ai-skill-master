@@ -161,7 +161,6 @@ watch(selectedSkill, () => {
       <ListPanel :items="skills" :has-search="true" empty-text="没有匹配的 skill。">
         <template #search-row>
           <div class="list-search-row">
-            <span class="search-row-count">{{ snapshot.state.skills.length }}</span>
             <SearchInput v-model="query" placeholder="搜索已安装 Skill" />
             <button
               class="icon-button"
@@ -239,24 +238,8 @@ watch(selectedSkill, () => {
 <style scoped>
 .list-search-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 30px;
   gap: 8px;
   align-items: center;
-}
-
-.search-row-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 30px;
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--bg-input);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  flex-shrink: 0;
 }
 </style>

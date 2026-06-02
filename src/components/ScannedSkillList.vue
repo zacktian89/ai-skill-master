@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Plus, Trash2 } from "lucide-vue-next";
+import { Folder, Link, Plus, Trash2 } from "lucide-vue-next";
 import SwitchToggle from "./SwitchToggle.vue";
 import type { ScannedCategory, ProjectRule } from "../types";
 
@@ -18,6 +18,7 @@ defineEmits<{
   "toggle-rule": [skillId: string];
   "remove-reference": [skillId: string, skillPath: string];
   "import-skill": [skillPath: string];
+  "delete-unmanaged-skill": [skillId: string, skillName: string, skillPath: string];
 }>();
 
 const removeAriaLabel = computed(() =>
@@ -65,7 +66,19 @@ const removeAriaLabel = computed(() =>
           class="project-skill-row"
         >
           <div class="project-skill-copy">
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="project-skill-title-row">
+              <Link
+                v-if="skill.isManaged"
+                class="project-skill-title-icon"
+                :size="15"
+                aria-label="已托管"
+              />
+              <Folder
+                v-else
+                class="project-skill-title-icon"
+                :size="15"
+                aria-label="未托管"
+              />
               <strong>{{ skill.name }}</strong>
               <span
                 v-if="showDisabledBadge && rules[skill.id] === 'disable'"
@@ -103,7 +116,7 @@ const removeAriaLabel = computed(() =>
               </button>
             </template>
 
-            <!-- If unmanaged, show 托管 button -->
+            <!-- If unmanaged, show 托管 + Delete folder buttons -->
             <template v-else>
               <button
                 class="primary-button"
@@ -113,6 +126,16 @@ const removeAriaLabel = computed(() =>
                 @click="$emit('import-skill', skill.path)"
               >
                 托管
+              </button>
+              <button
+                class="ghost-icon-button ghost-icon-button--danger"
+                type="button"
+                :disabled="busy"
+                aria-label="删除未托管 skill 文件夹"
+                title="删除未托管 skill 文件夹"
+                @click="$emit('delete-unmanaged-skill', skill.id, skill.name, skill.path)"
+              >
+                <Trash2 :size="15" />
               </button>
             </template>
           </div>

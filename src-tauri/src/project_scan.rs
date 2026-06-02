@@ -216,6 +216,35 @@ pub fn import_project_skill(
     Ok(InternalImportResult::Success)
 }
 
+pub fn delete_unmanaged_skill_dir(state: &AppState, skill_path: &Path) -> Result<()> {
+    if !skill_path.is_dir() {
+        return Err(SkillMasterError::MissingDirectory(skill_path.to_path_buf()));
+    }
+    if !skill_path.join("SKILL.md").exists() {
+        return Err(SkillMasterError::MissingSkillMarkdown(skill_path.to_path_buf()));
+    }
+
+    let metadata = read_skill_metadata(skill_path)?;
+    if let Some(matching_skill) = state.skills.iter().find(|skill| skill.id == metadata.id) {
+        if let Ok(ManagedLinkValidation::Valid) =
+            validate_managed_link(&matching_skill.library_path, skill_path)
+        {
+            return Err(SkillMasterError::InvalidPath(
+                "该 skill 是 SkillMaster 托管链接，请使用移除引用。".to_string(),
+            ));
+        }
+    }
+
+    let meta = fs::symlink_metadata(skill_path)?;
+    if meta.file_type().is_symlink() {
+        crate::managed_link::remove_managed_link(skill_path)?;
+        return Ok(());
+    }
+
+    fs::remove_dir_all(skill_path)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,5 +446,79 @@ mod tests {
         let lib_md_content = fs::read_to_string(lib_skill_path.join("SKILL.md")).unwrap();
         assert!(lib_md_content.contains("Project Version"));
         assert_eq!(state.skills[0].description, "Project Version");
+    }
+
+    #[test]
+    fn delete_unmanaged_skill_dir_removes_local_skill_folder() {
+        let dir = tempdir().unwrap();
+        let library_root = dir.path().join("library");
+        let proj_root = dir.path().join("my-project");
+        let skills_dir = proj_root.join("skills");
+        fs::create_dir_all(&skills_dir).unwrap();
+        make_skill(&skills_dir, "custom-skill", "Custom Skill", "Local only");
+
+        let state = default_state(library_root);
+        let skill_path = skills_dir.join("custom-skill");
+
+        delete_unmanaged_skill_dir(&state, &skill_path).unwrap();
+
+        assert!(!skill_path.exists());
+    }
+
+    #[test]
+    fn delete_unmanaged_skill_dir_removes_unmanaged_link_only() {
+        let dir = tempdir().unwrap();
+        let library_root = dir.path().join("library");
+        let proj_root = dir.path().join("my-project");
+        let skills_dir = proj_root.join("skills");
+        let external_skills = dir.path().join("external-skills");
+        fs::create_dir_all(&skills_dir).unwrap();
+        fs::create_dir_all(&external_skills).unwrap();
+        make_skill(&external_skills, "custom-skill", "Custom Skill", "Linked local");
+        let external_skill_path = external_skills.join("custom-skill");
+        let skill_path = skills_dir.join("custom-skill");
+        create_directory_link(&external_skill_path, &skill_path).unwrap();
+
+        let state = default_state(library_root);
+
+        delete_unmanaged_skill_dir(&state, &skill_path).unwrap();
+
+        assert!(!skill_path.exists());
+        assert!(external_skill_path.join("SKILL.md").exists());
+    }
+
+    #[test]
+    fn delete_unmanaged_skill_dir_rejects_managed_link() {
+        let dir = tempdir().unwrap();
+        let library_root = dir.path().join("library");
+        let proj_root = dir.path().join("my-project");
+        let skills_dir = proj_root.join("skills");
+        fs::create_dir_all(&skills_dir).unwrap();
+        let library_skill_path = library_root.join("custom-skill");
+        fs::create_dir_all(&library_skill_path).unwrap();
+        fs::write(
+            library_skill_path.join("SKILL.md"),
+            "---\nname: \"Custom Skill\"\n---\n",
+        )
+        .unwrap();
+        let skill_path = skills_dir.join("custom-skill");
+        create_directory_link(&library_skill_path, &skill_path).unwrap();
+
+        let mut state = default_state(library_root);
+        state.skills.push(Skill {
+            id: "custom-skill".to_string(),
+            name: "Custom Skill".to_string(),
+            description: String::new(),
+            library_path: library_skill_path,
+            source: SkillSource::default(),
+            references: Vec::new(),
+            managed_links: ManagedLinks::default(),
+            conflict: None,
+        });
+
+        let result = delete_unmanaged_skill_dir(&state, &skill_path);
+
+        assert!(result.unwrap_err().to_string().contains("托管链接"));
+        assert!(skill_path.exists());
     }
 }

@@ -31,6 +31,7 @@ pub fn run() {
             commands::read_skill_file,
             commands::scan_project_skills,
             commands::import_project_skill,
+            commands::delete_unmanaged_skill,
             commands::add_agent,
             commands::delete_agent,
             commands::set_agent_rule,

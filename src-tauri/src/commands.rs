@@ -889,6 +889,23 @@ pub fn import_project_skill(
     }
 }
 
+#[tauri::command]
+pub fn delete_unmanaged_skill(
+    app: AppHandle,
+    skill_path: PathBuf,
+) -> std::result::Result<AppSnapshot, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    crate::project_scan::delete_unmanaged_skill_dir(&command_state.state, &skill_path)
+        .map_err(|error| error.to_string())?;
+    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &StateLoadStatus::Clean,
+    )
+    .map_err(|error| error.to_string())
+}
+
 fn resolve_path_with_home(path: PathBuf) -> PathBuf {
     let path_str = path.to_string_lossy();
     if path_str.starts_with('~') {
@@ -960,44 +977,66 @@ pub struct SetAgentRuleRequest {
     pub rule: ProjectRule,
 }
 
-#[tauri::command]
-pub fn set_agent_rule(
-    app: AppHandle,
+fn set_agent_rule_in_state(
+    state: &mut AppState,
     request: SetAgentRuleRequest,
-) -> std::result::Result<AppSnapshot, String> {
-    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    let agent = command_state.state.agents.iter_mut()
+) -> Result<()> {
+    let agent = state.agents.iter_mut()
         .find(|a| a.id == request.agent_id)
-        .ok_or_else(|| format!("找不到 Agent：{}", request.agent_id))?;
+        .ok_or_else(|| {
+            SkillMasterError::InvalidPath(format!("找不到 Agent：{}", request.agent_id))
+        })?;
         
     let agent_path = agent.path.clone();
     let agent_name = agent.name.clone();
-    
-    agent.rules.insert(request.skill_id.clone(), request.rule);
-    
     let target_path = agent_path.join(&request.skill_id);
-    let skill = command_state.state.skills.iter_mut()
+
+    if request.rule == ProjectRule::Inherit {
+        agent.rules.remove(&request.skill_id);
+    } else {
+        agent.rules.insert(request.skill_id.clone(), request.rule);
+    }
+
+    let skill = state.skills.iter_mut()
         .find(|s| s.id == request.skill_id)
-        .ok_or_else(|| format!("找不到 Skill：{}", request.skill_id))?;
-        
+        .ok_or_else(|| SkillMasterError::SkillNotFound(request.skill_id.clone()))?;
+
+    if request.rule == ProjectRule::Inherit {
+        match validate_managed_link(&skill.library_path, &target_path)? {
+            ManagedLinkValidation::Valid => remove_managed_link(&target_path)?,
+            ManagedLinkValidation::Missing => {}
+            validation => {
+                return Err(SkillMasterError::InvalidPath(managed_link_issue_message(
+                    &target_path,
+                    &validation,
+                )));
+            }
+        }
+        skill.references.retain(|reference| reference.target_path != target_path);
+        return Ok(());
+    }
+
     match request.rule {
         ProjectRule::Disable => {
             if target_path.exists() {
-                remove_managed_link(&target_path).map_err(|e| e.to_string())?;
+                remove_managed_link(&target_path)?;
             }
         }
-        ProjectRule::Enable | ProjectRule::Inherit => {
-            match validate_managed_link(&skill.library_path, &target_path).map_err(|e| e.to_string())? {
+        ProjectRule::Enable => {
+            match validate_managed_link(&skill.library_path, &target_path)? {
                 ManagedLinkValidation::Valid => {}
                 ManagedLinkValidation::Missing => {
-                    create_directory_link(&skill.library_path, &target_path).map_err(|e| e.to_string())?;
+                    create_directory_link(&skill.library_path, &target_path)?;
                 }
                 ManagedLinkValidation::WrongTarget { .. } => {
-                    remove_managed_link(&target_path).map_err(|e| e.to_string())?;
-                    create_directory_link(&skill.library_path, &target_path).map_err(|e| e.to_string())?;
+                    remove_managed_link(&target_path)?;
+                    create_directory_link(&skill.library_path, &target_path)?;
                 }
                 validation => {
-                    return Err(managed_link_issue_message(&target_path, &validation));
+                    return Err(SkillMasterError::InvalidPath(managed_link_issue_message(
+                        &target_path,
+                        &validation,
+                    )));
                 }
             }
             let ref_id = reference_id(&target_path);
@@ -1011,8 +1050,20 @@ pub fn set_agent_rule(
                 });
             }
         }
+        ProjectRule::Inherit => {}
     }
-    
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_agent_rule(
+    app: AppHandle,
+    request: SetAgentRuleRequest,
+) -> std::result::Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    set_agent_rule_in_state(&mut command_state.state, request)
+        .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,
@@ -1421,6 +1472,57 @@ mod tests {
         remove_skill_reference_from_state(&mut state, "ref-id", Some(false)).unwrap();
 
         assert_eq!(std::fs::read_link(&target).unwrap(), other);
+        assert!(state.skills[0].references.is_empty());
+    }
+
+    #[test]
+    fn setting_agent_rule_to_inherit_removes_managed_link_and_reference() {
+        let dir = tempdir().unwrap();
+        let library = dir.path().join("skills");
+        let root = dir.path().join("windsurf").join("skills");
+        std::fs::create_dir_all(library.join("html-go")).unwrap();
+        std::fs::create_dir_all(&root).unwrap();
+        let target = root.join("html-go");
+        create_directory_link(&library.join("html-go"), &target).unwrap();
+
+        let mut state = default_state(library.clone());
+        let mut rules = BTreeMap::new();
+        rules.insert("html-go".to_string(), ProjectRule::Enable);
+        state.agents.push(crate::models::Agent {
+            id: "windsurf".to_string(),
+            name: "Windsurf".to_string(),
+            path: root.clone(),
+            rules,
+        });
+        state.skills.push(Skill {
+            id: "html-go".to_string(),
+            name: "html-go".to_string(),
+            description: String::new(),
+            library_path: library.join("html-go"),
+            source: Default::default(),
+            references: vec![SkillReference {
+                id: reference_id(&target),
+                target_name: "Windsurf".to_string(),
+                target_path: target.clone(),
+                scope: ReferenceScope::User,
+                status: ReferenceStatus::Healthy,
+            }],
+            managed_links: Default::default(),
+            conflict: None,
+        });
+
+        set_agent_rule_in_state(
+            &mut state,
+            SetAgentRuleRequest {
+                agent_id: "windsurf".to_string(),
+                skill_id: "html-go".to_string(),
+                rule: ProjectRule::Inherit,
+            },
+        )
+        .unwrap();
+
+        assert!(!target.exists());
+        assert!(!state.agents[0].rules.contains_key("html-go"));
         assert!(state.skills[0].references.is_empty());
     }
 }

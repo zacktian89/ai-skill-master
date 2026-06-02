@@ -22,7 +22,5 @@ export function resolveInvoke(): Promise<TauriInvoke | null> {
 import type { AppSnapshot } from "../types";
 
 export async function autoSync(snapshot: AppSnapshot): Promise<AppSnapshot> {
-  if (!snapshot.state.codexSkillsPath) return snapshot;
-  const { syncCodex } = await import("./settings");
-  return syncCodex();
+  return snapshot;
 }

@@ -18,22 +18,12 @@ export function importSkill(source: string): Promise<AppSnapshot> {
     description: "浏览器 mock 导入的示例 skill",
     libraryPath: `${mockSnapshot.state.skillLibraryPath}/${id}`,
     references: [],
-    managedLinks: {
-      codex: null,
-    },
+    managedLinks: {},
     conflict: null,
   });
-  mockSnapshot.state.syncStatus.pendingActions = [
-    {
-      kind: "create",
-      skillId: id,
-      target: `${mockSnapshot.state.codexSkillsPath}/${id}`,
-      source: `${mockSnapshot.state.skillLibraryPath}/${id}`,
-      message: "新导入 skill 待同步到 Codex。",
-    },
-  ];
-  mockSnapshot.state.syncStatus.phase = "repairRequired";
-  mockSnapshot.state.syncStatus.message = "存在待同步项。";
+  mockSnapshot.state.syncStatus.pendingActions = [];
+  mockSnapshot.state.syncStatus.phase = "healthy";
+  mockSnapshot.state.syncStatus.message = "Mock 环境已同步到浏览器预览状态。";
   return snapshot();
 }
 
@@ -94,9 +84,7 @@ export function confirmImportSkills(request: ConfirmImportSkillsRequest): Promis
               path: `${request.source.path}/${candidate.relativePath}`,
             },
       references: [],
-      managedLinks: {
-        codex: null,
-      },
+      managedLinks: {},
       conflict: null,
     });
   }
@@ -120,10 +108,7 @@ export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview>
     skillId,
     skillName: skill.name,
     libraryPath: skill.libraryPath,
-    managedLinkTargets: [
-      ...(skill.managedLinks.codex ? [skill.managedLinks.codex] : []),
-      ...(skill.references?.map((reference) => reference.targetPath) ?? []),
-    ],
+    managedLinkTargets: skill.references?.map((reference) => reference.targetPath) ?? [],
     affectedProjects: mockSnapshot.state.projects
       .filter((project) => project.rules[skillId])
       .map((project) => ({

@@ -50,3 +50,7 @@ export function deleteProject(projectId: string): Promise<AppSnapshot> {
   }
   return snapshot();
 }
+
+export function deleteUnmanagedSkill(_skillPath: string): Promise<AppSnapshot> {
+  return snapshot();
+}

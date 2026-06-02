@@ -58,6 +58,7 @@ const selectedAddScope = ref<ReferenceScope>("project");
 const selectedAddTargetName = ref("");
 const deleteProjectDialogOpen = ref(false);
 const pendingReferenceRemoval = ref<{ skillId: string; skillPath: string } | null>(null);
+const pendingUnmanagedSkillDeletion = ref<{ skillId: string; skillName: string; skillPath: string } | null>(null);
 
 // Composable for Async Actions
 const { busy, run: executeAsync } = useAsyncAction({
@@ -359,6 +360,17 @@ async function confirmRemoveManagedSkillReference() {
   await refreshScan();
 }
 
+function deleteUnmanagedSkill(skillId: string, skillName: string, skillPath: string) {
+  pendingUnmanagedSkillDeletion.value = { skillId, skillName, skillPath };
+}
+
+async function confirmDeleteUnmanagedSkill() {
+  if (!pendingUnmanagedSkillDeletion.value) return;
+  await run(() => api.deleteUnmanagedSkill(pendingUnmanagedSkillDeletion.value!.skillPath));
+  pendingUnmanagedSkillDeletion.value = null;
+  await refreshScan();
+}
+
 watch(
   () => selectedProject.value?.id,
   (newId, oldId) => {
@@ -409,7 +421,6 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
       <ListPanel :items="projects" :has-search="true" empty-text="没有匹配的项目。">
         <template #search-row>
           <div class="list-search-row">
-            <span class="search-row-count">{{ snapshot.state.projects.length }}</span>
             <SearchInput v-model="projectQuery" placeholder="搜索项目名称或路径" />
             <button class="icon-button" type="button" :disabled="busy" aria-label="添加项目" @click="addProject">
               <FolderPlus :size="18" />
@@ -475,6 +486,7 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
             @toggle-rule="toggleSkillRule"
             @remove-reference="removeManagedSkillReference"
             @import-skill="handleImportSkill"
+            @delete-unmanaged-skill="deleteUnmanagedSkill"
           />
         </section>
       </template>
@@ -607,6 +619,28 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
   </ModalDialog>
 
   <ModalDialog
+    v-if="pendingUnmanagedSkillDeletion"
+    title="删除未托管 Skill"
+    @close="pendingUnmanagedSkillDeletion = null"
+  >
+    <p class="modal-note">
+      确认删除 "{{ pendingUnmanagedSkillDeletion.skillName }}" 吗？这会删除磁盘上的 skill 文件夹。
+    </p>
+    <dl class="modal-summary">
+      <dt>路径</dt>
+      <dd>{{ pendingUnmanagedSkillDeletion.skillPath }}</dd>
+    </dl>
+    <template #footer>
+      <div class="button-row button-row--end dialog-footer-row">
+        <button class="secondary-button" :disabled="busy" @click="pendingUnmanagedSkillDeletion = null">取消</button>
+        <button class="danger-button" :disabled="busy" @click="confirmDeleteUnmanagedSkill">
+          删除文件夹
+        </button>
+      </div>
+    </template>
+  </ModalDialog>
+
+  <ModalDialog
     v-if="deleteProjectDialogOpen && selectedProject"
     title="删除项目"
     @close="deleteProjectDialogOpen = false"
@@ -698,7 +732,7 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
 <style scoped>
 .list-search-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 30px;
   gap: 8px;
   align-items: center;
 }

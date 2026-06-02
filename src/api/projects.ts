@@ -57,3 +57,11 @@ export async function importProjectSkill(
       })
     : { type: "success", snapshot: await getSnapshot() };
 }
+
+export async function deleteUnmanagedSkill(skillPath: string): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  const next = invoke
+    ? await invoke<AppSnapshot>("delete_unmanaged_skill", { skillPath })
+    : await mockProjects.deleteUnmanagedSkill(skillPath);
+  return autoSync(next);
+}

@@ -41,7 +41,7 @@
 
 .list-search-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 30px;
+  grid-template-columns: minmax(0, 1fr) 30px;
   gap: 8px;
   align-items: center;
 }

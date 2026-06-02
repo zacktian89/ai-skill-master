@@ -170,7 +170,7 @@ describe("ProjectsView", () => {
     expect(wrapper.text()).not.toContain("全部规则");
   });
 
-  it("shows the total project count in the list header", async () => {
+  it("does not show the total project count in the list header", async () => {
     const wrapper = mount(ProjectsView, {
       props: {
         snapshot: {
@@ -194,7 +194,7 @@ describe("ProjectsView", () => {
 
     await flushPromises();
 
-    expect(wrapper.find(".list-panel-head .search-row-count").text()).toBe("2");
+    expect(wrapper.find(".list-panel-head .search-row-count").exists()).toBe(false);
   });
 
   it("toggles rules, adds and removes skills references", async () => {
