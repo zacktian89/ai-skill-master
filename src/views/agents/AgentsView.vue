@@ -90,6 +90,7 @@ const PRESET_AGENTS = [
   { name: "Windsurf", defaultPath: "~/.codeium/windsurf/skills", targetName: "Windsurf" },
   { name: "Kiro", defaultPath: "~/.kiro/skills", targetName: "Kiro" },
   { name: "OpenCode", defaultPath: "~/.config/opencode/skill", targetName: "OpenCode" },
+  { name: "CodeBuddy", defaultPath: "~/.codebuddy/skills", targetName: "CodeBuddy" },
   { name: "自定义 Agent", defaultPath: "", targetName: "自定义" },
 ];
 

@@ -330,6 +330,12 @@ fn built_in_target_profiles() -> Vec<SkillTargetProfile> {
             root_path: home.join(".config").join("opencode").join("skill"),
             scope: ReferenceScope::User,
         },
+        SkillTargetProfile {
+            id: "codebuddy-user".to_string(),
+            target_name: "CodeBuddy".to_string(),
+            root_path: home.join(".codebuddy").join("skills"),
+            scope: ReferenceScope::User,
+        },
     ]
 }
 

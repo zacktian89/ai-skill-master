@@ -159,6 +159,12 @@ export const mockSnapshot: AppSnapshot = {
       rootPath: "/Users/demo/.config/opencode/skill",
       scope: "user",
     },
+    {
+      id: "codebuddy-user",
+      targetName: "CodeBuddy",
+      rootPath: "/Users/demo/.codebuddy/skills",
+      scope: "user",
+    },
   ],
   diagnostics: [],
   paths: {
