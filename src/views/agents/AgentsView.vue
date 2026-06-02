@@ -69,6 +69,8 @@ const inputAgentPath = ref("");
 
 // Add Skill Dialog State (linking library skills to selected agent)
 const addSkillDialogOpen = ref(false);
+const deleteAgentDialogOpen = ref(false);
+const pendingReferenceRemoval = ref<{ skillId: string; skillPath: string } | null>(null);
 
 const PRESET_AGENTS = [
   { name: "Codex", defaultPath: "~/.agents/skills", targetName: "Codex" },
@@ -166,15 +168,20 @@ async function confirmAddAgent() {
   );
 }
 
-async function handleDeleteAgent() {
+function openDeleteAgentDialog() {
   if (!selectedAgent.value) return;
-  if (!confirm(`确认删除 Agent "${selectedAgent.value.name}" 吗？这不会影响其目录下的实际技能文件。`)) return;
+  deleteAgentDialogOpen.value = true;
+}
+
+async function confirmDeleteAgent() {
+  if (!selectedAgent.value) return;
   await executeAsync(
     () => api.deleteAgent(selectedAgent.value!.id),
     (next) => {
       if (appStore) appStore.applySnapshot(next);
       else emit("snapshot", next);
       selectedAgentId.value = next.state.agents?.[0]?.id ?? null;
+      deleteAgentDialogOpen.value = false;
     }
   );
 }
@@ -290,10 +297,17 @@ function findReferenceIdForScannedSkill(skillId: string, skillPath: string): str
 }
 
 async function removeManagedSkillReference(skillId: string, skillPath: string) {
+  pendingReferenceRemoval.value = { skillId, skillPath };
+}
+
+async function confirmRemoveManagedSkillReference() {
+  if (!pendingReferenceRemoval.value) return;
+  const { skillId, skillPath } = pendingReferenceRemoval.value;
   const refId = findReferenceIdForScannedSkill(skillId, skillPath);
   if (!refId) {
     if (appStore) appStore.setError("无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
     else emit("error", "无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
+    pendingReferenceRemoval.value = null;
     return;
   }
   // Remove reference (deletes link physically)
@@ -308,6 +322,7 @@ async function removeManagedSkillReference(skillId: string, skillPath: string) {
       })
     );
   }
+  pendingReferenceRemoval.value = null;
   await refreshScan();
 }
 
@@ -390,12 +405,18 @@ watch(
             <h2>{{ selectedAgent.name }}</h2>
             <p>{{ selectedAgent.path }}</p>
           </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="ghost-icon-button ghost-icon-button--danger" :disabled="busy" aria-label="删除 Agent" @click="handleDeleteAgent">
-              <Trash2 :size="16" />
-            </button>
+          <div class="detail-actions">
             <button class="primary-button" :disabled="busy" aria-label="添加技能" @click="openAddSkillDialog">
               <Plus :size="16" />
+            </button>
+            <button
+              class="danger-button danger-button--icon"
+              :disabled="busy"
+              aria-label="删除 Agent"
+              title="删除 Agent"
+              @click="openDeleteAgentDialog"
+            >
+              <Trash2 :size="16" />
             </button>
           </div>
         </div>
@@ -425,7 +446,7 @@ watch(
         </section>
       </template>
 
-      <div class="content-empty">选择左侧 Agent 查看技能列表。</div>
+      <div v-else class="content-empty">选择左侧 Agent 查看技能列表。</div>
     </template>
   </SplitPane>
 
@@ -484,6 +505,42 @@ watch(
         <button class="secondary-button" :disabled="busy" @click="closeAddAgentDialog">取消</button>
         <button class="primary-button" :disabled="busy || !inputAgentName.trim() || !inputAgentPath.trim()" @click="confirmAddAgent">
           确定
+        </button>
+      </div>
+    </template>
+  </ModalDialog>
+
+  <ModalDialog
+    v-if="deleteAgentDialogOpen && selectedAgent"
+    title="删除 Agent"
+    @close="deleteAgentDialogOpen = false"
+  >
+    <p class="modal-note">
+      确认删除 Agent "{{ selectedAgent.name }}" 吗？这不会影响其目录下的实际技能文件。
+    </p>
+    <template #footer>
+      <div class="button-row button-row--end dialog-footer-row">
+        <button class="secondary-button" :disabled="busy" @click="deleteAgentDialogOpen = false">取消</button>
+        <button class="danger-button" :disabled="busy" @click="confirmDeleteAgent">
+          删除 Agent
+        </button>
+      </div>
+    </template>
+  </ModalDialog>
+
+  <ModalDialog
+    v-if="pendingReferenceRemoval"
+    title="移除技能引用"
+    @close="pendingReferenceRemoval = null"
+  >
+    <p class="modal-note">
+      确认从 Agent 中移除这个技能引用吗？这会删除对应的托管链接，不会删除技能库中的 skill。
+    </p>
+    <template #footer>
+      <div class="button-row button-row--end dialog-footer-row">
+        <button class="secondary-button" :disabled="busy" @click="pendingReferenceRemoval = null">取消</button>
+        <button class="danger-button" :disabled="busy" @click="confirmRemoveManagedSkillReference">
+          移除引用
         </button>
       </div>
     </template>

@@ -65,7 +65,7 @@ describe("SkillsView references tab", () => {
     vi.restoreAllMocks();
   });
 
-  it("opens references first and toggles between list, graph, and detail views", async () => {
+  it("opens references first and shows the references list without graph controls", async () => {
     const wrapper = mount(SkillsView, {
       props: {
         snapshot,
@@ -80,11 +80,8 @@ describe("SkillsView references tab", () => {
     expect(wrapper.text()).not.toContain("软链接已指向当前 skill");
     expect(wrapper.text()).toContain("/claude/skills/writer-pro");
     expect(wrapper.find(".reference-row").exists()).toBe(true);
-
-    await wrapper.find('button[aria-label="连线图"]').trigger("click");
-
-    expect(wrapper.find(".reference-graph").exists()).toBe(true);
-    expect(wrapper.find(".reference-row").exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="连线图"]').exists()).toBe(false);
+    expect(wrapper.find(".reference-graph").exists()).toBe(false);
 
     await wrapper.findAll(".detail-tab")[0].trigger("click");
     await flushPromises();
@@ -101,8 +98,6 @@ describe("SkillsView references tab", () => {
       },
     });
 
-    await wrapper.findAll(".detail-tab")[1].trigger("click");
-
     await wrapper.find('button[aria-label="新增引用"]').trigger("click");
 
     expect(wrapper.text()).toContain("Claude Code");
@@ -115,6 +110,7 @@ describe("SkillsView references tab", () => {
     expect(wrapper.text()).not.toContain("/library/writer-pro");
 
     await wrapper.find('button[aria-label="关闭"]').trigger("click");
+    await wrapper.findAll(".detail-tab")[1].trigger("click");
     await wrapper.find('button[aria-label="删除引用"]').trigger("click");
 
     expect(wrapper.text()).toContain("删除引用");

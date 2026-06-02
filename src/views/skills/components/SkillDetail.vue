@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CircleHelp, Folder, Github, ShoppingBag, Trash2 } from "lucide-vue-next";
+import { CircleHelp, Folder, Github, Plus, ShoppingBag, Trash2 } from "lucide-vue-next";
 import SkillDescriptionTab from "./SkillDescriptionTab.vue";
 import SkillReferencesTab from "./SkillReferencesTab.vue";
 import type { Skill, SkillSourceKind, SkillReferenceDetail } from "../../../types";
 
 type DetailTab = "references" | "description";
-type ReferenceViewMode = "list" | "graph";
 
 const props = defineProps<{
   selectedSkill: Skill;
@@ -20,13 +19,11 @@ const props = defineProps<{
   };
   renderedMarkdown: string;
   activeDetailTab: DetailTab;
-  referenceViewMode: ReferenceViewMode;
   busy: boolean;
 }>();
 
 defineEmits<{
   "update:activeDetailTab": [tab: DetailTab];
-  "update:referenceViewMode": [mode: ReferenceViewMode];
   "delete-click": [];
   "open-add-reference": [];
   "open-delete-reference": [reference: SkillReferenceDetail];
@@ -71,6 +68,16 @@ const icon = computed(() => sourceIcons[sourceKind.value]);
       <div class="extension-command-panel">
         <div class="extension-actions">
           <button
+            class="icon-button"
+            type="button"
+            :disabled="busy"
+            aria-label="新增引用"
+            title="新增引用"
+            @click="$emit('open-add-reference')"
+          >
+            <Plus :size="16" />
+          </button>
+          <button
             class="danger-button danger-button--icon"
             :disabled="busy"
             aria-label="删除 Skill"
@@ -113,12 +120,8 @@ const icon = computed(() => sourceIcons[sourceKind.value]);
     <!-- Tab Panels -->
     <SkillReferencesTab
       v-if="activeDetailTab === 'references'"
-      :selected-skill="selectedSkill"
       :selected-references="selectedReferences"
-      :reference-view-mode="referenceViewMode"
       :busy="busy"
-      @update:reference-view-mode="$emit('update:referenceViewMode', $event)"
-      @open-add-reference="$emit('open-add-reference')"
       @open-delete-reference="$emit('open-delete-reference', $event)"
     />
 

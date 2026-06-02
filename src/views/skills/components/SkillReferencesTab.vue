@@ -1,21 +1,15 @@
 <script setup lang="ts">
-import { List, Network, Plus, Trash2 } from "lucide-vue-next";
+import { Trash2 } from "lucide-vue-next";
 import AgentIcon from "../../../components/icons/AgentIcon.vue";
 import StatusTag from "../../../components/StatusTag.vue";
-import type { Skill, SkillReferenceDetail } from "../../../types";
-
-type ReferenceViewMode = "list" | "graph";
+import type { SkillReferenceDetail } from "../../../types";
 
 defineProps<{
-  selectedSkill: Skill;
   selectedReferences: SkillReferenceDetail[];
-  referenceViewMode: ReferenceViewMode;
   busy: boolean;
 }>();
 
 defineEmits<{
-  "update:referenceViewMode": [mode: ReferenceViewMode];
-  "open-add-reference": [];
   "open-delete-reference": [reference: SkillReferenceDetail];
 }>();
 
@@ -35,41 +29,7 @@ const referenceStatusLabels: Record<string, string> = {
 
 <template>
   <section class="reference-pane">
-    <div class="reference-pane-header">
-      <button
-        class="icon-button icon-button--compact"
-        type="button"
-        :disabled="busy"
-        aria-label="新增引用"
-        title="新增引用"
-        @click="$emit('open-add-reference')"
-      >
-        <Plus :size="16" />
-      </button>
-      <div class="segmented-control segmented-control--compact" aria-label="引用视图切换">
-        <button
-          type="button"
-          :class="{ active: referenceViewMode === 'list' }"
-          aria-label="列表视图"
-          title="列表视图"
-          @click="$emit('update:referenceViewMode', 'list')"
-        >
-          <List :size="15" />
-        </button>
-        <button
-          type="button"
-          :class="{ active: referenceViewMode === 'graph' }"
-          aria-label="连线图"
-          title="连线图"
-          @click="$emit('update:referenceViewMode', 'graph')"
-        >
-          <Network :size="15" />
-        </button>
-      </div>
-    </div>
-
-    <!-- List View -->
-    <div v-if="selectedReferences.length && referenceViewMode === 'list'" class="reference-list">
+    <div v-if="selectedReferences.length" class="reference-list">
       <article
         v-for="reference in selectedReferences"
         :key="reference.id"
@@ -104,31 +64,6 @@ const referenceStatusLabels: Record<string, string> = {
           <code class="reference-path">{{ reference.symlinkPath }}</code>
         </div>
       </article>
-    </div>
-
-    <!-- Graph View -->
-    <div v-else-if="selectedReferences.length" class="reference-graph" aria-label="Skill 引用连线图">
-      <div class="reference-center-node">
-        <span>当前 Skill</span>
-        <strong>{{ selectedSkill.name }}</strong>
-        <code>{{ selectedSkill.id }}</code>
-      </div>
-      <div class="reference-graph-stack">
-        <article
-          v-for="reference in selectedReferences"
-          :key="reference.id"
-          class="reference-graph-item"
-        >
-          <div class="reference-line" aria-hidden="true"></div>
-          <div class="reference-node">
-            <div>
-              <strong>{{ reference.targetName }}</strong>
-              <span>{{ referenceStatusLabels[reference.status] || reference.status }}</span>
-            </div>
-            <small>{{ reference.symlinkPath }}</small>
-          </div>
-        </article>
-      </div>
     </div>
 
     <!-- Empty View -->

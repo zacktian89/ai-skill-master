@@ -3,6 +3,7 @@ import { computed, ref, watch, inject } from "vue";
 import {
   FolderPlus,
   Plus,
+  Trash2,
   X,
   FolderOpen,
   RefreshCw,
@@ -55,6 +56,8 @@ const addSkillDialogOpen = ref(false);
 const selectedAddDir = ref("");
 const selectedAddScope = ref<ReferenceScope>("project");
 const selectedAddTargetName = ref("");
+const deleteProjectDialogOpen = ref(false);
+const pendingReferenceRemoval = ref<{ skillId: string; skillPath: string } | null>(null);
 
 // Composable for Async Actions
 const { busy, run: executeAsync } = useAsyncAction({
@@ -231,6 +234,24 @@ function closeAddSkillDialog() {
   resetPicker();
 }
 
+function openDeleteProjectDialog() {
+  if (!selectedProject.value) return;
+  deleteProjectDialogOpen.value = true;
+}
+
+async function confirmDeleteProject() {
+  if (!selectedProject.value) return;
+  await executeAsync(
+    () => api.deleteProject(selectedProject.value!.id),
+    (next) => {
+      if (appStore) appStore.applySnapshot(next);
+      else emit("snapshot", next);
+      selectedProjectId.value = next.state.projects[0]?.id ?? null;
+      deleteProjectDialogOpen.value = false;
+    }
+  );
+}
+
 function selectAddProfile(profile: any) {
   selectedAddDir.value = profile.rootPath;
   selectedAddScope.value = profile.scope;
@@ -320,13 +341,21 @@ function findReferenceIdForScannedSkill(skillId: string, skillPath: string): str
 }
 
 async function removeManagedSkillReference(skillId: string, skillPath: string) {
+  pendingReferenceRemoval.value = { skillId, skillPath };
+}
+
+async function confirmRemoveManagedSkillReference() {
+  if (!pendingReferenceRemoval.value) return;
+  const { skillId, skillPath } = pendingReferenceRemoval.value;
   const refId = findReferenceIdForScannedSkill(skillId, skillPath);
   if (!refId) {
     if (appStore) appStore.setError("无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
     else emit("error", "无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
+    pendingReferenceRemoval.value = null;
     return;
   }
   await run(() => api.removeSkillReference(refId, true));
+  pendingReferenceRemoval.value = null;
   await refreshScan();
 }
 
@@ -410,9 +439,20 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
             <h2>{{ selectedProject.name }}</h2>
             <p>{{ selectedProject.path }}</p>
           </div>
-          <button class="primary-button" :disabled="busy" aria-label="添加" @click="openAddSkillDialog">
-            <Plus :size="16" />
-          </button>
+          <div class="detail-actions">
+            <button class="primary-button" :disabled="busy" aria-label="添加" @click="openAddSkillDialog">
+              <Plus :size="16" />
+            </button>
+            <button
+              class="danger-button danger-button--icon"
+              :disabled="busy"
+              aria-label="删除项目"
+              title="删除项目"
+              @click="openDeleteProjectDialog"
+            >
+              <Trash2 :size="16" />
+            </button>
+          </div>
         </div>
 
         <section class="detail-section">
@@ -561,6 +601,42 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
           @click="confirmAddSkillReferences"
         >
           确定
+        </button>
+      </div>
+    </template>
+  </ModalDialog>
+
+  <ModalDialog
+    v-if="deleteProjectDialogOpen && selectedProject"
+    title="删除项目"
+    @close="deleteProjectDialogOpen = false"
+  >
+    <p class="modal-note">
+      确认删除项目 "{{ selectedProject.name }}" 吗？这只会移除 SkillMaster 中的项目记录，不会删除磁盘上的项目目录。
+    </p>
+    <template #footer>
+      <div class="button-row button-row--end dialog-footer-row">
+        <button class="secondary-button" :disabled="busy" @click="deleteProjectDialogOpen = false">取消</button>
+        <button class="danger-button" :disabled="busy" @click="confirmDeleteProject">
+          删除项目
+        </button>
+      </div>
+    </template>
+  </ModalDialog>
+
+  <ModalDialog
+    v-if="pendingReferenceRemoval"
+    title="移除技能引用"
+    @close="pendingReferenceRemoval = null"
+  >
+    <p class="modal-note">
+      确认从项目中移除这个技能引用吗？这会删除对应的托管链接，不会删除技能库中的 skill。
+    </p>
+    <template #footer>
+      <div class="button-row button-row--end dialog-footer-row">
+        <button class="secondary-button" :disabled="busy" @click="pendingReferenceRemoval = null">取消</button>
+        <button class="danger-button" :disabled="busy" @click="confirmRemoveManagedSkillReference">
+          移除引用
         </button>
       </div>
     </template>

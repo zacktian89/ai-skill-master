@@ -9,6 +9,7 @@ import * as api from "../api";
 
 const apiMocks = vi.hoisted(() => ({
   addProject: vi.fn(),
+  deleteProject: vi.fn(),
   setProjectRule: vi.fn(),
   scanProjectSkills: vi.fn(),
   addSkillReference: vi.fn(),
@@ -97,6 +98,7 @@ const snapshot: AppSnapshot = {
 
 vi.mock("../api", () => ({
   addProject: apiMocks.addProject,
+  deleteProject: apiMocks.deleteProject,
   setProjectRule: apiMocks.setProjectRule,
   scanProjectSkills: apiMocks.scanProjectSkills,
   addSkillReference: apiMocks.addSkillReference,
@@ -111,6 +113,14 @@ vi.mock("../utils/dialog", () => ({
 describe("ProjectsView", () => {
   beforeEach(() => {
     apiMocks.addProject.mockReset();
+    apiMocks.deleteProject.mockReset();
+    apiMocks.deleteProject.mockResolvedValue({
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        projects: [],
+      },
+    });
     apiMocks.setProjectRule.mockReset();
     apiMocks.setProjectRule.mockResolvedValue(snapshot);
     apiMocks.scanProjectSkills.mockReset();
@@ -229,8 +239,30 @@ describe("ProjectsView", () => {
 
     // 3. Remove writer-pro reference
     await wrapper.find('button[aria-label="从项目移除技能引用"]').trigger("click");
+    expect(wrapper.text()).toContain("确认从项目中移除这个技能引用吗？");
+    await wrapper.findAll("button").find((button) => button.text() === "移除引用")!.trigger("click");
     await flushPromises();
 
     expect(api.removeSkillReference).toHaveBeenCalledWith("ref-writer-pro", true);
+  });
+
+  it("confirms before deleting a project", async () => {
+    const wrapper = mount(ProjectsView, {
+      props: {
+        snapshot,
+        selectedProjectId: "acme",
+      },
+    });
+
+    await flushPromises();
+
+    await wrapper.find('button[aria-label="删除项目"]').trigger("click");
+    expect(wrapper.text()).toContain("确认删除项目");
+    expect(api.deleteProject).not.toHaveBeenCalled();
+
+    await wrapper.findAll("button").find((button) => button.text() === "删除项目")!.trigger("click");
+    await flushPromises();
+
+    expect(api.deleteProject).toHaveBeenCalledWith("acme");
   });
 });

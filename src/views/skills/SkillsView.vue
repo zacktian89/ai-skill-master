@@ -24,7 +24,6 @@ import { useAsyncAction } from "../../composables/useAsyncAction";
 import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
 
 type DetailTab = "references" | "description";
-type ReferenceViewMode = "list" | "graph";
 
 const appStore = inject(AppStoreKey, null);
 const selectionStore = inject(SelectionStoreKey, null);
@@ -68,7 +67,6 @@ const referenceDialogMode = ref<"add" | "delete">("add");
 const referenceToDelete = ref<SkillReferenceDetail | null>(null);
 
 const activeDetailTab = ref<DetailTab>("description");
-const referenceViewMode = ref<ReferenceViewMode>("list");
 
 // Composable for Markdown
 const {
@@ -199,10 +197,8 @@ watch(selectedSkill, () => {
         :parsed-markdown="parsedMarkdown"
         :rendered-markdown="renderedMarkdown"
         :active-detail-tab="activeDetailTab"
-        :reference-view-mode="referenceViewMode"
         :busy="busy"
         @update:active-detail-tab="activeDetailTab = $event"
-        @update:reference-view-mode="referenceViewMode = $event"
         @delete-click="deleteDialogOpen = true"
         @open-add-reference="openAddReferenceDialog"
         @open-delete-reference="openDeleteReferenceDialog"
