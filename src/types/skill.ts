@@ -1,8 +1,6 @@
 import type { ReferenceScope, ReferenceStatus } from "./app";
 
-export interface ManagedLinks {
-  codex?: string | null;
-}
+export interface ManagedLinks {}
 
 export interface SkillReference {
   id: string;

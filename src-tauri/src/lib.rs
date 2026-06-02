@@ -1,5 +1,5 @@
 pub mod app_paths;
-pub mod codex_sync;
+pub mod managed_link;
 pub mod commands;
 pub mod effective_state;
 pub mod error;
@@ -26,10 +26,8 @@ pub fn run() {
             commands::set_current_project,
             commands::reset_project_rules,
             commands::delete_project,
-            commands::set_codex_path,
             commands::migrate_library,
             commands::rebuild_state,
-            commands::sync_codex,
             commands::read_skill_file,
             commands::scan_project_skills,
             commands::import_project_skill,

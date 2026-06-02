@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { inject } from "vue";
-import { Wrench, RotateCcw } from "lucide-vue-next";
+import { RotateCcw } from "lucide-vue-next";
 import * as api from "../../../api";
 import { AppStoreKey } from "../../../stores/useAppStore";
 import { useAsyncAction } from "../../../composables/useAsyncAction";
@@ -26,7 +26,7 @@ const { busy, run: executeAsync } = useAsyncAction({
 
 function issueCategory(item: DiagnosticItem): string {
   if (item.code.startsWith("sync-")) return "路径与链接";
-  if (item.code === "codex-conflict" || item.code === "managed-link-mismatch") return "内容冲突";
+  if (item.code === "managed-link-mismatch") return "内容冲突";
   if (item.code.startsWith("state-")) return "恢复";
   if (item.code.includes("project") || item.code === "effective-state-error") return "规则";
   return "存储";
@@ -46,17 +46,12 @@ function diagnosticGuide(item: DiagnosticItem) {
   }
   if (item.code === "state-rebuild-required") {
     return {
-      action: "执行状态重建，然后重新检查并应用。",
+      action: "执行状态重建。",
     };
   }
   if (item.code === "state-restored-from-backup") {
     return {
-      action: "检查诊断项后重新应用，必要时再重建状态。",
-    };
-  }
-  if (item.code === "codex-conflict") {
-    return {
-      action: "先处理冲突路径，再重新检查并应用。",
+      action: "检查诊断项，必要时重建状态。",
     };
   }
   if (item.code === "effective-state-error") {
@@ -69,12 +64,7 @@ function diagnosticGuide(item: DiagnosticItem) {
   };
 }
 
-async function syncCodex() {
-  await executeAsync(
-    () => api.syncCodex(),
-    (next) => emit("success", next)
-  );
-}
+
 
 async function rebuildState() {
   await executeAsync(
@@ -128,10 +118,6 @@ async function rebuildState() {
       <h3>恢复操作</h3>
     </div>
     <div class="button-row">
-      <button class="secondary-button" :disabled="busy" @click="syncCodex">
-        <Wrench :size="16" />
-        重新检查并应用
-      </button>
       <button v-if="canRebuild" class="danger-button" :disabled="busy" @click="rebuildState">
         <RotateCcw :size="16" />
         重建状态文件

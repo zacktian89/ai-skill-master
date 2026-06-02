@@ -11,7 +11,6 @@ const snapshot: AppSnapshot = {
   state: {
     schemaVersion: 1,
     skillLibraryPath: "/library",
-    codexSkillsPath: "/codex/skills",
     currentProjectId: null,
     syncStatus: {
       phase: "healthy",

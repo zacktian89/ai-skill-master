@@ -12,7 +12,6 @@ const snapshot: AppSnapshot = {
   state: {
     schemaVersion: 1,
     skillLibraryPath: "/library",
-    codexSkillsPath: "/codex/skills",
     currentProjectId: null,
     syncStatus: {
       phase: "healthy",
@@ -35,9 +34,7 @@ const snapshot: AppSnapshot = {
             status: "healthy",
           },
         ],
-        managedLinks: {
-          codex: "/codex/skills/writer-pro",
-        },
+        managedLinks: {},
         conflict: null,
       },
     ],
@@ -81,7 +78,6 @@ describe("SkillsView references tab", () => {
     expect(wrapper.find(".detail-tab.active").text()).toBe("引用");
     expect(wrapper.text()).not.toContain("软链接引用");
     expect(wrapper.text()).not.toContain("软链接已指向当前 skill");
-    expect(wrapper.text()).toContain("/codex/skills/writer-pro");
     expect(wrapper.text()).toContain("/claude/skills/writer-pro");
     expect(wrapper.find(".reference-row").exists()).toBe(true);
 

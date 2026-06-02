@@ -4,11 +4,10 @@ use crate::skill_library::scan_skill_library;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn default_state(skill_library_path: PathBuf, codex_skills_path: Option<PathBuf>) -> AppState {
+pub fn default_state(skill_library_path: PathBuf) -> AppState {
     AppState {
         schema_version: 1,
         skill_library_path,
-        codex_skills_path,
         current_project_id: None,
         sync_status: Default::default(),
         migration_notice: None,
@@ -60,13 +59,12 @@ fn write_state(path: &Path, state: &AppState, refresh_backup: bool) -> Result<()
 pub fn load_or_create_state(
     path: &Path,
     skill_library_path: &Path,
-    codex_skills_path: Option<PathBuf>,
 ) -> Result<LoadedState> {
     fs::create_dir_all(skill_library_path)?;
     if path.exists() {
-        return load_state_with_recovery(path, skill_library_path, codex_skills_path);
+        return load_state_with_recovery(path, skill_library_path);
     }
-    let state = default_state(skill_library_path.to_path_buf(), codex_skills_path);
+    let state = default_state(skill_library_path.to_path_buf());
     save_state(path, &state)?;
     Ok(LoadedState {
         state,
@@ -76,10 +74,9 @@ pub fn load_or_create_state(
 
 pub fn rebuild_state_from_library(
     skill_library_path: &Path,
-    codex_skills_path: Option<PathBuf>,
 ) -> Result<AppState> {
     fs::create_dir_all(skill_library_path)?;
-    let mut state = default_state(skill_library_path.to_path_buf(), codex_skills_path);
+    let mut state = default_state(skill_library_path.to_path_buf());
     state.skills = scan_skill_library(skill_library_path)?;
     Ok(state)
 }
@@ -87,7 +84,6 @@ pub fn rebuild_state_from_library(
 fn load_state_with_recovery(
     path: &Path,
     skill_library_path: &Path,
-    codex_skills_path: Option<PathBuf>,
 ) -> Result<LoadedState> {
     match load_state(path) {
         Ok(state) => Ok(LoadedState {
@@ -113,7 +109,7 @@ fn load_state_with_recovery(
                     }
                     Err(backup_error) => {
                         let state =
-                            rebuild_state_from_library(skill_library_path, codex_skills_path)?;
+                            rebuild_state_from_library(skill_library_path)?;
                         return Ok(LoadedState {
                             state,
                             load_status: StateLoadStatus::RebuildRequired {
@@ -126,7 +122,7 @@ fn load_state_with_recovery(
                 }
             }
 
-            let state = rebuild_state_from_library(skill_library_path, codex_skills_path)?;
+            let state = rebuild_state_from_library(skill_library_path)?;
             Ok(LoadedState {
                 state,
                 load_status: StateLoadStatus::RebuildRequired {
@@ -156,7 +152,6 @@ mod tests {
         let state = AppState {
             schema_version: 1,
             skill_library_path: dir.path().join("skills"),
-            codex_skills_path: Some(dir.path().join("codex")),
             current_project_id: Some("project-1".to_string()),
             sync_status: Default::default(),
             migration_notice: None,
@@ -167,9 +162,7 @@ mod tests {
                 library_path: dir.path().join("skills").join("markdown-go"),
                 source: SkillSource::default(),
                 references: Vec::new(),
-                managed_links: ManagedLinks {
-                    codex: Some(dir.path().join("codex").join("markdown-go")),
-                },
+                managed_links: ManagedLinks {},
                 conflict: None,
             }],
             projects: vec![Project {
@@ -198,7 +191,7 @@ mod tests {
         let path = dir.path().join("missing.json");
         let library = dir.path().join("skills");
 
-        let state = load_or_create_state(&path, &library, None).unwrap();
+        let state = load_or_create_state(&path, &library).unwrap();
 
         assert_eq!(state.state.schema_version, 1);
         assert_eq!(state.state.skill_library_path, library);
@@ -216,7 +209,6 @@ mod tests {
             r#"{
               "schemaVersion": 1,
               "skillLibraryPath": "/tmp/skills",
-              "codexSkillsPath": null,
               "currentProjectId": null,
               "syncStatus": { "phase": "idle", "message": null, "pendingActions": [] },
               "migrationNotice": null,
@@ -225,7 +217,7 @@ mod tests {
                 "name": "Writer",
                 "description": "",
                 "libraryPath": "/tmp/skills/writer",
-                "managedLinks": { "codex": null },
+                "managedLinks": {},
                 "conflict": null
               }],
               "projects": []
@@ -246,10 +238,10 @@ mod tests {
         let library = dir.path().join("skills");
 
         fs::write(&path, "{ not-json").unwrap();
-        let state = default_state(library.clone(), None);
+        let state = default_state(library.clone());
         fs::write(&backup, serde_json::to_string(&state).unwrap()).unwrap();
 
-        let loaded = load_or_create_state(&path, &library, None).unwrap();
+        let loaded = load_or_create_state(&path, &library).unwrap();
 
         assert_eq!(
             loaded.load_status,
@@ -274,7 +266,7 @@ mod tests {
         fs::write(&path, "{ invalid").unwrap();
         fs::write(&backup, "{ invalid").unwrap();
 
-        let loaded = load_or_create_state(&path, &library, None).unwrap();
+        let loaded = load_or_create_state(&path, &library).unwrap();
 
         assert!(matches!(
             loaded.load_status,

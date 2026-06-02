@@ -1,6 +1,6 @@
 use crate::error::{Result, SkillMasterError};
 use crate::models::{AppState, Skill, SkillReference, SkillSource, ReferenceScope, ReferenceStatus, ManagedLinks};
-use crate::codex_sync::{validate_managed_link, create_directory_link, ManagedLinkValidation};
+use crate::managed_link::{validate_managed_link, create_directory_link, ManagedLinkValidation};
 use crate::skill_library::{read_skill_metadata, copy_dir_all, should_skip_scan_dir};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -191,7 +191,7 @@ pub fn import_project_skill(
         if !meta.file_type().is_symlink() {
             fs::remove_dir_all(skill_path)?;
         } else {
-            crate::codex_sync::remove_managed_link(skill_path)?;
+            crate::managed_link::remove_managed_link(skill_path)?;
         }
     }
 
@@ -261,7 +261,7 @@ mod tests {
         make_skill(&nm_skills, "skill-nm", "Skill NM", "Desc NM");
 
         let library_root = dir.path().join("library");
-        let mut state = default_state(library_root, None);
+        let mut state = default_state(library_root);
 
         // 模拟已托管的技能：skill-a1 已经是符号链接指向 library
         // 我们在 state 里注册它，并让它是符号链接
@@ -321,7 +321,7 @@ mod tests {
         fs::create_dir_all(&sub_skills).unwrap();
         make_skill(&sub_skills, "custom-skill", "Custom Skill", "My custom description");
 
-        let mut state = default_state(library_root.clone(), None);
+        let mut state = default_state(library_root.clone());
         let skill_path = sub_skills.join("custom-skill");
 
         let result = import_project_skill(&mut state, "my-project (sub)", &skill_path, None).unwrap();
@@ -356,7 +356,7 @@ mod tests {
         // 项目里的技能版本，内容是 "Project Version"
         make_skill(&sub_skills, "custom-skill", "Custom Skill Project", "Project Version");
 
-        let mut state = default_state(library_root.clone(), None);
+        let mut state = default_state(library_root.clone());
         
         // 模拟技能库里已经有该技能，内容是 "Library Version"
         let lib_skill_path = library_root.join("custom-skill");

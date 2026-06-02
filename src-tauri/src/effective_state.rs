@@ -18,7 +18,7 @@ pub fn effective_skill_ids(state: &AppState, project_id: Option<&str>) -> Result
         let enabled = match project.and_then(|project| project.rules.get(&skill.id)) {
             Some(ProjectRule::Enable) => true,
             Some(ProjectRule::Disable) => false,
-            Some(ProjectRule::Inherit) | None => skill.managed_links.codex.is_some(),
+            Some(ProjectRule::Inherit) | None => true,
         };
         if enabled {
             active.push(skill.id.clone());
@@ -36,7 +36,7 @@ mod tests {
     use std::collections::BTreeMap;
     use tempfile::tempdir;
 
-    fn skill(id: &str, linked: bool) -> Skill {
+    fn skill(id: &str) -> Skill {
         let library_path = tempdir().unwrap().path().join(id);
         Skill {
             id: id.to_string(),
@@ -45,29 +45,27 @@ mod tests {
             library_path,
             source: SkillSource::default(),
             references: Vec::new(),
-            managed_links: ManagedLinks {
-                codex: linked.then(|| tempdir().unwrap().path().join("codex").join(id)),
-            },
+            managed_links: ManagedLinks {},
             conflict: None,
         }
     }
 
     #[test]
-    fn no_project_uses_linked_skills() {
+    fn no_project_uses_all_skills() {
         let dir = tempdir().unwrap();
-        let mut state = default_state(dir.path().join("skills"), None);
-        state.skills = vec![skill("writer", true), skill("imagegen", false)];
+        let mut state = default_state(dir.path().join("skills"));
+        state.skills = vec![skill("writer"), skill("imagegen")];
 
         let active = effective_skill_ids(&state, None).unwrap();
 
-        assert_eq!(active, vec!["writer".to_string()]);
+        assert_eq!(active, vec!["imagegen".to_string(), "writer".to_string()]);
     }
 
     #[test]
     fn project_rule_overrides_link_state() {
         let dir = tempdir().unwrap();
-        let mut state = default_state(dir.path().join("skills"), None);
-        state.skills = vec![skill("writer", true), skill("imagegen", false)];
+        let mut state = default_state(dir.path().join("skills"));
+        state.skills = vec![skill("writer"), skill("imagegen")];
         let mut rules = BTreeMap::new();
         rules.insert("writer".to_string(), ProjectRule::Disable);
         rules.insert("imagegen".to_string(), ProjectRule::Enable);

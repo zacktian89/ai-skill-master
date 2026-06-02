@@ -28,13 +28,11 @@ export interface MigrationNotice {
   oldLibraryPath: string;
   newLibraryPath: string;
   message: string;
-  requiresCodexResync: boolean;
 }
 
 export interface AppState {
   schemaVersion: number;
   skillLibraryPath: string;
-  codexSkillsPath?: string | null;
   currentProjectId?: string | null;
   syncStatus: SyncStatus;
   migrationNotice?: MigrationNotice | null;

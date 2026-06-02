@@ -1,13 +1,12 @@
-use crate::app_paths::{detect_codex_skills_path, AppPaths};
-use crate::codex_sync::{
-    create_directory_link, managed_link_issue_message, plan_codex_sync, remove_managed_link,
-    validate_managed_link, ManagedLinkValidation, SyncReport,
+use crate::app_paths::AppPaths;
+use crate::managed_link::{
+    create_directory_link, managed_link_issue_message, remove_managed_link,
+    validate_managed_link, ManagedLinkValidation,
 };
-use crate::effective_state::effective_skill_ids;
 use crate::error::{Result, SkillMasterError};
 use crate::models::{
-    AppState, PendingSyncAction, PendingSyncActionKind, Project, ProjectRule, ReferenceScope,
-    ReferenceStatus, Skill, SkillConflict, SkillReference, SyncPhase, SyncStatus,
+    AppState, Project, ProjectRule, ReferenceScope,
+    ReferenceStatus, Skill, SkillReference, SyncPhase, SyncStatus,
 };
 use crate::skill_library::{
     delete_skill as delete_skill_from_library, import_selected_skills,
@@ -250,91 +249,6 @@ pub fn build_snapshot(
         }
     }
 
-    if let Some(codex_path) = state
-        .codex_skills_path
-        .as_ref()
-        .filter(|path| path.exists())
-    {
-        match effective_skill_ids(&state, state.current_project_id.as_deref()) {
-            Ok(active) => {
-                let report = plan_codex_sync(&state.skills, &active, codex_path)?;
-                for conflict in report.conflicts {
-                    mark_skill_conflict(
-                        &mut state.skills,
-                        &conflict.skill_id,
-                        &conflict.target,
-                        &conflict.message,
-                    );
-                    push_diagnostic(
-                        &mut diagnostics,
-                        &mut seen,
-                        DiagnosticItem {
-                            level: if conflict.message.contains("托管链接")
-                                || conflict.message.contains("源目录不存在")
-                            {
-                                DiagnosticLevel::Error
-                            } else {
-                                DiagnosticLevel::Warning
-                            },
-                            code: "codex-conflict".to_string(),
-                            title: format!("Skill 冲突：{}", conflict.skill_id),
-                            detail: conflict.message,
-                        },
-                    );
-                }
-            }
-            Err(error) => push_diagnostic(
-                &mut diagnostics,
-                &mut seen,
-                DiagnosticItem {
-                    level: DiagnosticLevel::Error,
-                    code: "effective-state-error".to_string(),
-                    title: "无法计算当前项目生效状态".to_string(),
-                    detail: error.to_string(),
-                },
-            ),
-        }
-    }
-
-    for skill in &mut state.skills {
-        if let Some(target) = skill.managed_links.codex.clone() {
-            let validation = validate_managed_link(&skill.library_path, &target)?;
-            if validation != ManagedLinkValidation::Valid {
-                if skill.conflict.is_none() {
-                    skill.conflict = Some(SkillConflict {
-                        target: "codex".to_string(),
-                        path: target.clone(),
-                        message: managed_link_issue_message(&target, &validation),
-                    });
-                }
-                push_diagnostic(
-                    &mut diagnostics,
-                    &mut seen,
-                    DiagnosticItem {
-                        level: DiagnosticLevel::Error,
-                        code: "managed-link-mismatch".to_string(),
-                        title: format!("托管链接异常：{}", skill.name),
-                        detail: managed_link_issue_message(&target, &validation),
-                    },
-                );
-            }
-        }
-    }
-
-    if state.sync_status.phase == SyncPhase::RepairRequired {
-        push_diagnostic(
-            &mut diagnostics,
-            &mut seen,
-            DiagnosticItem {
-                level: DiagnosticLevel::Error,
-                code: "sync-repair-required".to_string(),
-                title: "Codex 同步需要修复".to_string(),
-                detail: state.sync_status.message.clone().unwrap_or_else(|| {
-                    "上一轮同步未完成，请根据挂起操作重新同步或手动处理。".to_string()
-                }),
-            },
-        );
-    }
 
     Ok(AppSnapshot {
         state,
@@ -451,18 +365,8 @@ fn command_paths(app: &AppHandle) -> Result<AppPaths> {
 
 fn load_command_state(app: &AppHandle) -> Result<CommandState> {
     let paths = command_paths(app)?;
-    let home = app
-        .path()
-        .home_dir()
-        .map_err(|error| SkillMasterError::InvalidPath(error.to_string()))?;
-    let detected_codex = detect_codex_skills_path(&home);
-    let codex = if detected_codex.exists() {
-        Some(detected_codex)
-    } else {
-        None
-    };
     let LoadedState { state, load_status } =
-        load_or_create_state(&paths.state_file, &paths.skill_library, codex)?;
+        load_or_create_state(&paths.state_file, &paths.skill_library)?;
     Ok(CommandState {
         paths,
         state,
@@ -499,53 +403,6 @@ fn push_diagnostic(
     }
 }
 
-fn mark_skill_conflict(
-    skills: &mut [Skill],
-    skill_id: &str,
-    path: &std::path::Path,
-    message: &str,
-) {
-    if let Some(skill) = skills.iter_mut().find(|skill| skill.id == skill_id) {
-        skill.conflict = Some(SkillConflict {
-            target: "codex".to_string(),
-            path: path.to_path_buf(),
-            message: message.to_string(),
-        });
-    }
-}
-
-fn build_pending_actions(report: &SyncReport) -> Vec<PendingSyncAction> {
-    let mut actions = Vec::new();
-    for action in &report.to_create {
-        actions.push(PendingSyncAction {
-            kind: PendingSyncActionKind::Create,
-            skill_id: action.skill_id.clone(),
-            target: action.target.clone(),
-            source: Some(action.source.clone()),
-            message: "需要重新创建托管链接".to_string(),
-        });
-    }
-    for action in &report.to_remove {
-        actions.push(PendingSyncAction {
-            kind: PendingSyncActionKind::Remove,
-            skill_id: action.skill_id.clone(),
-            target: action.target.clone(),
-            source: Some(action.source.clone()),
-            message: "需要移除旧的托管链接".to_string(),
-        });
-    }
-    for conflict in &report.conflicts {
-        actions.push(PendingSyncAction {
-            kind: PendingSyncActionKind::Inspect,
-            skill_id: conflict.skill_id.clone(),
-            target: conflict.target.clone(),
-            source: None,
-            message: conflict.message.clone(),
-        });
-    }
-    actions
-}
-
 fn delete_preview_from_state(state: &AppState, skill_id: &str) -> Result<DeleteSkillPreview> {
     let skill = state
         .skills
@@ -568,16 +425,9 @@ fn delete_preview_from_state(state: &AppState, skill_id: &str) -> Result<DeleteS
         skill_name: skill.name.clone(),
         library_path: skill.library_path.clone(),
         managed_link_targets: skill
-            .managed_links
-            .codex
+            .references
             .iter()
-            .cloned()
-            .chain(
-                skill
-                    .references
-                    .iter()
-                    .map(|reference| reference.target_path.clone()),
-            )
+            .map(|reference| reference.target_path.clone())
             .collect::<Vec<_>>(),
         affected_projects,
     })
@@ -750,78 +600,6 @@ pub fn preview_delete_skill(
 #[tauri::command]
 pub fn delete_skill(app: AppHandle, skill_id: String) -> std::result::Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    let skill = command_state
-        .state
-        .skills
-        .iter()
-        .find(|skill| skill.id == skill_id)
-        .cloned()
-        .ok_or_else(|| format!("找不到 skill：{skill_id}"))?;
-
-    let mut pending = Vec::new();
-    let mut issues = Vec::new();
-
-    if let Some(target) = &skill.managed_links.codex {
-        let validation = validate_managed_link(&skill.library_path, target)
-            .map_err(|error| error.to_string())?;
-        if validation != ManagedLinkValidation::Valid {
-            issues.push(managed_link_issue_message(target, &validation));
-            pending.push(PendingSyncAction {
-                kind: PendingSyncActionKind::Inspect,
-                skill_id: skill.id.clone(),
-                target: target.clone(),
-                source: Some(skill.library_path.clone()),
-                message: managed_link_issue_message(target, &validation),
-            });
-        }
-    }
-
-    if !issues.is_empty() {
-        command_state.state.sync_status = SyncStatus {
-            phase: SyncPhase::RepairRequired,
-            message: Some(format!(
-                "删除 skill 前发现托管链接异常，未执行删除：{}",
-                issues.join("；")
-            )),
-            pending_actions: pending,
-        };
-        persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
-        return build_snapshot(
-            &command_state.paths,
-            command_state.state,
-            &StateLoadStatus::Clean,
-        )
-        .map_err(|error| error.to_string());
-    }
-
-    if let Some(target) = &skill.managed_links.codex {
-        if let Err(error) = remove_managed_link(target) {
-            command_state.state.sync_status = SyncStatus {
-                phase: SyncPhase::RepairRequired,
-                message: Some(format!(
-                    "删除 skill 前移除托管链接失败：{} -> {}",
-                    target.display(),
-                    error
-                )),
-                pending_actions: vec![PendingSyncAction {
-                    kind: PendingSyncActionKind::Remove,
-                    skill_id: skill.id.clone(),
-                    target: target.clone(),
-                    source: Some(skill.library_path.clone()),
-                    message: "需要先移除托管链接后才能删除 skill".to_string(),
-                }],
-            };
-            persist(&command_state.paths, &command_state.state)
-                .map_err(|persist_error| persist_error.to_string())?;
-            return build_snapshot(
-                &command_state.paths,
-                command_state.state,
-                &StateLoadStatus::Clean,
-            )
-            .map_err(|persist_error| persist_error.to_string());
-        }
-    }
-
     delete_skill_from_library(&mut command_state.state, &skill_id)
         .map_err(|error| error.to_string())?;
     persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
@@ -989,19 +767,6 @@ pub fn delete_project(
 }
 
 #[tauri::command]
-pub fn set_codex_path(app: AppHandle, path: PathBuf) -> std::result::Result<AppSnapshot, String> {
-    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    command_state.state.codex_skills_path = Some(path);
-    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
-    build_snapshot(
-        &command_state.paths,
-        command_state.state,
-        &StateLoadStatus::Clean,
-    )
-    .map_err(|error| error.to_string())
-}
-
-#[tauri::command]
 pub fn migrate_library(
     app: AppHandle,
     target: PathBuf,
@@ -1022,109 +787,16 @@ pub fn rebuild_state(app: AppHandle) -> std::result::Result<AppSnapshot, String>
     let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
     let mut rebuilt = rebuild_state_from_library(
         &command_state.state.skill_library_path,
-        command_state.state.codex_skills_path.clone(),
     )
     .map_err(|error| error.to_string())?;
     rebuilt.sync_status = SyncStatus {
         phase: SyncPhase::Idle,
-        message: Some("状态文件已重建，可重新同步 Codex。".to_string()),
+        message: Some("状态文件已重建。".to_string()),
         pending_actions: Vec::new(),
     };
     persist(&command_state.paths, &rebuilt).map_err(|error| error.to_string())?;
     build_snapshot(&command_state.paths, rebuilt, &StateLoadStatus::Clean)
         .map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-pub fn sync_codex(app: AppHandle) -> std::result::Result<AppSnapshot, String> {
-    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    let codex_path = command_state
-        .state
-        .codex_skills_path
-        .clone()
-        .ok_or_else(|| "Codex skills 目录未设置".to_string())?;
-    let active = effective_skill_ids(
-        &command_state.state,
-        command_state.state.current_project_id.as_deref(),
-    )
-    .map_err(|error| error.to_string())?;
-    let report = plan_codex_sync(&command_state.state.skills, &active, &codex_path)
-        .map_err(|error| error.to_string())?;
-
-    let mut issues = Vec::new();
-
-    for action in &report.to_remove {
-        match validate_managed_link(&action.source, &action.target)
-            .map_err(|error| error.to_string())?
-        {
-            ManagedLinkValidation::Valid => {
-                if let Err(error) = remove_managed_link(&action.target) {
-                    issues.push(format!(
-                        "移除托管链接失败：{} -> {}",
-                        action.target.display(),
-                        error
-                    ));
-                } else if let Some(skill) = command_state
-                    .state
-                    .skills
-                    .iter_mut()
-                    .find(|skill| skill.id == action.skill_id)
-                {
-                    skill.managed_links.codex = None;
-                }
-            }
-            validation => issues.push(managed_link_issue_message(&action.target, &validation)),
-        }
-    }
-
-    for action in &report.to_create {
-        if let Err(error) = create_directory_link(&action.source, &action.target) {
-            issues.push(format!(
-                "创建托管链接失败：{} -> {}，原因：{}",
-                action.source.display(),
-                action.target.display(),
-                error
-            ));
-        } else if let Some(skill) = command_state
-            .state
-            .skills
-            .iter_mut()
-            .find(|skill| skill.id == action.skill_id)
-        {
-            skill.managed_links.codex = Some(action.target.clone());
-        }
-    }
-
-    if issues.is_empty() {
-        command_state.state.sync_status = SyncStatus {
-            phase: SyncPhase::Healthy,
-            message: Some(if report.conflicts.is_empty() {
-                "Codex 同步已完成。".to_string()
-            } else {
-                format!(
-                    "Codex 同步已完成，但仍有 {} 个冲突未覆盖。",
-                    report.conflicts.len()
-                )
-            }),
-            pending_actions: Vec::new(),
-        };
-    } else {
-        let repair_report = plan_codex_sync(&command_state.state.skills, &active, &codex_path)
-            .map_err(|error| error.to_string())?;
-        command_state.state.sync_status = SyncStatus {
-            phase: SyncPhase::RepairRequired,
-            message: Some(format!("Codex 同步未完成：{}", issues.join("；"))),
-            pending_actions: build_pending_actions(&repair_report),
-        };
-    }
-
-    persist(&command_state.paths, &command_state.state).map_err(|error| error.to_string())?;
-    build_snapshot(
-        &command_state.paths,
-        command_state.state,
-        &StateLoadStatus::Clean,
-    )
-    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -1440,12 +1112,10 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn snapshot_includes_skills_when_codex_path_exists() {
+    fn snapshot_includes_skills() {
         let dir = tempdir().unwrap();
-        let codex = dir.path().join("codex");
-        std::fs::create_dir_all(&codex).unwrap();
         let paths = AppPaths::from_config_dir(dir.path());
-        let mut state = default_state(dir.path().join("skills"), Some(codex));
+        let mut state = default_state(dir.path().join("skills"));
         state.skills.push(Skill {
             id: "writer".to_string(),
             name: "writer".to_string(),
@@ -1465,17 +1135,21 @@ mod tests {
     #[test]
     fn delete_preview_includes_managed_links_and_project_impacts() {
         let dir = tempdir().unwrap();
-        let mut state = default_state(dir.path().join("skills"), None);
+        let mut state = default_state(dir.path().join("skills"));
         state.skills.push(Skill {
             id: "writer".to_string(),
             name: "Writer".to_string(),
             description: String::new(),
             library_path: dir.path().join("skills").join("writer"),
             source: Default::default(),
-            references: Vec::new(),
-            managed_links: crate::models::ManagedLinks {
-                codex: Some(dir.path().join("codex").join("writer")),
-            },
+            references: vec![SkillReference {
+                id: "ref-1".to_string(),
+                target_name: "Claude".to_string(),
+                target_path: dir.path().join("codex").join("writer"),
+                scope: ReferenceScope::User,
+                status: ReferenceStatus::Healthy,
+            }],
+            managed_links: crate::models::ManagedLinks {},
             conflict: None,
         });
         let mut rules = BTreeMap::new();
@@ -1513,7 +1187,7 @@ mod tests {
     #[test]
     fn deleting_current_project_clears_context() {
         let dir = tempdir().unwrap();
-        let mut state = default_state(dir.path().join("skills"), None);
+        let mut state = default_state(dir.path().join("skills"));
         state.current_project_id = Some("demo".to_string());
         state.projects.push(Project {
             id: "demo".to_string(),
@@ -1540,7 +1214,7 @@ mod tests {
         let target = root.join("html-go");
         create_directory_link(&other, &target).unwrap();
 
-        let mut state = default_state(library.clone(), None);
+        let mut state = default_state(library.clone());
         state.skills.push(Skill {
             id: "html-go".to_string(),
             name: "html-go".to_string(),
@@ -1580,7 +1254,7 @@ mod tests {
         let target = root.join("html-go");
         create_directory_link(&other, &target).unwrap();
 
-        let mut state = default_state(library.clone(), None);
+        let mut state = default_state(library.clone());
         state.skills.push(Skill {
             id: "html-go".to_string(),
             name: "html-go".to_string(),
@@ -1615,7 +1289,7 @@ mod tests {
     #[test]
     fn resetting_project_rules_clears_only_selected_project() {
         let dir = tempdir().unwrap();
-        let mut state = default_state(dir.path().join("skills"), None);
+        let mut state = default_state(dir.path().join("skills"));
 
         let mut demo_rules = BTreeMap::new();
         demo_rules.insert("writer".to_string(), ProjectRule::Enable);
@@ -1653,7 +1327,7 @@ mod tests {
         let target = root.join("html-go");
         create_directory_link(&other, &target).unwrap();
 
-        let mut state = default_state(library.clone(), None);
+        let mut state = default_state(library.clone());
         state.skills.push(Skill {
             id: "html-go".to_string(),
             name: "html-go".to_string(),
@@ -1690,7 +1364,7 @@ mod tests {
         let target = root.join("html-go");
         create_directory_link(&other, &target).unwrap();
 
-        let mut state = default_state(library.clone(), None);
+        let mut state = default_state(library.clone());
         state.skills.push(Skill {
             id: "html-go".to_string(),
             name: "html-go".to_string(),
@@ -1726,7 +1400,7 @@ mod tests {
         let target = root.join("html-go");
         create_directory_link(&other, &target).unwrap();
 
-        let mut state = default_state(library.clone(), None);
+        let mut state = default_state(library.clone());
         state.skills.push(Skill {
             id: "html-go".to_string(),
             name: "html-go".to_string(),

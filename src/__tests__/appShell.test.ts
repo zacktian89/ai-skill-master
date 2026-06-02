@@ -11,7 +11,6 @@ vi.mock("../api", () => ({
     state: {
       schemaVersion: 1,
       skillLibraryPath: "D:/skills",
-      codexSkillsPath: null,
       currentProjectId: null,
       syncStatus: {
         phase: "idle",
@@ -26,9 +25,7 @@ vi.mock("../api", () => ({
           description: "长文写作",
           libraryPath: "D:/skills/writer-pro",
           references: [],
-          managedLinks: {
-            codex: null,
-          },
+          managedLinks: {},
           conflict: null,
         },
       ],

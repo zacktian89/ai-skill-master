@@ -8,7 +8,6 @@ export const mockSnapshot: AppSnapshot = {
   state: {
     schemaVersion: 1,
     skillLibraryPath: "/Users/demo/.skillmaster/skills",
-    codexSkillsPath: "/Users/demo/.codex/skills",
     currentProjectId: "acme-web",
     syncStatus: {
       phase: "healthy",
@@ -31,9 +30,7 @@ export const mockSnapshot: AppSnapshot = {
             status: "healthy",
           },
         ],
-        managedLinks: {
-          codex: "/Users/demo/.codex/skills/writer-pro",
-        },
+        managedLinks: {},
         conflict: null,
       },
       {
@@ -42,9 +39,7 @@ export const mockSnapshot: AppSnapshot = {
         description: "检查界面层级、配色和布局一致性",
         libraryPath: "/Users/demo/.skillmaster/skills/ui-auditor",
         references: [],
-        managedLinks: {
-          codex: "/Users/demo/.codex/skills/ui-auditor",
-        },
+        managedLinks: {},
         conflict: null,
       },
       {
@@ -53,9 +48,7 @@ export const mockSnapshot: AppSnapshot = {
         description: "发布前校验与回滚预案",
         libraryPath: "/Users/demo/.skillmaster/skills/deploy-guard",
         references: [],
-        managedLinks: {
-          codex: null,
-        },
+        managedLinks: {},
         conflict: null,
       },
       {
@@ -64,14 +57,8 @@ export const mockSnapshot: AppSnapshot = {
         description: "旧系统审计与兼容性分析",
         libraryPath: "/Users/demo/.skillmaster/skills/legacy-review",
         references: [],
-        managedLinks: {
-          codex: "/Users/demo/.codex/skills/legacy-review",
-        },
-        conflict: {
-          target: "codex",
-          path: "/Users/demo/.codex/skills/legacy-review",
-          message: "目标目录包含非托管内容",
-        },
+        managedLinks: {},
+        conflict: null,
       },
     ],
     projects: [
@@ -173,14 +160,7 @@ export const mockSnapshot: AppSnapshot = {
       scope: "user",
     },
   ],
-  diagnostics: [
-    {
-      level: "warning",
-      code: "codex-conflict",
-      title: "Skill 冲突：legacy-review",
-      detail: "目标目录包含非托管内容，需要人工确认后再同步。",
-    },
-  ],
+  diagnostics: [],
   paths: {
     stateFile: "/Users/demo/.skillmaster/state.json",
     backupFile: "/Users/demo/.skillmaster/state.json.bak",
@@ -200,24 +180,9 @@ export function effectiveEnabled(skill: Skill): boolean {
   const projectRule = currentProject?.rules[skill.id];
   if (projectRule === "enable") return true;
   if (projectRule === "disable") return false;
-  return Boolean(skill.managedLinks.codex);
+  return true;
 }
 
 export function snapshot(): Promise<AppSnapshot> {
   return Promise.resolve(clone(mockSnapshot));
-}
-
-export function syncMockCodex() {
-  for (const skill of mockSnapshot.state.skills) {
-    if (effectiveEnabled(skill)) {
-      skill.managedLinks.codex = `${mockSnapshot.state.codexSkillsPath}/${skill.id}`;
-    } else {
-      skill.managedLinks.codex = null;
-    }
-  }
-  mockSnapshot.state.syncStatus = {
-    phase: "healthy",
-    message: "Mock 环境同步完成。",
-    pendingActions: [],
-  };
 }

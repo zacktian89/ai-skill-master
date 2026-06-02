@@ -7,7 +7,6 @@ use std::path::PathBuf;
 pub struct AppState {
     pub schema_version: u32,
     pub skill_library_path: PathBuf,
-    pub codex_skills_path: Option<PathBuf>,
     pub current_project_id: Option<String>,
     #[serde(default)]
     pub sync_status: SyncStatus,
@@ -95,9 +94,7 @@ pub enum SkillSourceKind {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ManagedLinks {
-    pub codex: Option<PathBuf>,
-}
+pub struct ManagedLinks {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -188,7 +185,6 @@ pub struct MigrationNotice {
     pub old_library_path: PathBuf,
     pub new_library_path: PathBuf,
     pub message: String,
-    pub requires_codex_resync: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

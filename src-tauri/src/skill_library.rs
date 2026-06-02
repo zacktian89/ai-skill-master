@@ -255,14 +255,11 @@ pub fn migrate_skill_library(
     state.skill_library_path = target_root.to_path_buf();
     for skill in &mut state.skills {
         skill.library_path = target_root.join(&skill.id);
-        skill.managed_links.codex = None;
     }
     state.migration_notice = Some(MigrationNotice {
         old_library_path: previous_root,
         new_library_path: target_root.to_path_buf(),
-        message: "技能库迁移已完成，SkillMaster 已切换到新目录。旧目录不会自动删除；如需让 Codex 使用新技能库，请重新同步。"
-            .to_string(),
-        requires_codex_resync: true,
+        message: "技能库迁移已完成，SkillMaster 已切换到新目录。旧目录不会自动删除。".to_string(),
     });
     Ok(())
 }
@@ -626,7 +623,7 @@ mod tests {
             "---\nname: writer\ndescription: Write drafts\n---\n",
         )
         .unwrap();
-        let mut state = default_state(library_root.path().to_path_buf(), None);
+        let mut state = default_state(library_root.path().to_path_buf());
 
         import_skill(&mut state, &source).unwrap();
 
@@ -654,7 +651,7 @@ mod tests {
             "---\nname: reviewer\ndescription: Review drafts\n---\n",
         )
         .unwrap();
-        let state = default_state(library_root.path().to_path_buf(), None);
+        let state = default_state(library_root.path().to_path_buf());
 
         let preview = preview_import_skills(
             &state,
@@ -685,7 +682,7 @@ mod tests {
         fs::create_dir_all(&reviewer).unwrap();
         fs::write(writer.join("SKILL.md"), "---\nname: writer\n---\n").unwrap();
         fs::write(reviewer.join("SKILL.md"), "---\nname: reviewer\n---\n").unwrap();
-        let mut state = default_state(library_root.path().to_path_buf(), None);
+        let mut state = default_state(library_root.path().to_path_buf());
 
         import_selected_skills(
             &mut state,
@@ -724,7 +721,7 @@ mod tests {
         let source = source_root.path().join("writer");
         fs::create_dir_all(&source).unwrap();
         fs::write(source.join("SKILL.md"), "---\nname: writer\n---\n").unwrap();
-        let mut state = default_state(old_root.path().to_path_buf(), None);
+        let mut state = default_state(old_root.path().to_path_buf());
         import_skill(&mut state, &source).unwrap();
 
         migrate_skill_library(&mut state, new_root.path()).unwrap();
@@ -743,7 +740,7 @@ mod tests {
         fs::create_dir_all(&skill_dir).unwrap();
         fs::write(skill_dir.join("SKILL.md"), "---\nname: writer\n---\n").unwrap();
 
-        let mut state: AppState = default_state(library_root.path().to_path_buf(), None);
+        let mut state: AppState = default_state(library_root.path().to_path_buf());
         import_skill(&mut state, &skill_dir).unwrap();
         let mut rules = BTreeMap::new();
         rules.insert("writer".to_string(), crate::models::ProjectRule::Disable);

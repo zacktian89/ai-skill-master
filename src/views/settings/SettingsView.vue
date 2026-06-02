@@ -6,13 +6,12 @@ import StatusTag from "../../components/StatusTag.vue";
 
 import AppearancePanel from "./components/AppearancePanel.vue";
 import StoragePanel from "./components/StoragePanel.vue";
-import CodexPanel from "./components/CodexPanel.vue";
 import IssuesPanel from "./components/IssuesPanel.vue";
 
 import type { AppSnapshot } from "../../types";
 import { AppStoreKey } from "../../stores/useAppStore";
 
-type SettingsGroupId = "appearance" | "storage" | "codex" | "issues";
+type SettingsGroupId = "appearance" | "storage" | "issues";
 type ThemeMode = "dark" | "light";
 
 const appStore = inject(AppStoreKey, null);
@@ -47,32 +46,7 @@ const issueItems = computed(() =>
   snapshot.value.diagnostics.filter((item) => item.code !== "library-migrated"),
 );
 
-const applyState = computed(() => {
-  const issueCount = issueItems.value.filter((item) => item.level === "error").length;
-  const pendingCount = snapshot.value.state.syncStatus.pendingActions.filter((item) => item.kind !== "inspect").length;
 
-  if (issueCount) {
-    return {
-      tone: "danger",
-      label: "需处理",
-      message: `有 ${issueCount} 个问题需要先处理。`,
-    };
-  }
-
-  if (pendingCount) {
-    return {
-      tone: "warning",
-      label: "未完成",
-      message: `有 ${pendingCount} 项链接操作未完成。`,
-    };
-  }
-
-  return {
-    tone: "success",
-    label: "状态正常",
-    message: "当前没有待处理的链接操作。",
-  };
-});
 
 const settingsGroups = computed(() => [
   {
@@ -86,12 +60,6 @@ const settingsGroups = computed(() => [
     title: "存储位置",
     description: "技能库与状态文件",
     issueCount: snapshot.value.diagnostics.filter((item) => item.code.includes("library")).length,
-  },
-  {
-    id: "codex" as const,
-    title: "Codex",
-    description: "路径与链接",
-    issueCount: snapshot.value.state.syncStatus.pendingActions.length,
   },
   {
     id: "issues" as const,
@@ -142,12 +110,7 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
         @success="handleSnapshotSuccess"
       />
 
-      <CodexPanel
-        v-else-if="selectedGroup === 'codex'"
-        :snapshot="snapshot"
-        :apply-state="applyState"
-        @success="handleSnapshotSuccess"
-      />
+
 
       <IssuesPanel
         v-else-if="selectedGroup === 'issues'"

@@ -86,12 +86,8 @@ function actionsForSkill(skillId: string): PendingSyncAction[] {
 }
 
 function isReferenced(skill: Skill): boolean {
-  if (linkEnabled(skill) || (skill.references?.length ?? 0) > 0) return true;
+  if ((skill.references?.length ?? 0) > 0) return true;
   return snapshot.value.state.projects.some((project) => project.rules[skill.id] === "enable");
-}
-
-function linkEnabled(skill: Skill): boolean {
-  return Boolean(skill.managedLinks.codex);
 }
 
 const skills = computed(() => {
@@ -110,21 +106,13 @@ const selectedSkill = computed(
 
 const selectedIssues = computed(() => {
   if (!selectedSkill.value) return [];
-  const issues = actionsForSkill(selectedSkill.value.id)
+  return actionsForSkill(selectedSkill.value.id)
     .filter((item) => item.kind === "inspect")
     .map((item) => ({
       key: `${item.kind}-${item.target}-${item.message}`,
       title: "需要处理",
       detail: `${item.message} · ${item.target}`,
     }));
-  if (selectedSkill.value.conflict) {
-    issues.unshift({
-      key: `conflict-${selectedSkill.value.conflict.path}`,
-      title: "内容冲突",
-      detail: `${selectedSkill.value.conflict.message} · ${selectedSkill.value.conflict.path}`,
-    });
-  }
-  return issues;
 });
 
 const selectedReferences = computed(() => {
@@ -135,25 +123,7 @@ const selectedReferences = computed(() => {
 const targetProfiles = computed<SkillTargetProfile[]>(() => snapshot.value.targetProfiles ?? []);
 
 function referencesForSkill(skill: Skill): SkillReferenceDetail[] {
-  const actions = actionsForSkill(skill.id);
-  const inspectAction = actions.find((item) => item.kind === "inspect");
-  const createAction = actions.find((item) => item.kind === "create");
-
-  if (skill.conflict) {
-    return [
-      {
-        id: `codex-conflict-${skill.conflict.path}`,
-        targetName: "Codex",
-        symlinkPath: skill.conflict.path,
-        scope: "user",
-        status: "conflict",
-        removable: false,
-        legacyCodex: true,
-      },
-    ];
-  }
-
-  const references = (skill.references ?? []).map((reference) => ({
+  return (skill.references ?? []).map((reference) => ({
     id: reference.id,
     targetName: reference.targetName,
     symlinkPath: reference.targetPath,
@@ -162,50 +132,6 @@ function referencesForSkill(skill: Skill): SkillReferenceDetail[] {
     removable: true,
     legacyCodex: false,
   }));
-
-  if (inspectAction) {
-    return references.concat([
-      {
-        id: `codex-inspect-${inspectAction.target}`,
-        targetName: "Codex",
-        symlinkPath: inspectAction.target,
-        scope: "user",
-        status: "conflict",
-        removable: false,
-        legacyCodex: true,
-      },
-    ]);
-  }
-
-  if (skill.managedLinks.codex) {
-    return references.concat([
-      {
-        id: `codex-${skill.managedLinks.codex}`,
-        targetName: "Codex",
-        symlinkPath: skill.managedLinks.codex,
-        scope: "user",
-        status: "healthy",
-        removable: false,
-        legacyCodex: true,
-      },
-    ]);
-  }
-
-  if (createAction) {
-    return references.concat([
-      {
-        id: `codex-create-${createAction.target}`,
-        targetName: "Codex",
-        symlinkPath: createAction.target,
-        scope: "user",
-        status: "missing",
-        removable: false,
-        legacyCodex: true,
-      },
-    ]);
-  }
-
-  return references;
 }
 
 function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {

@@ -19,7 +19,6 @@ const snapshot: AppSnapshot = {
   state: {
     schemaVersion: 1,
     skillLibraryPath: "/library",
-    codexSkillsPath: "/codex/skills",
     currentProjectId: "acme",
     syncStatus: {
       phase: "healthy",
@@ -42,9 +41,7 @@ const snapshot: AppSnapshot = {
             status: "healthy",
           }
         ],
-        managedLinks: {
-          codex: "/codex/skills/writer-pro",
-        },
+        managedLinks: {},
         conflict: null,
       },
       {
@@ -53,9 +50,7 @@ const snapshot: AppSnapshot = {
         description: "审阅内容",
         libraryPath: "/library/reviewer",
         references: [],
-        managedLinks: {
-          codex: null,
-        },
+        managedLinks: {},
         conflict: null,
       },
       {
@@ -64,9 +59,7 @@ const snapshot: AppSnapshot = {
         description: "发布检查",
         libraryPath: "/library/deploy-guard",
         references: [],
-        managedLinks: {
-          codex: null,
-        },
+        managedLinks: {},
         conflict: null,
       },
     ],
