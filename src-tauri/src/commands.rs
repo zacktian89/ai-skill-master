@@ -6,7 +6,7 @@ use crate::managed_link::{
 use crate::error::{Result, SkillMasterError};
 use crate::models::{
     AppState, Project, ProjectRule, ReferenceScope,
-    ReferenceStatus, Skill, SkillReference, SyncPhase, SyncStatus,
+    ReferenceStatus, Skill, SkillReference,
 };
 use crate::skill_library::{
     delete_skill as delete_skill_from_library, import_selected_skills,
@@ -14,7 +14,7 @@ use crate::skill_library::{
     preview_import_skills as preview_import_source, ImportSkillPreview, ImportSkillSource,
 };
 use crate::state_store::{
-    load_or_create_state, rebuild_state_from_library, save_state, state_backup_path, LoadedState,
+    load_or_create_state, save_state, state_backup_path, LoadedState,
     StateLoadStatus,
 };
 use serde::{Deserialize, Serialize};
@@ -780,23 +780,6 @@ pub fn migrate_library(
         &StateLoadStatus::Clean,
     )
     .map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-pub fn rebuild_state(app: AppHandle) -> std::result::Result<AppSnapshot, String> {
-    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
-    let mut rebuilt = rebuild_state_from_library(
-        &command_state.state.skill_library_path,
-    )
-    .map_err(|error| error.to_string())?;
-    rebuilt.sync_status = SyncStatus {
-        phase: SyncPhase::Idle,
-        message: Some("状态文件已重建。".to_string()),
-        pending_actions: Vec::new(),
-    };
-    persist(&command_state.paths, &rebuilt).map_err(|error| error.to_string())?;
-    build_snapshot(&command_state.paths, rebuilt, &StateLoadStatus::Clean)
-        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]

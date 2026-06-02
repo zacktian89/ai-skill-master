@@ -18,11 +18,3 @@ export function migrateLibrary(target: string): Promise<AppSnapshot> {
   };
   return snapshot();
 }
-
-export function rebuildState(): Promise<AppSnapshot> {
-  mockSnapshot.stateLoad = {
-    phase: "clean",
-    message: "浏览器 mock 状态已重建。",
-  };
-  return snapshot();
-}

@@ -1,4 +1,5 @@
 use crate::error::{Result, SkillMasterError};
+use crate::managed_link::{create_directory_link, remove_managed_link};
 use crate::models::{ManagedLinks, MigrationNotice, Skill, SkillSource};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -258,7 +259,12 @@ pub fn migrate_skill_library(
     }
     state.skill_library_path = target_root.to_path_buf();
     for skill in &mut state.skills {
-        skill.library_path = target_root.join(&skill.id);
+        let new_library_path = target_root.join(&skill.id);
+        skill.library_path = new_library_path.clone();
+        for reference in &mut skill.references {
+            let _ = remove_managed_link(&reference.target_path);
+            let _ = create_directory_link(&new_library_path, &reference.target_path);
+        }
     }
     state.migration_notice = Some(MigrationNotice {
         old_library_path: previous_root,

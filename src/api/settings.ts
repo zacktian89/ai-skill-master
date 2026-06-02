@@ -12,9 +12,3 @@ export async function migrateLibrary(target: string): Promise<AppSnapshot> {
   const next = invoke ? await invoke<AppSnapshot>("migrate_library", { target }) : await mockSettings.migrateLibrary(target);
   return autoSync(next);
 }
-
-export async function rebuildState(): Promise<AppSnapshot> {
-  const invoke = await resolveInvoke();
-  const next = invoke ? await invoke<AppSnapshot>("rebuild_state") : await mockSettings.rebuildState();
-  return autoSync(next);
-}

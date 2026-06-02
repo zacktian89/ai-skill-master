@@ -28,7 +28,6 @@ pub fn run() {
             commands::reset_project_rules,
             commands::delete_project,
             commands::migrate_library,
-            commands::rebuild_state,
             commands::read_skill_file,
             commands::read_skill_file_at_path,
             commands::scan_project_skills,

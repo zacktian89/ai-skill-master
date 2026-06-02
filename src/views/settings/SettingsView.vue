@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, inject } from "vue";
-import SplitPane from "../../components/SplitPane.vue";
-import ListPanel from "../../components/ListPanel.vue";
-import StatusTag from "../../components/StatusTag.vue";
-
-import AppearancePanel from "./components/AppearancePanel.vue";
-import StoragePanel from "./components/StoragePanel.vue";
-import IssuesPanel from "./components/IssuesPanel.vue";
-
-import type { AppSnapshot } from "../../types";
+import { computed, inject, ref, onMounted } from "vue";
+import { Moon, Sun, FolderOpen } from "lucide-vue-next";
+import { openPath } from "@tauri-apps/plugin-opener";
+import * as api from "../../api";
+import { openDirectory } from "../../utils/dialog";
 import { AppStoreKey } from "../../stores/useAppStore";
+import { useAsyncAction } from "../../composables/useAsyncAction";
+import type { AppSnapshot } from "../../types";
 
-type SettingsGroupId = "appearance" | "storage" | "issues";
 type ThemeMode = "dark" | "light";
 
 const appStore = inject(AppStoreKey, null);
@@ -36,38 +32,55 @@ const themeMode = computed({
   }
 });
 
-const selectedGroup = ref<SettingsGroupId>("appearance");
+const { busy, run: executeAsync } = useAsyncAction({
+  onError: (err) => {
+    if (appStore) appStore.setError(String(err));
+  }
+});
 
+const storageRootDir = computed(() => {
+  const path = snapshot.value.paths.stateFile;
+  const index = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  if (index !== -1) {
+    return path.substring(0, index);
+  }
+  return path;
+});
 
+async function chooseLibraryTarget() {
+  try {
+    const selected = await openDirectory({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      await executeAsync(
+        () => api.migrateLibrary(selected),
+        (next) => handleSnapshotSuccess(next)
+      );
+    }
+  } catch (cause) {
+    if (appStore) appStore.setError(String(cause));
+  }
+}
 
-const canRebuild = computed(() => snapshot.value.stateLoad.phase === "rebuildRequired");
+async function openStorageDir() {
+  try {
+    await openPath(storageRootDir.value);
+  } catch (cause) {
+    if (appStore) appStore.setError(String(cause));
+  }
+}
 
-const issueItems = computed(() =>
-  snapshot.value.diagnostics.filter((item) => item.code !== "library-migrated"),
-);
+const appVersion = ref("0.1.0");
 
-
-
-const settingsGroups = computed(() => [
-  {
-    id: "appearance" as const,
-    title: "外观",
-    description: "黑白主题",
-    issueCount: 0,
-  },
-  {
-    id: "storage" as const,
-    title: "存储位置",
-    description: "技能库与状态文件",
-    issueCount: snapshot.value.diagnostics.filter((item) => item.code.includes("library")).length,
-  },
-  {
-    id: "issues" as const,
-    title: "问题与修复",
-    description: "低频处理入口",
-    issueCount: issueItems.value.length + Number(canRebuild.value),
-  },
-]);
+onMounted(async () => {
+  try {
+    if ((window as any).__TAURI_INTERNALS__) {
+      const { getVersion } = await import("@tauri-apps/api/app");
+      appVersion.value = await getVersion();
+    }
+  } catch (err) {
+    // fallback
+  }
+});
 
 function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
   if (appStore) appStore.applySnapshot(nextSnapshot);
@@ -76,49 +89,244 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 </script>
 
 <template>
-  <SplitPane>
-    <template #left>
-      <ListPanel :items="settingsGroups">
-        <button
-          v-for="group in settingsGroups"
-          :key="group.id"
-          class="list-row"
-          :class="{ active: selectedGroup === group.id }"
-          @click="selectedGroup = group.id"
-        >
-          <div class="list-row-copy">
-            <strong>{{ group.title }}</strong>
-            <small>{{ group.description }}</small>
+  <div class="detail-panel settings-page">
+    <div class="settings-container">
+      <div class="settings-header">
+        <h1>系统设置</h1>
+      </div>
+
+      <!-- Card 1: Appearance -->
+      <div class="settings-card">
+        <div class="card-title">界面外观</div>
+        <div class="settings-row">
+          <div class="setting-info">
+            <div class="setting-title">主题</div>
           </div>
-          <div class="list-row-meta">
-            <StatusTag v-if="group.issueCount" type="warning">{{ group.issueCount }} 项</StatusTag>
+          <div class="setting-control">
+            <div class="segmented-control segmented-control--binary theme-toggle" aria-label="主题切换">
+              <button
+                type="button"
+                :class="{ active: themeMode === 'dark' }"
+                @click="themeMode = 'dark'"
+              >
+                <Moon :size="14" />
+                黑色
+              </button>
+              <button
+                type="button"
+                :class="{ active: themeMode === 'light' }"
+                @click="themeMode = 'light'"
+              >
+                <Sun :size="14" />
+                白色
+              </button>
+            </div>
           </div>
-        </button>
-      </ListPanel>
-    </template>
+        </div>
+      </div>
 
-    <template #right>
-      <AppearancePanel
-        v-if="selectedGroup === 'appearance'"
-        v-model:theme-mode="themeMode"
-      />
+      <!-- Card 2: Storage -->
+      <div class="settings-card">
+        <div class="card-title">存储与数据</div>
+        
+        <div class="settings-row">
+          <div class="setting-info">
+            <div class="setting-title">存储根目录</div>
+            <div class="path-container">
+              <code class="path-display" :title="storageRootDir">{{ storageRootDir }}</code>
+            </div>
+          </div>
+          <div class="setting-control">
+            <button class="secondary-button compact-btn" type="button" @click="openStorageDir">
+              <FolderOpen :size="14" />
+              <span>打开</span>
+            </button>
+          </div>
+        </div>
 
-      <StoragePanel
-        v-else-if="selectedGroup === 'storage'"
-        :snapshot="snapshot"
-        :can-rebuild="canRebuild"
-        @success="handleSnapshotSuccess"
-      />
+        <div class="settings-row">
+          <div class="setting-info">
+            <div class="setting-title">技能库迁移</div>
+          </div>
+          <div class="setting-control">
+            <button class="primary-button compact-btn" :disabled="busy" @click="chooseLibraryTarget">
+              <FolderOpen :size="14" />
+              <span>迁移</span>
+            </button>
+          </div>
+        </div>
 
+        <!-- Migration Notice -->
+        <div v-if="snapshot.state.migrationNotice" class="migration-notice-card">
+          <div class="notice-header">
+            <strong>技能库迁移成功</strong>
+          </div>
+          <div class="notice-body">
+            <div><span>结果：</span>{{ snapshot.state.migrationNotice.message }}</div>
+            <div><span>新目录：</span><code>{{ snapshot.state.migrationNotice.newLibraryPath }}</code></div>
+            <div><span>旧目录：</span><code>{{ snapshot.state.migrationNotice.oldLibraryPath }}</code></div>
+          </div>
+        </div>
+      </div>
 
-
-      <IssuesPanel
-        v-else-if="selectedGroup === 'issues'"
-        :snapshot="snapshot"
-        :issue-items="issueItems"
-        :can-rebuild="canRebuild"
-        @success="handleSnapshotSuccess"
-      />
-    </template>
-  </SplitPane>
+      <div class="settings-footer">
+        <span>版本 v{{ appVersion }}</span>
+      </div>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.settings-page {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.settings-container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.settings-header {
+  margin-bottom: 8px;
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.settings-card {
+  background: var(--bg-panel-muted);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card-title {
+  padding: 16px 20px 10px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-default);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  gap: 24px;
+}
+
+.settings-row:not(:last-child) {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-title {
+  font-size: 15px;
+  font-weight: 550;
+  color: var(--text-primary);
+}
+
+.setting-control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.path-container {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.path-display {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--bg-main-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.compact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  height: 32px;
+  font-size: 13px;
+}
+
+/* Migration Notice styles */
+.migration-notice-card {
+  margin: 0 20px 20px;
+  padding: 16px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notice-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success-text);
+}
+
+.notice-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notice-body span {
+  font-weight: 550;
+  color: var(--success-text);
+}
+
+.notice-body code {
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.settings-footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+</style>
