@@ -20,6 +20,14 @@ const isDragging = ref(false);
 const appStore = createAppStore();
 const selectionStore = createSelectionStore(appStore.snapshot);
 
+watch(
+  () => appStore.themeMode.value,
+  (theme) => {
+    document.body.setAttribute("data-theme", theme);
+  },
+  { immediate: true }
+);
+
 // Watch current route to sync activeSection
 watch(
   () => route.name,

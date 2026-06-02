@@ -3,7 +3,7 @@ import { Folder, Link as LinkIcon, Plus } from "lucide-vue-next";
 import type { ScannedCategory, ProjectRule } from "../types";
 import SkillActionMenu from "./SkillActionMenu.vue";
 
-const props = defineProps<{
+defineProps<{
   categories: ScannedCategory[];
   rules: Record<string, ProjectRule>;
   busy?: boolean;
@@ -84,51 +84,111 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
           @keydown.enter.prevent="$emit('preview-skill', skill)"
           @keydown.space.prevent="$emit('preview-skill', skill)"
         >
-          <div class="project-skill-copy">
-            <div class="project-skill-title-row">
-              <LinkIcon
-                v-if="skill.isManaged"
-                class="project-skill-title-icon"
-                :size="15"
-                aria-label="已托管"
-              />
-              <Folder
-                v-else
-                class="project-skill-title-icon"
-                :size="15"
-                aria-label="未托管"
-              />
-              <strong>{{ skill.name }}</strong>
-              <span
-                v-if="showDisabledBadge && rules[skill.id] === 'disable'"
-                class="badge badge--error"
-                style="font-size: 10px; padding: 2px 6px;"
-              >
-                已停用
-              </span>
+          <div class="project-skill-main">
+            <div class="project-skill-header">
+              <div class="project-skill-title-row">
+                <LinkIcon
+                  v-if="skill.isManaged"
+                  class="project-skill-title-icon"
+                  :size="15"
+                  aria-label="已托管"
+                />
+                <Folder
+                  v-else
+                  class="project-skill-title-icon"
+                  :size="15"
+                  aria-label="未托管"
+                />
+                <strong>{{ skill.name }}</strong>
+                <span
+                  v-if="showDisabledBadge && rules[skill.id] === 'disable'"
+                  class="badge badge--error"
+                  style="font-size: 10px; padding: 2px 6px;"
+                >
+                  已停用
+                </span>
+              </div>
+              <div class="project-skill-actions">
+                <SkillActionMenu
+                  :skill="skill"
+                  :rule="rules[skill.id]"
+                  :busy="busy"
+                  :show-category-title="showCategoryTitle"
+                  @toggle-rule="forwardToggleRule"
+                  @remove-reference="forwardRemoveReference"
+                  @import-skill="forwardImportSkill"
+                  @delete-unmanaged-skill="forwardDeleteUnmanagedSkill"
+                />
+              </div>
             </div>
-            <small class="project-skill-meta">
+            <div class="project-skill-meta">
               <code>{{ skill.id }}</code>
-            </small>
-            <small v-if="skill.description" class="project-skill-description">
+            </div>
+            <div v-if="skill.description" class="project-skill-description">
               {{ skill.description }}
-            </small>
-          </div>
-
-          <div class="project-skill-actions">
-            <SkillActionMenu
-              :skill="skill"
-              :rule="rules[skill.id]"
-              :busy="busy"
-              :show-category-title="showCategoryTitle"
-              @toggle-rule="forwardToggleRule"
-              @remove-reference="forwardRemoveReference"
-              @import-skill="forwardImportSkill"
-              @delete-unmanaged-skill="forwardDeleteUnmanagedSkill"
-            />
+            </div>
           </div>
         </article>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.project-skill-row {
+  display: block; /* Override default grid */
+  padding: 12px;
+}
+
+.project-skill-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.project-skill-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.project-skill-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.project-skill-meta {
+  color: var(--text-tertiary);
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.project-skill-meta code {
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.project-skill-description {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  display: block;
+}
+
+.project-skill-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+</style>

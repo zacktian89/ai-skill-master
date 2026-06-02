@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, inject } from "vue";
-import { Folder, Github, Plus } from "lucide-vue-next";
+import { Folder, Github, Plus, Loader2 } from "lucide-vue-next";
 import * as api from "../../../api";
 import { openDirectory } from "../../../utils/dialog";
 import SearchInput from "../../../components/SearchInput.vue";
@@ -54,8 +54,14 @@ const importSource = computed<ImportSkillSource | null>(() => {
     const path = importLocalPath.value.trim();
     return path ? { kind: "local", path } : null;
   }
-  const url = importGithubUrl.value.trim();
+  let url = importGithubUrl.value.trim();
   if (!url) return null;
+  
+  // Expand owner/repo shorthand to standard GitHub URL
+  if (!/^https?:\/\//.test(url) && !url.startsWith("git@") && url.includes("/") && url.split("/").length === 2) {
+    url = `https://github.com/${url}.git`;
+  }
+  
   return {
     kind: "github",
     url,
@@ -84,6 +90,8 @@ async function selectImportLocalPath() {
     if (typeof selected === "string") {
       importLocalPath.value = selected;
       resetImportPreview();
+      // Auto-scan on selection
+      await scanImportSource();
     }
   } catch (cause) {
     if (appStore) appStore.setError(String(cause));
@@ -147,108 +155,121 @@ async function confirmImportSkills() {
     card-class="import-modal"
     @close="$emit('close')"
   >
-    <div class="segmented-control import-source-tabs" aria-label="导入来源">
-      <button
-        type="button"
-        :class="{ active: importSourceMode === 'local' }"
-        @click="setImportSourceMode('local')"
-      >
-        <Folder :size="15" />
-        本地
-      </button>
-      <button
-        type="button"
-        :class="{ active: importSourceMode === 'github' }"
-        @click="setImportSourceMode('github')"
-      >
-        <Github :size="15" />
-        GitHub
-      </button>
-    </div>
-
-    <!-- Local Path Panel -->
-    <div v-if="importSourceMode === 'local'" class="import-source-panel">
-      <div class="import-path-row">
-        <SearchInput :model-value="importLocalPath" readonly placeholder="选择文件夹" />
-        <button class="secondary-button" type="button" :disabled="busy" @click="selectImportLocalPath">
-          <Folder :size="16" />
-          选择
+    <div class="import-modal-body">
+      <div class="segmented-control import-source-tabs" aria-label="导入来源">
+        <button
+          type="button"
+          :class="{ active: importSourceMode === 'local' }"
+          @click="setImportSourceMode('local')"
+        >
+          <Folder :size="15" />
+          本地
+        </button>
+        <button
+          type="button"
+          :class="{ active: importSourceMode === 'github' }"
+          @click="setImportSourceMode('github')"
+        >
+          <Github :size="15" />
+          GitHub
         </button>
       </div>
-    </div>
 
-    <!-- GitHub URL Panel -->
-    <div v-else class="import-source-panel">
-      <SearchInput
-        v-model="importGithubUrl"
-        type="url"
-        placeholder="GitHub URL"
-        @input="resetImportPreview"
-      />
-      <div class="import-github-grid">
-        <SearchInput v-model="importGithubRef" placeholder="ref" @input="resetImportPreview" />
-        <SearchInput v-model="importGithubSubdir" placeholder="subdir" @input="resetImportPreview" />
+      <!-- Local Path Panel -->
+      <div v-if="importSourceMode === 'local'" class="import-source-panel">
+        <div class="import-path-row clickable-input-row" @click="!busy && selectImportLocalPath()">
+          <SearchInput :model-value="importLocalPath" readonly placeholder="选择本地 Skill 文件夹..." />
+          <button class="secondary-button" type="button" :disabled="busy" @click.stop="selectImportLocalPath">
+            <Folder :size="16" />
+            选择
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="button-row button-row--end">
-      <button class="secondary-button" type="button" :disabled="!canScanImports" @click="scanImportSource">
-        扫描
-      </button>
-    </div>
-
-    <!-- Scanned Candidates Section -->
-    <section v-if="importScanned" class="import-results">
-      <div class="import-results-head">
-        <label class="import-check-all">
-          <input
-            type="checkbox"
-            :checked="importReadyCandidates.length > 0 && selectedImportCandidateIds.length === importReadyCandidates.length"
-            :disabled="importReadyCandidates.length === 0 || busy"
-            @change="toggleAllImportCandidates(($event.target as HTMLInputElement).checked)"
+      <!-- GitHub URL Panel -->
+      <div v-else class="import-source-panel">
+        <div class="import-path-row">
+          <SearchInput
+            v-model="importGithubUrl"
+            type="url"
+            placeholder="输入 GitHub 仓库 URL 或 owner/repo (如: owner/repo)"
+            @input="resetImportPreview"
+            @keyup.enter="scanImportSource"
           />
-          <span>{{ selectedImportCandidateIds.length }}/{{ importReadyCandidates.length }}</span>
-        </label>
+          <button class="primary-button scan-btn" type="button" :disabled="!canScanImports" @click="scanImportSource">
+            <Loader2 v-if="busy" :size="15" class="spin-animation" />
+            <span v-if="busy">扫描中...</span>
+            <span v-else>扫描</span>
+          </button>
+        </div>
+        
+        <div class="import-github-grid">
+          <div class="input-group">
+            <span class="input-label">分支 / 标签 / 提交号 (可选)</span>
+            <SearchInput v-model="importGithubRef" placeholder="例如: main" @input="resetImportPreview" />
+          </div>
+          <div class="input-group">
+            <span class="input-label">指定子目录 (可选)</span>
+            <SearchInput v-model="importGithubSubdir" placeholder="例如: skills/my-skill" @input="resetImportPreview" />
+          </div>
+        </div>
       </div>
 
-      <div v-if="importCandidates.length" class="import-candidate-list">
-        <label
-          v-for="candidate in importCandidates"
-          :key="candidate.candidateId"
-          class="import-candidate-row"
-          :class="{ disabled: candidate.status !== 'ready' }"
-        >
-          <input
-            type="checkbox"
-            :checked="importCandidateChecked(candidate.candidateId)"
-            :disabled="candidate.status !== 'ready' || busy"
-            @change="toggleImportCandidate(candidate, ($event.target as HTMLInputElement).checked)"
-          />
-          <span class="import-candidate-main">
-            <span class="import-candidate-top">
-              <strong>{{ candidate.name }}</strong>
-              <StatusTag :type="candidate.status === 'ready' ? 'healthy' : candidate.status">
-                {{ importStatusLabels[candidate.status] }}
-              </StatusTag>
-            </span>
-            <span class="import-candidate-meta">
-              <code>{{ candidate.id }}</code>
-              <span>{{ candidate.relativePath }}</span>
-            </span>
-            <small v-if="candidate.description">{{ candidate.description }}</small>
-          </span>
-        </label>
-      </div>
+      <!-- Scanned Candidates Section -->
+      <section v-if="importScanned" class="import-results">
+        <div class="import-results-head">
+          <label class="import-check-all">
+            <input
+              type="checkbox"
+              :checked="importReadyCandidates.length > 0 && selectedImportCandidateIds.length === importReadyCandidates.length"
+              :disabled="importReadyCandidates.length === 0 || busy"
+              @change="toggleAllImportCandidates(($event.target as HTMLInputElement).checked)"
+            />
+            <span>{{ selectedImportCandidateIds.length }}/{{ importReadyCandidates.length }}</span>
+          </label>
+        </div>
 
-      <div v-else class="content-empty content-empty--compact">没有找到 skill。</div>
-    </section>
+        <div v-if="importCandidates.length" class="import-candidate-list">
+          <label
+            v-for="candidate in importCandidates"
+            :key="candidate.candidateId"
+            class="import-candidate-row"
+            :class="{ disabled: candidate.status !== 'ready' }"
+          >
+            <input
+              type="checkbox"
+              :checked="importCandidateChecked(candidate.candidateId)"
+              :disabled="candidate.status !== 'ready' || busy"
+              @change="toggleImportCandidate(candidate, ($event.target as HTMLInputElement).checked)"
+            />
+            <span class="import-candidate-main">
+              <span class="import-candidate-top">
+                <strong>{{ candidate.name }}</strong>
+                <StatusTag :type="candidate.status === 'ready' ? 'healthy' : candidate.status">
+                  {{ importStatusLabels[candidate.status] }}
+                </StatusTag>
+              </span>
+              <span class="import-candidate-meta">
+                <code>{{ candidate.id }}</code>
+                <span>{{ candidate.relativePath }}</span>
+              </span>
+              <small v-if="candidate.description">{{ candidate.description }}</small>
+            </span>
+          </label>
+        </div>
+
+        <div v-else class="content-empty content-empty--compact">没有找到 skill。</div>
+      </section>
+    </div>
 
     <template #footer>
       <div class="button-row button-row--end">
         <button class="secondary-button" :disabled="busy" @click="$emit('close')">取消</button>
         <button class="primary-button" :disabled="!canConfirmImports" @click="confirmImportSkills">
-          <Plus :size="16" />
-          导入选中
+          <Loader2 v-if="busy" :size="15" class="spin-animation" />
+          <Plus v-else :size="16" />
+          <span v-if="busy">导入中...</span>
+          <span v-else>导入{{ selectedImportCandidateIds.length > 0 ? ` (${selectedImportCandidateIds.length})` : '' }}</span>
         </button>
       </div>
     </template>

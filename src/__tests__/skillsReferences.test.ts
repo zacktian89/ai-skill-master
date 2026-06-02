@@ -98,7 +98,13 @@ describe("SkillsView references tab", () => {
       },
     });
 
-    await wrapper.find('button[aria-label="新增引用"]').trigger("click");
+    await wrapper.find('button[aria-label="更多操作"]').trigger("click");
+    await flushPromises();
+    const addReferenceItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("增加引用")
+    ) as HTMLButtonElement;
+    addReferenceItem.click();
+    await flushPromises();
 
     expect(wrapper.text()).toContain("Claude Code");
     expect(wrapper.text()).toContain("选择 skills 目录");
@@ -131,7 +137,13 @@ describe("SkillsView references tab", () => {
 
     await wrapper.findAll(".detail-tab")[1].trigger("click");
 
-    await wrapper.find('button[aria-label="新增引用"]').trigger("click");
+    await wrapper.find('button[aria-label="更多操作"]').trigger("click");
+    await flushPromises();
+    const addReferenceItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("增加引用")
+    ) as HTMLButtonElement;
+    addReferenceItem.click();
+    await flushPromises();
     await wrapper.find(".target-tile").trigger("click");
     await wrapper.findAll("button").find((button) => button.text() === "新增引用")!.trigger("click");
     await flushPromises();
@@ -164,8 +176,8 @@ describe("SkillsView references tab", () => {
     expect(wrapper.text()).toContain("新增 Skill");
 
     await wrapper.findAll(".import-source-tabs button")[1].trigger("click");
-    await wrapper.find('input[placeholder="GitHub URL"]').setValue("https://github.com/acme/skills");
-    await wrapper.findAll(".secondary-button").find((button) => button.text() === "扫描")!.trigger("click");
+    await wrapper.find('input[type="url"]').setValue("https://github.com/acme/skills");
+    await wrapper.find(".scan-btn").trigger("click");
     await flushPromises();
 
     expect(wrapper.findAll(".import-candidate-row")).toHaveLength(2);

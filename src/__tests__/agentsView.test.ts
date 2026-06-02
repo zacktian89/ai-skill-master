@@ -153,14 +153,20 @@ description: "本地 skill 描述"
 
     await flushPromises();
 
-    const addButton = wrapper.find('button[aria-label="添加技能"]');
-    const deleteButton = wrapper.find('button[aria-label="删除 Agent"]');
-    expect(addButton.exists()).toBe(true);
-    expect(deleteButton.exists()).toBe(true);
-    expect((addButton.element.compareDocumentPosition(deleteButton.element) & Node.DOCUMENT_POSITION_FOLLOWING) > 0).toBe(true);
+    const moreButton = wrapper.find('button[aria-label="更多操作"]');
+    expect(moreButton.exists()).toBe(true);
 
-    await deleteButton.trigger("click");
-    expect(wrapper.text()).toContain("确认删除 Agent");
+    await moreButton.trigger("click");
+    await flushPromises();
+
+    const cancelManageItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("取消管理")
+    ) as HTMLButtonElement;
+    expect(cancelManageItem).toBeDefined();
+    cancelManageItem.click();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("确认取消管理 Agent");
     expect(api.deleteAgent).not.toHaveBeenCalled();
 
     await wrapper.findAll("button").find((button) => button.text() === "删除 Agent")!.trigger("click");

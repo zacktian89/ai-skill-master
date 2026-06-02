@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, inject, nextTick } from "vue";
+import { computed, ref, watch, inject, nextTick, onBeforeUnmount } from "vue";
 import {
   FolderPlus,
   Plus,
@@ -8,7 +8,9 @@ import {
   FolderOpen,
   RefreshCw,
   AlertTriangle,
+  MoreHorizontal,
 } from "lucide-vue-next";
+import { openPath } from "@tauri-apps/plugin-opener";
 import * as api from "../../api";
 import AgentIcon from "../../components/icons/AgentIcon.vue";
 import { openDirectory } from "../../utils/dialog";
@@ -447,6 +449,70 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
     }
   );
 }
+
+const headerMenuOpen = ref<{ x: number; y: number } | null>(null);
+const headerMenuRef = ref<HTMLElement | null>(null);
+let headerMenuCloseTimer: number | null = null;
+const menuMargin = 8;
+const fallbackMenuWidth = 148;
+
+function closeHeaderMenu() {
+  headerMenuOpen.value = null;
+  if (headerMenuCloseTimer !== null) {
+    window.clearTimeout(headerMenuCloseTimer);
+    headerMenuCloseTimer = null;
+  }
+  document.removeEventListener("click", closeHeaderMenu);
+  document.removeEventListener("keydown", headerMenuOnEscape);
+}
+
+function headerMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === "Escape") closeHeaderMenu();
+}
+
+function clampMenuPosition(x: number, y: number, width: number, height: number) {
+  const maxX = Math.max(menuMargin, window.innerWidth - width - menuMargin);
+  const maxY = Math.max(menuMargin, window.innerHeight - height - menuMargin);
+  return {
+    x: Math.min(Math.max(menuMargin, x), maxX),
+    y: Math.min(Math.max(menuMargin, y), maxY),
+  };
+}
+
+async function openHeaderMenu(event: MouseEvent) {
+  closeHeaderMenu();
+  const initialPosition = clampMenuPosition(event.clientX - fallbackMenuWidth, event.clientY, fallbackMenuWidth, 0);
+  headerMenuOpen.value = initialPosition;
+  await nextTick();
+  const menuRect = headerMenuRef.value?.getBoundingClientRect();
+  if (headerMenuOpen.value && menuRect) {
+    const menuWidth = menuRect.width || fallbackMenuWidth;
+    const position = clampMenuPosition(event.clientX - menuWidth, event.clientY, menuWidth, menuRect.height);
+    headerMenuOpen.value = position;
+  }
+  headerMenuCloseTimer = window.setTimeout(() => {
+    headerMenuCloseTimer = null;
+    document.addEventListener("click", closeHeaderMenu);
+    document.addEventListener("keydown", headerMenuOnEscape);
+  });
+}
+
+function runHeaderMenuAction(action: () => void) {
+  action();
+  closeHeaderMenu();
+}
+
+async function openProjectDirectory() {
+  if (!selectedProject.value) return;
+  try {
+    await openPath(selectedProject.value.path);
+  } catch (cause) {
+    if (appStore) appStore.setError(String(cause));
+    else emit("error", String(cause));
+  }
+}
+
+onBeforeUnmount(closeHeaderMenu);
 </script>
 
 <template>
@@ -503,20 +569,62 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
               <p>{{ selectedProject.path }}</p>
             </div>
             <div class="detail-actions">
-              <button class="primary-button" :disabled="busy" aria-label="添加" @click="openAddSkillDialog">
-                <Plus :size="16" />
-              </button>
               <button
-                class="danger-button danger-button--icon"
+                class="ghost-icon-button"
+                type="button"
                 :disabled="busy"
-                aria-label="删除项目"
-                title="删除项目"
-                @click="openDeleteProjectDialog"
+                aria-label="更多操作"
+                title="更多操作"
+                @click.stop="openHeaderMenu"
               >
-                <Trash2 :size="16" />
+                <MoreHorizontal :size="16" />
               </button>
             </div>
           </div>
+
+          <Teleport to="body">
+            <div
+              v-if="headerMenuOpen"
+              ref="headerMenuRef"
+              class="global-context-menu"
+              :style="{ left: `${headerMenuOpen.x}px`, top: `${headerMenuOpen.y}px` }"
+              role="menu"
+              @click.stop
+            >
+              <button
+                type="button"
+                role="menuitem"
+                class="global-context-menu-item"
+                :disabled="busy"
+                @click="runHeaderMenuAction(openAddSkillDialog)"
+              >
+                <Plus :size="15" />
+                <span>增加技能</span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                class="global-context-menu-item"
+                :disabled="busy"
+                @click="runHeaderMenuAction(openDeleteProjectDialog)"
+              >
+                <Trash2 :size="15" />
+                <span>取消管理</span>
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                class="global-context-menu-item"
+                :disabled="busy"
+                @click="runHeaderMenuAction(openProjectDirectory)"
+              >
+                <FolderOpen :size="15" />
+                <span>打开项目目录</span>
+              </button>
+            </div>
+          </Teleport>
 
           <section ref="listSectionRef" class="detail-section">
             <div class="project-skill-toolbar">
@@ -696,11 +804,11 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
 
   <ModalDialog
     v-if="deleteProjectDialogOpen && selectedProject"
-    title="删除项目"
+    title="取消管理项目"
     @close="deleteProjectDialogOpen = false"
   >
     <p class="modal-note">
-      确认删除项目 "{{ selectedProject.name }}" 吗？这只会移除 SkillMaster 中的项目记录，不会删除磁盘上的项目目录。
+      确认取消管理项目 "{{ selectedProject.name }}" 吗？这只会移除 SkillMaster 中的项目记录，不会删除磁盘上的项目目录。
     </p>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">

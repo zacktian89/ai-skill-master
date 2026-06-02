@@ -363,7 +363,13 @@ version: "2.1"
     });
 
     // 2. Open Add Skill dialog
-    await wrapper.find('button[aria-label="添加"]').trigger("click");
+    await wrapper.find('button[aria-label="更多操作"]').trigger("click");
+    await flushPromises();
+    const addSkillItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("增加技能")
+    ) as HTMLButtonElement;
+    addSkillItem.click();
+    await flushPromises();
     
     // Choose Codex target profile
     await wrapper.find(".target-tile").trigger("click");
@@ -408,8 +414,15 @@ version: "2.1"
 
     await flushPromises();
 
-    await wrapper.find('button[aria-label="删除项目"]').trigger("click");
-    expect(wrapper.text()).toContain("确认删除项目");
+    await wrapper.find('button[aria-label="更多操作"]').trigger("click");
+    await flushPromises();
+    const cancelManageItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("取消管理")
+    ) as HTMLButtonElement;
+    cancelManageItem.click();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("确认取消管理项目");
     expect(api.deleteProject).not.toHaveBeenCalled();
 
     await wrapper.findAll("button").find((button) => button.text() === "删除项目")!.trigger("click");
