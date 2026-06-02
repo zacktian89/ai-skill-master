@@ -307,6 +307,23 @@
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-panel-muted);
+  cursor: pointer;
+}
+
+.project-skill-row:hover,
+.project-skill-row:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.project-skill-row:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
+
+.project-skill-row--disabled {
+  opacity: 0.52;
+  filter: grayscale(0.35);
 }
 
 .project-skill-copy {
@@ -343,6 +360,16 @@
   line-height: 1.45;
 }
 
+.project-skill-meta {
+  align-items: center;
+}
+
+.project-skill-copy .project-skill-description {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .project-skill-copy code,
 .project-skill-pick-row code {
   color: var(--text-tertiary);
@@ -354,6 +381,44 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.global-context-menu {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  min-width: 148px;
+  padding: 4px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26);
+}
+
+.global-context-menu-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.global-context-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.global-context-menu-item--danger {
+  color: var(--danger-text);
 }
 
 .segmented-control {

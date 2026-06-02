@@ -831,6 +831,34 @@ pub fn read_skill_file(
     Ok(content)
 }
 
+#[tauri::command]
+pub fn read_skill_file_at_path(
+    _app: AppHandle,
+    skill_path: PathBuf,
+) -> std::result::Result<String, String> {
+    if !skill_path.is_dir() {
+        return Err(format!("找不到 skill 目录：{}", skill_path.display()));
+    }
+
+    let target_path = skill_path.join("SKILL.md");
+    if !target_path.exists() {
+        return Err(format!("找不到 SKILL.md 文件：{}", target_path.display()));
+    }
+
+    let canonical_skill_dir = skill_path
+        .canonicalize()
+        .map_err(|e| format!("无法解析技能目录：{}", e))?;
+    let canonical_target = target_path
+        .canonicalize()
+        .map_err(|e| format!("无法解析 target 文件：{}", e))?;
+
+    if !canonical_target.starts_with(&canonical_skill_dir) {
+        return Err("安全错误：非法路径访问".to_string());
+    }
+
+    fs::read_to_string(&canonical_target).map_err(|error| format!("读取文件失败：{}", error))
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ImportProjectSkillResult {

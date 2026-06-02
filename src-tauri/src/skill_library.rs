@@ -86,9 +86,13 @@ pub fn read_skill_metadata(skill_dir: &Path) -> Result<SkillMetadata> {
 
     let mut name = id.clone();
     let mut description = String::new();
-    if raw.starts_with("---\n") {
-        if let Some(end) = raw[4..].find("\n---") {
-            let front_matter = &raw[4..4 + end];
+    if raw.starts_with("---\n") || raw.starts_with("---\r\n") {
+        let content_start = if raw.starts_with("---\r\n") { 5 } else { 4 };
+        if let Some(end) = raw[content_start..]
+            .find("\r\n---")
+            .or_else(|| raw[content_start..].find("\n---"))
+        {
+            let front_matter = &raw[content_start..content_start + end];
             for line in front_matter.lines() {
                 if let Some(value) = line.strip_prefix("name:") {
                     name = value.trim().trim_matches('"').to_string();
@@ -602,6 +606,27 @@ mod tests {
         assert_eq!(metadata.id, "markdown-go");
         assert_eq!(metadata.name, "markdown-go");
         assert_eq!(metadata.description, "Convert Markdown to WeChat HTML");
+    }
+
+    #[test]
+    fn parses_front_matter_with_crlf_line_endings() {
+        let dir = tempdir().unwrap();
+        let skill_dir = dir.path().join("android-cli");
+        fs::create_dir_all(&skill_dir).unwrap();
+        fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\r\nname: android-cli\r\ndescription: Orchestrates Android development tasks including project creation\r\n---\r\n# Body\r\n",
+        )
+        .unwrap();
+
+        let metadata = read_skill_metadata(&skill_dir).unwrap();
+
+        assert_eq!(metadata.id, "android-cli");
+        assert_eq!(metadata.name, "android-cli");
+        assert_eq!(
+            metadata.description,
+            "Orchestrates Android development tasks including project creation"
+        );
     }
 
     #[test]

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { Folder, Link, Plus, Trash2 } from "lucide-vue-next";
-import SwitchToggle from "./SwitchToggle.vue";
+import { Folder, Link as LinkIcon, Plus } from "lucide-vue-next";
 import type { ScannedCategory, ProjectRule } from "../types";
+import SkillActionMenu from "./SkillActionMenu.vue";
 
 const props = defineProps<{
   categories: ScannedCategory[];
@@ -13,17 +12,31 @@ const props = defineProps<{
   showDisabledBadge?: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   "add-skill-click": [category: ScannedCategory];
   "toggle-rule": [skillId: string];
   "remove-reference": [skillId: string, skillPath: string];
   "import-skill": [skillPath: string];
   "delete-unmanaged-skill": [skillId: string, skillName: string, skillPath: string];
+  "preview-skill": [skill: ScannedCategory["skills"][number]];
 }>();
 
-const removeAriaLabel = computed(() =>
-  props.showCategoryTitle ? "从项目移除技能引用" : "从 Agent 移除技能引用"
-);
+function forwardToggleRule(skillId: string) {
+  emit("toggle-rule", skillId);
+}
+
+function forwardRemoveReference(skillId: string, skillPath: string) {
+  emit("remove-reference", skillId, skillPath);
+}
+
+function forwardImportSkill(skillPath: string) {
+  emit("import-skill", skillPath);
+}
+
+function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPath: string) {
+  emit("delete-unmanaged-skill", skillId, skillName, skillPath);
+}
+
 </script>
 
 <template>
@@ -64,10 +77,16 @@ const removeAriaLabel = computed(() =>
           v-for="skill in category.skills"
           :key="skill.path"
           class="project-skill-row"
+          :class="{ 'project-skill-row--disabled': rules[skill.id] === 'disable' }"
+          role="button"
+          tabindex="0"
+          @click="$emit('preview-skill', skill)"
+          @keydown.enter.prevent="$emit('preview-skill', skill)"
+          @keydown.space.prevent="$emit('preview-skill', skill)"
         >
           <div class="project-skill-copy">
             <div class="project-skill-title-row">
-              <Link
+              <LinkIcon
                 v-if="skill.isManaged"
                 class="project-skill-title-icon"
                 :size="15"
@@ -88,56 +107,25 @@ const removeAriaLabel = computed(() =>
                 已停用
               </span>
             </div>
-            <small>
+            <small class="project-skill-meta">
               <code>{{ skill.id }}</code>
-              <span v-if="skill.description"> · {{ skill.description }}</span>
+            </small>
+            <small v-if="skill.description" class="project-skill-description">
+              {{ skill.description }}
             </small>
           </div>
 
           <div class="project-skill-actions">
-            <!-- If managed, show Enable/Disable switch + Delete reference button -->
-            <template v-if="skill.isManaged">
-              <SwitchToggle
-                :checked="rules[skill.id] !== 'disable'"
-                :disabled="busy"
-                title="启用/停用技能"
-                @change="$emit('toggle-rule', skill.id)"
-              />
-
-              <button
-                class="ghost-icon-button ghost-icon-button--danger"
-                type="button"
-                :disabled="busy"
-                :aria-label="removeAriaLabel"
-                :title="removeAriaLabel"
-                @click="$emit('remove-reference', skill.id, skill.path)"
-              >
-                <Trash2 :size="15" />
-              </button>
-            </template>
-
-            <!-- If unmanaged, show 托管 + Delete folder buttons -->
-            <template v-else>
-              <button
-                class="primary-button"
-                type="button"
-                :disabled="busy"
-                style="font-size: 12px; height: 28px; padding: 0 10px;"
-                @click="$emit('import-skill', skill.path)"
-              >
-                托管
-              </button>
-              <button
-                class="ghost-icon-button ghost-icon-button--danger"
-                type="button"
-                :disabled="busy"
-                aria-label="删除未托管 skill 文件夹"
-                title="删除未托管 skill 文件夹"
-                @click="$emit('delete-unmanaged-skill', skill.id, skill.name, skill.path)"
-              >
-                <Trash2 :size="15" />
-              </button>
-            </template>
+            <SkillActionMenu
+              :skill="skill"
+              :rule="rules[skill.id]"
+              :busy="busy"
+              :show-category-title="showCategoryTitle"
+              @toggle-rule="forwardToggleRule"
+              @remove-reference="forwardRemoveReference"
+              @import-skill="forwardImportSkill"
+              @delete-unmanaged-skill="forwardDeleteUnmanagedSkill"
+            />
           </div>
         </article>
       </div>

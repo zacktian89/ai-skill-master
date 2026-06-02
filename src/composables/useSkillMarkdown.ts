@@ -4,20 +4,24 @@ import * as api from "../api";
 
 export function useSkillMarkdown(
   getSelectedSkillId: () => string | null | undefined,
-  getActiveTab?: () => string
+  getActiveTab?: () => string,
+  getSelectedSkillPath?: () => string | null | undefined,
 ) {
   const skillMarkdown = ref("");
   const isMarkdownLoading = ref(false);
 
   async function loadSkillMarkdown() {
     const skillId = getSelectedSkillId();
-    if (!skillId) {
+    const skillPath = getSelectedSkillPath?.();
+    if (!skillId && !skillPath) {
       skillMarkdown.value = "";
       return;
     }
     isMarkdownLoading.value = true;
     try {
-      const content = await api.readSkillFile(skillId);
+      const content = skillId
+        ? await api.readSkillFile(skillId)
+        : await api.readSkillFileAtPath(skillPath!);
       skillMarkdown.value = content;
     } catch (err) {
       console.error("加载 SKILL.md 失败", err);
@@ -65,9 +69,9 @@ export function useSkillMarkdown(
   // Watch for changes in selectedSkillId or tab
   if (getActiveTab) {
     watch(
-      [getSelectedSkillId, getActiveTab],
-      async ([newSkillId, newTab]) => {
-        if (newSkillId && newTab === "description") {
+      [getSelectedSkillId, getActiveTab, () => getSelectedSkillPath?.()],
+      async ([newSkillId, newTab, newSkillPath]) => {
+        if ((newSkillId || newSkillPath) && newTab === "description") {
           await loadSkillMarkdown();
         }
       },
@@ -75,9 +79,9 @@ export function useSkillMarkdown(
     );
   } else {
     watch(
-      getSelectedSkillId,
-      async (newSkillId) => {
-        if (newSkillId) {
+      [getSelectedSkillId, () => getSelectedSkillPath?.()],
+      async ([newSkillId, newSkillPath]) => {
+        if (newSkillId || newSkillPath) {
           await loadSkillMarkdown();
         }
       },

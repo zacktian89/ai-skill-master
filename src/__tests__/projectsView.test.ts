@@ -15,6 +15,7 @@ const apiMocks = vi.hoisted(() => ({
   scanProjectSkills: vi.fn(),
   addSkillReference: vi.fn(),
   removeSkillReference: vi.fn(),
+  readSkillFile: vi.fn(),
 }));
 
 const snapshot: AppSnapshot = {
@@ -104,6 +105,7 @@ vi.mock("../api", () => ({
   scanProjectSkills: apiMocks.scanProjectSkills,
   addSkillReference: apiMocks.addSkillReference,
   removeSkillReference: apiMocks.removeSkillReference,
+  readSkillFile: apiMocks.readSkillFile,
 }));
 
 vi.mock("../utils/dialog", () => ({
@@ -152,6 +154,17 @@ describe("ProjectsView", () => {
     apiMocks.addSkillReference.mockResolvedValue(snapshot);
     apiMocks.removeSkillReference.mockReset();
     apiMocks.removeSkillReference.mockResolvedValue(snapshot);
+    apiMocks.readSkillFile.mockReset();
+    apiMocks.readSkillFile.mockResolvedValue(`---
+name: "Writer Pro"
+description: "长文写作与风格控制"
+license: "MIT"
+version: "2.1"
+---
+
+# Writer Pro
+
+这是详情内容。`);
   });
 
   it("shows project skills without current-project controls", async () => {
@@ -170,6 +183,88 @@ describe("ProjectsView", () => {
     expect(wrapper.text()).not.toContain("当前上下文");
     expect(wrapper.text()).not.toContain("回到全局默认");
     expect(wrapper.text()).not.toContain("全部规则");
+  });
+
+  it("renders the card description on its own line so long text is not squeezed by the skill id", async () => {
+    const longDescription = "A production-grade memory management system using attention-weighted architecture with semantic routing and dependency modeling.";
+    apiMocks.scanProjectSkills.mockResolvedValue([
+      {
+        name: ".agent",
+        path: "/work/acme/.agent",
+        skills: [
+          {
+            id: "attention-memory",
+            name: "attention-memory",
+            description: longDescription,
+            path: "/work/acme/.agent/skills/attention-memory",
+            isManaged: true,
+          },
+        ],
+      },
+    ]);
+
+    const wrapper = mount(ProjectsView, {
+      props: {
+        snapshot: {
+          ...snapshot,
+          state: {
+            ...snapshot.state,
+            skills: [
+              {
+                id: "attention-memory",
+                name: "attention-memory",
+                description: longDescription,
+                libraryPath: "/library/attention-memory",
+                references: [],
+                managedLinks: {},
+                conflict: null,
+              },
+            ],
+          },
+        },
+        selectedProjectId: "acme",
+      },
+    });
+
+    await flushPromises();
+
+    const description = wrapper.find(".project-skill-description");
+    expect(description.exists()).toBe(true);
+    expect(description.text()).toBe(longDescription);
+  });
+
+  it("opens a skill preview in the right panel and closes it with the back button", async () => {
+    const wrapper = mount(ProjectsView, {
+      props: {
+        snapshot,
+        selectedProjectId: "acme",
+      },
+    });
+
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Acme");
+    expect(wrapper.text()).not.toContain("返回");
+
+    const detailPanel = wrapper.find(".detail-panel").element as HTMLElement;
+    detailPanel.scrollTop = 180;
+
+    await wrapper.findAll(".project-skill-row")[0]!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Writer Pro");
+    expect(wrapper.text()).toContain("name");
+    expect(wrapper.text()).toContain("license");
+    expect(wrapper.text()).toContain("这是详情内容。");
+    expect(wrapper.find('button[aria-label="返回技能列表"]').exists()).toBe(true);
+    expect(wrapper.find('button[aria-label="更多技能操作"]').exists()).toBe(true);
+
+    await wrapper.find('button[aria-label="返回技能列表"]').trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Acme");
+    expect(wrapper.find('button[aria-label="返回技能列表"]').exists()).toBe(false);
+    expect(detailPanel.scrollTop).toBe(180);
   });
 
   it("does not show the total project count in the list header", async () => {
@@ -252,8 +347,15 @@ describe("ProjectsView", () => {
     await flushPromises();
 
     // 1. Toggle project rule for writer-pro (enable -> disable)
-    const toggleInput = wrapper.find("input[type='checkbox']");
-    await toggleInput.setValue(false);
+    await wrapper.find('button[aria-label="更多技能操作"]').trigger("click", { clientX: 300, clientY: 80 });
+    await flushPromises();
+    expect((document.body.querySelector(".global-context-menu") as HTMLElement).style.left).toBe("152px");
+    const closeItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("关闭")
+    ) as HTMLButtonElement;
+    closeItem.click();
+    await flushPromises();
+
     expect(api.setProjectRule).toHaveBeenCalledWith({
       projectId: "acme",
       skillId: "writer-pro",
@@ -282,7 +384,13 @@ describe("ProjectsView", () => {
     });
 
     // 3. Remove writer-pro reference
-    await wrapper.find('button[aria-label="从项目移除技能引用"]').trigger("click");
+    await wrapper.find('button[aria-label="更多技能操作"]').trigger("click", { clientX: 300, clientY: 80 });
+    const deleteReferenceItem = Array.from(document.body.querySelectorAll(".global-context-menu-item")).find(
+      (item) => item.textContent?.includes("删除引用")
+    ) as HTMLButtonElement;
+    deleteReferenceItem.click();
+    await flushPromises();
+
     expect(wrapper.text()).toContain("确认从项目中移除这个技能引用吗？");
     await wrapper.findAll("button").find((button) => button.text() === "移除引用")!.trigger("click");
     await flushPromises();

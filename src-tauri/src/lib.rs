@@ -29,6 +29,7 @@ pub fn run() {
             commands::migrate_library,
             commands::rebuild_state,
             commands::read_skill_file,
+            commands::read_skill_file_at_path,
             commands::scan_project_skills,
             commands::import_project_skill,
             commands::delete_unmanaged_skill,

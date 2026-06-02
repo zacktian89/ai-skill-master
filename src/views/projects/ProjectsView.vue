@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, inject } from "vue";
+import { computed, ref, watch, inject, nextTick } from "vue";
 import {
   FolderPlus,
   Plus,
@@ -17,12 +17,14 @@ import ListPanel from "../../components/ListPanel.vue";
 import SearchInput from "../../components/SearchInput.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
 import ScannedSkillList from "../../components/ScannedSkillList.vue";
-import type { AppSnapshot, Project, ProjectRule, ScannedCategory, ReferenceScope } from "../../types";
+import SkillPreviewPanel from "../../components/SkillPreviewPanel.vue";
+import type { AppSnapshot, Project, ProjectRule, ScannedCategory, ScannedSkill, ReferenceScope } from "../../types";
 import { AppStoreKey } from "../../stores/useAppStore";
 import { SelectionStoreKey } from "../../stores/useSelectionStore";
 import { useAsyncAction } from "../../composables/useAsyncAction";
 import { useSkillScanner } from "../../composables/useSkillScanner";
 import { useSkillPicker } from "../../composables/useSkillPicker";
+import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
 
 const appStore = inject(AppStoreKey, null);
 const selectionStore = inject(SelectionStoreKey, null);
@@ -59,6 +61,9 @@ const selectedAddTargetName = ref("");
 const deleteProjectDialogOpen = ref(false);
 const pendingReferenceRemoval = ref<{ skillId: string; skillPath: string } | null>(null);
 const pendingUnmanagedSkillDeletion = ref<{ skillId: string; skillName: string; skillPath: string } | null>(null);
+const previewSkill = ref<ScannedSkill | null>(null);
+const listSectionRef = ref<HTMLElement | null>(null);
+const lastListScrollTop = ref(0);
 
 // Composable for Async Actions
 const { busy, run: executeAsync } = useAsyncAction({
@@ -336,6 +341,39 @@ const filteredScannedCategories = computed(() => {
     .filter((category) => category.skills.length > 0);
 });
 
+const previewLibrarySkill = computed(
+  () => snapshot.value.state.skills.find((skill) => skill.id === previewSkill.value?.id) ?? null
+);
+
+const {
+  skillMarkdown,
+  isMarkdownLoading,
+  parsedMarkdown,
+  renderedMarkdown,
+} = useSkillMarkdown(
+  () => previewLibrarySkill.value?.id ?? null,
+  undefined,
+  () => (previewLibrarySkill.value ? null : previewSkill.value?.path ?? null)
+);
+
+function findDetailScrollContainer() {
+  return listSectionRef.value?.closest(".detail-panel") as HTMLElement | null;
+}
+
+function openSkillPreview(skill: ScannedSkill) {
+  lastListScrollTop.value = findDetailScrollContainer()?.scrollTop ?? 0;
+  previewSkill.value = skill;
+}
+
+async function closeSkillPreview() {
+  previewSkill.value = null;
+  await nextTick();
+  const container = findDetailScrollContainer();
+  if (container) {
+    container.scrollTop = lastListScrollTop.value;
+  }
+}
+
 function findReferenceIdForScannedSkill(skillId: string, skillPath: string): string | null {
   const skill = snapshot.value.state.skills.find(s => s.id === skillId);
   if (!skill || !skill.references) return null;
@@ -377,6 +415,7 @@ watch(
   (newId, oldId) => {
     if (newId !== oldId) {
       scannedCategories.value = [];
+      previewSkill.value = null;
     }
     loadScan();
   },
@@ -391,11 +430,12 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
       skillPath,
       strategy
     ),
-    (result) => {
+    async (result) => {
       if (result.type === "success") {
         if (appStore) appStore.applySnapshot(result.snapshot);
         else emit("snapshot", result.snapshot);
         conflictState.value = null;
+        await refreshScan();
       } else if (result.type === "conflict") {
         conflictState.value = {
           skillId: result.skillId,
@@ -439,50 +479,70 @@ async function handleImportSkill(skillPath: string, strategy?: "overwrite" | "ke
 
     <template #right>
       <template v-if="selectedProject">
-        <div class="detail-header">
-          <div>
-            <h2>{{ selectedProject.name }}</h2>
-            <p>{{ selectedProject.path }}</p>
+        <SkillPreviewPanel
+          v-if="previewSkill"
+          :skill="previewSkill"
+          :library-skill="previewLibrarySkill"
+          :rule="selectedProject.rules[previewSkill.id]"
+          :busy="busy"
+          :show-category-title="true"
+          :is-markdown-loading="isMarkdownLoading"
+          :skill-markdown="skillMarkdown"
+          :parsed-markdown="parsedMarkdown"
+          :rendered-markdown="renderedMarkdown"
+          @back="closeSkillPreview"
+          @toggle-rule="toggleSkillRule"
+          @remove-reference="removeManagedSkillReference"
+          @import-skill="handleImportSkill"
+          @delete-unmanaged-skill="deleteUnmanagedSkill"
+        />
+        <template v-else>
+          <div class="detail-header">
+            <div>
+              <h2>{{ selectedProject.name }}</h2>
+              <p>{{ selectedProject.path }}</p>
+            </div>
+            <div class="detail-actions">
+              <button class="primary-button" :disabled="busy" aria-label="添加" @click="openAddSkillDialog">
+                <Plus :size="16" />
+              </button>
+              <button
+                class="danger-button danger-button--icon"
+                :disabled="busy"
+                aria-label="删除项目"
+                title="删除项目"
+                @click="openDeleteProjectDialog"
+              >
+                <Trash2 :size="16" />
+              </button>
+            </div>
           </div>
-          <div class="detail-actions">
-            <button class="primary-button" :disabled="busy" aria-label="添加" @click="openAddSkillDialog">
-              <Plus :size="16" />
-            </button>
-            <button
-              class="danger-button danger-button--icon"
-              :disabled="busy"
-              aria-label="删除项目"
-              title="删除项目"
-              @click="openDeleteProjectDialog"
-            >
-              <Trash2 :size="16" />
-            </button>
-          </div>
-        </div>
 
-        <section class="detail-section">
-          <div class="project-skill-toolbar">
-            <span class="search-row-count">{{ scannedSkillsCount }}</span>
-            <SearchInput v-model="skillQuery" placeholder="搜索技能" class="detail-search-input" />
-            <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
-              <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />
-            </button>
-          </div>
+          <section ref="listSectionRef" class="detail-section">
+            <div class="project-skill-toolbar">
+              <span class="search-row-count">{{ scannedSkillsCount }}</span>
+              <SearchInput v-model="skillQuery" placeholder="搜索技能" class="detail-search-input" />
+              <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
+                <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />
+              </button>
+            </div>
 
-          <ScannedSkillList
-            v-if="filteredScannedCategories.length"
-            :categories="filteredScannedCategories"
-            :rules="selectedProject.rules"
-            :busy="busy"
-            :show-category-title="true"
-            :show-add-button="true"
-            @add-skill-click="openAddSkillDialogForCategory"
-            @toggle-rule="toggleSkillRule"
-            @remove-reference="removeManagedSkillReference"
-            @import-skill="handleImportSkill"
-            @delete-unmanaged-skill="deleteUnmanagedSkill"
-          />
-        </section>
+            <ScannedSkillList
+              v-if="filteredScannedCategories.length"
+              :categories="filteredScannedCategories"
+              :rules="selectedProject.rules"
+              :busy="busy"
+              :show-category-title="true"
+              :show-add-button="true"
+              @preview-skill="openSkillPreview"
+              @add-skill-click="openAddSkillDialogForCategory"
+              @toggle-rule="toggleSkillRule"
+              @remove-reference="removeManagedSkillReference"
+              @import-skill="handleImportSkill"
+              @delete-unmanaged-skill="deleteUnmanagedSkill"
+            />
+          </section>
+        </template>
       </template>
 
       <div v-else class="content-empty">选择左侧项目查看技能列表。</div>

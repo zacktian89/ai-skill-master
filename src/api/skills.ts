@@ -57,3 +57,10 @@ export async function readSkillFile(skillId: string): Promise<string> {
   const invoke = await resolveInvoke();
   return invoke ? invoke<string>("read_skill_file", { skillId }) : mockSkills.readSkillFile(skillId);
 }
+
+export async function readSkillFileAtPath(skillPath: string): Promise<string> {
+  const invoke = await resolveInvoke();
+  return invoke
+    ? invoke<string>("read_skill_file_at_path", { skillPath })
+    : mockSkills.readSkillFile(skillPath.split(/[\\/]/).filter(Boolean).pop() || skillPath);
+}

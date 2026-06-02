@@ -7,13 +7,13 @@ export function useAsyncAction(options?: {
 
   async function run<T>(
     action: () => Promise<T>,
-    onSuccess?: (res: T) => void,
+    onSuccess?: (res: T) => void | Promise<void>,
     onError?: (err: unknown) => void
   ): Promise<T | undefined> {
     busy.value = true;
     try {
       const res = await action();
-      if (onSuccess) onSuccess(res);
+      if (onSuccess) await onSuccess(res);
       return res;
     } catch (err) {
       if (onError) {

@@ -44,7 +44,11 @@ export function setAgentRule(request: SetAgentRuleRequest): Promise<AppSnapshot>
 
 export function scanAgentSkills(agentPath: string): Promise<ScannedCategory[]> {
   const skills = mockSnapshot.state.skills.map((skill, index) => {
-    const isManaged = index < 3;
+    const targetPath = `${agentPath}/${skill.id}`.replace(/[\\/]+/g, "/");
+    const hasReference = skill.references?.some(
+      (reference) => reference.targetPath.replace(/[\\/]+/g, "/") === targetPath
+    );
+    const isManaged = Boolean(hasReference) || index < 3;
     return {
       id: skill.id,
       name: skill.name,

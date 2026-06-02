@@ -7,7 +7,6 @@ import type {
 } from "../types";
 import { resolveInvoke, autoSync } from "./client";
 import * as mockProjects from "./mock/projects";
-import { getSnapshot } from "./settings";
 
 export async function addProject(request: AddProjectRequest): Promise<AppSnapshot> {
   const invoke = await resolveInvoke();
@@ -55,7 +54,7 @@ export async function importProjectSkill(
         skillPath,
         strategy: strategy || null,
       })
-    : { type: "success", snapshot: await getSnapshot() };
+    : mockProjects.importProjectSkill(projectName, skillPath, strategy);
 }
 
 export async function deleteUnmanagedSkill(skillPath: string): Promise<AppSnapshot> {

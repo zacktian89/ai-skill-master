@@ -2,6 +2,7 @@ import type {
   AppSnapshot,
   AddProjectRequest,
   SetProjectRuleRequest,
+  ImportProjectSkillResult,
 } from "../../types";
 import { mockSnapshot, snapshot } from "./data";
 
@@ -53,4 +54,37 @@ export function deleteProject(projectId: string): Promise<AppSnapshot> {
 
 export function deleteUnmanagedSkill(_skillPath: string): Promise<AppSnapshot> {
   return snapshot();
+}
+
+function referenceId(path: string): string {
+  return `ref-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
+}
+
+export async function importProjectSkill(
+  projectName: string,
+  skillPath: string,
+  _strategy?: "overwrite" | "keep_existing"
+): Promise<ImportProjectSkillResult> {
+  const normalizedPath = skillPath.replace(/[\\/]+/g, "/");
+  const skillId = normalizedPath.split("/").filter(Boolean).pop();
+  const skill = mockSnapshot.state.skills.find((item) => item.id === skillId);
+  if (skill && skillId) {
+    const rootPath = normalizedPath.slice(0, -skillId.length).replace(/\/$/, "");
+    skill.references ??= [];
+    if (!skill.references.some((reference) => reference.targetPath.replace(/[\\/]+/g, "/") === normalizedPath)) {
+      skill.references.push({
+        id: referenceId(normalizedPath),
+        targetName: projectName,
+        targetPath: skillPath,
+        scope: "project",
+        status: "healthy",
+      });
+    }
+    for (const agent of mockSnapshot.state.agents || []) {
+      if (agent.path.replace(/[\\/]+/g, "/") === rootPath) {
+        agent.rules[skill.id] = "enable";
+      }
+    }
+  }
+  return { type: "success", snapshot: await snapshot() };
 }
