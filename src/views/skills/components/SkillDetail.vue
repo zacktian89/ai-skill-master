@@ -5,6 +5,7 @@ import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import SkillDescriptionTab from "./SkillDescriptionTab.vue";
 import SkillReferencesTab from "./SkillReferencesTab.vue";
 import type { Skill, SkillSourceKind, SkillReferenceDetail } from "../../../types";
+import { useI18n } from "../../../composables/useI18n";
 
 type DetailTab = "references" | "description";
 
@@ -30,6 +31,8 @@ defineEmits<{
   "open-delete-reference": [reference: SkillReferenceDetail];
 }>();
 
+const { t } = useI18n();
+
 const sourceIcons = {
   local: Folder,
   github: Github,
@@ -37,16 +40,25 @@ const sourceIcons = {
   unknown: CircleHelp,
 } as const;
 
-const sourceLabels = {
-  local: "本地",
-  github: "GitHub",
-  openclawMarket: "OpenClaw Market",
-  unknown: "未知来源",
-} as const;
+const sourceLabels = computed(() => ({
+  local: t("skills.sourceLocal"),
+  github: t("skills.sourceGithub"),
+  openclawMarket: t("skills.sourceMarket"),
+  unknown: t("skills.sourceUnknown"),
+}));
 
 const sourceKind = computed<SkillSourceKind>(() => props.selectedSkill.source?.kind ?? "local");
 
-const label = computed(() => props.selectedSkill.source?.label || sourceLabels[sourceKind.value]);
+const label = computed(() => {
+  const rawLabel = props.selectedSkill.source?.label;
+  if (rawLabel === "本地" || rawLabel === "Local") {
+    return t("skills.sourceLocal");
+  }
+  if (rawLabel === "GitHub") {
+    return t("skills.sourceGithub");
+  }
+  return rawLabel || sourceLabels.value[sourceKind.value];
+});
 const icon = computed(() => sourceIcons[sourceKind.value]);
 
 const moreMenuOpen = ref<{ x: number; y: number } | null>(null);
@@ -156,11 +168,11 @@ onBeforeUnmount(closeMoreMenu);
               v-if="selectedSkill.source?.kind === 'github' && formattedGithubUrl"
               :href="formattedGithubUrl"
               class="github-link"
-              title="打开"
+              :title="t('skills.openGithub')"
               @click.prevent="openGithubUrl(formattedGithubUrl)"
             >
               <Github :size="13" />
-              <span>打开</span>
+              <span>{{ t('skills.openGithub') }}</span>
             </a>
           </div>
         </div>
@@ -172,8 +184,8 @@ onBeforeUnmount(closeMoreMenu);
             class="ghost-icon-button"
             type="button"
             :disabled="busy"
-            aria-label="更多操作"
-            title="更多操作"
+            :aria-label="t('skills.moreActions')"
+            :title="t('skills.moreActions')"
             @click.stop="openMoreMenu"
           >
             <MoreHorizontal :size="16" />
@@ -198,7 +210,7 @@ onBeforeUnmount(closeMoreMenu);
             @click="runMoreMenuAction(() => $emit('open-add-reference'))"
           >
             <Plus :size="15" />
-            <span>增加引用</span>
+            <span>{{ t('reference.addReference') }}</span>
           </button>
 
           <button
@@ -209,7 +221,7 @@ onBeforeUnmount(closeMoreMenu);
             @click="runMoreMenuAction(() => $emit('delete-click'))"
           >
             <Trash2 :size="15" />
-            <span>删除 Skill</span>
+            <span>{{ t('skills.deleteSkill') }}</span>
           </button>
 
           <button
@@ -220,7 +232,7 @@ onBeforeUnmount(closeMoreMenu);
             @click="runMoreMenuAction(openSkillLibraryDirectory)"
           >
             <FolderOpen :size="15" />
-            <span>打开Skill目录</span>
+            <span>{{ t('skills.openDirectory') }}</span>
           </button>
         </div>
       </Teleport>
@@ -242,7 +254,7 @@ onBeforeUnmount(closeMoreMenu);
         type="button"
         @click="$emit('update:activeDetailTab', 'description')"
       >
-        详情
+        {{ t('skills.tabDetail') }}
       </button>
       <button
         class="detail-tab"
@@ -250,7 +262,7 @@ onBeforeUnmount(closeMoreMenu);
         type="button"
         @click="$emit('update:activeDetailTab', 'references')"
       >
-        引用
+        {{ t('skills.tabReferences') }}
       </button>
     </nav>
 

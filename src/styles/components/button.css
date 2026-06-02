@@ -5,11 +5,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--spacing-xs);
   min-height: 34px;
-  padding: 0 12px;
+  padding: 0 var(--spacing-md);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
 }
 
@@ -17,7 +17,7 @@
   border-color: var(--brand-100);
   background: var(--brand-600);
   color: var(--text-inverse);
-  font-weight: 640;
+  font-weight: var(--font-weight-semibold);
 }
 
 .primary-button:hover {
@@ -42,7 +42,7 @@
 }
 
 .danger-button--icon {
-  width: 40px;
+  width: var(--spacing-7xl);
   padding: 0;
 }
 
@@ -50,10 +50,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--spacing-6xl);
+  height: var(--spacing-6xl);
   border: 1px solid var(--brand-100);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: var(--brand-600);
   color: var(--text-inverse);
   cursor: pointer;
@@ -67,7 +67,7 @@
 .icon-button--compact {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
 }
 
 .ghost-icon-button {
@@ -77,7 +77,7 @@
   width: 34px;
   height: 34px;
   border: 1px solid var(--border-default);
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   background: var(--bg-panel-muted);
   color: var(--text-secondary);
   cursor: pointer;

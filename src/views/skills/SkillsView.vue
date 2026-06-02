@@ -4,6 +4,7 @@ import { Plus } from "lucide-vue-next";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
 import SearchInput from "../../components/SearchInput.vue";
+import { useI18n } from "../../composables/useI18n";
 
 import SkillListItem from "./components/SkillListItem.vue";
 import SkillDetail from "./components/SkillDetail.vue";
@@ -22,6 +23,8 @@ import { AppStoreKey } from "../../stores/useAppStore";
 import { SelectionStoreKey } from "../../stores/useSelectionStore";
 import { useAsyncAction } from "../../composables/useAsyncAction";
 import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
+
+const { t } = useI18n();
 
 type DetailTab = "references" | "description";
 
@@ -108,7 +111,7 @@ const selectedIssues = computed(() => {
     .filter((item) => item.kind === "inspect")
     .map((item) => ({
       key: `${item.kind}-${item.target}-${item.message}`,
-      title: "需要处理",
+      title: t("skills.needHandle"),
       detail: `${item.message} · ${item.target}`,
     }));
 });
@@ -158,15 +161,15 @@ watch(selectedSkill, () => {
 <template>
   <SplitPane>
     <template #left>
-      <ListPanel :items="skills" :has-search="true" empty-text="没有匹配的 skill。">
+      <ListPanel :items="skills" :has-search="true" :empty-text="t('skills.empty')">
         <template #search-row>
           <div class="list-search-row">
-            <SearchInput v-model="query" placeholder="搜索已安装 Skill" />
+            <SearchInput v-model="query" :placeholder="t('skills.searchPlaceholder')" />
             <button
               class="icon-button"
               type="button"
               :disabled="busy"
-              aria-label="新增 Skill"
+              :aria-label="t('skills.addSkill')"
               @click="importDialogOpen = true"
             >
               <Plus :size="18" />
@@ -203,7 +206,7 @@ watch(selectedSkill, () => {
         @open-delete-reference="openDeleteReferenceDialog"
       />
 
-      <div v-else class="content-empty">选择左侧 skill 查看详情。</div>
+      <div v-else class="content-empty">{{ t("skills.selectDetail") }}</div>
     </template>
   </SplitPane>
 

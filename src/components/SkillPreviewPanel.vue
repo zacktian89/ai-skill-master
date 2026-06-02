@@ -4,6 +4,7 @@ import { ArrowLeft, CircleHelp, Folder, Github, ShoppingBag } from "lucide-vue-n
 import SkillDescriptionTab from "../views/skills/components/SkillDescriptionTab.vue";
 import SkillActionMenu from "./SkillActionMenu.vue";
 import type { ProjectRule, ScannedSkill, Skill, SkillSourceKind } from "../types";
+import { useI18n } from "../composables/useI18n";
 
 const props = defineProps<{
   skill: ScannedSkill;
@@ -28,6 +29,8 @@ const emit = defineEmits<{
   "delete-unmanaged-skill": [skillId: string, skillName: string, skillPath: string];
 }>();
 
+const { t } = useI18n();
+
 const sourceIcons = {
   local: Folder,
   github: Github,
@@ -35,15 +38,24 @@ const sourceIcons = {
   unknown: CircleHelp,
 } as const;
 
-const sourceLabels = {
-  local: "本地",
-  github: "GitHub",
-  openclawMarket: "OpenClaw Market",
-  unknown: "未知来源",
-} as const;
+const sourceLabels = computed(() => ({
+  local: t("skills.sourceLocal"),
+  github: t("skills.sourceGithub"),
+  openclawMarket: t("skills.sourceMarket"),
+  unknown: t("skills.sourceUnknown"),
+}));
 
 const sourceKind = computed<SkillSourceKind>(() => props.librarySkill?.source?.kind ?? "local");
-const sourceLabel = computed(() => props.librarySkill?.source?.label || sourceLabels[sourceKind.value]);
+const sourceLabel = computed(() => {
+  const rawLabel = props.librarySkill?.source?.label;
+  if (rawLabel === "本地" || rawLabel === "Local") {
+    return t("skills.sourceLocal");
+  }
+  if (rawLabel === "GitHub") {
+    return t("skills.sourceGithub");
+  }
+  return rawLabel || sourceLabels.value[sourceKind.value];
+});
 const sourceIcon = computed(() => sourceIcons[sourceKind.value]);
 const previewName = computed(() => props.librarySkill?.name ?? props.skill.name);
 const previewId = computed(() => props.librarySkill?.id ?? props.skill.id);
@@ -72,7 +84,7 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
         <button
           class="icon-button skill-preview-back"
           type="button"
-          aria-label="返回技能列表"
+          :aria-label="t('skills.backToSkillList')"
           @click="$emit('back')"
         >
           <ArrowLeft :size="16" />
@@ -106,7 +118,7 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
     </header>
 
     <nav class="detail-tabs" aria-label="Skill detail tabs">
-      <button class="detail-tab active" type="button">详情</button>
+      <button class="detail-tab active" type="button">{{ t('skills.tabDetail') }}</button>
     </nav>
 
     <SkillDescriptionTab

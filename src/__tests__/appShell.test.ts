@@ -5,6 +5,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App.vue";
 import { router } from "../router";
+import { useI18n } from "../composables/useI18n";
 
 vi.mock("../api", () => ({
   getSnapshot: vi.fn().mockResolvedValue({
@@ -47,6 +48,7 @@ vi.mock("../api", () => ({
 describe("App shell", () => {
   beforeEach(async () => {
     localStorage.clear();
+    useI18n().locale.value = "zh";
     router.push("/");
     await router.isReady();
   });
@@ -61,9 +63,9 @@ describe("App shell", () => {
     await vi.dynamicImportSettled();
 
     expect(wrapper.text()).toContain("SkillMaster");
-    expect(wrapper.text()).toContain("Skills");
-    expect(wrapper.text()).toContain("Projects");
-    expect(wrapper.text()).toContain("Settings");
+    expect(wrapper.text()).toContain("技能");
+    expect(wrapper.text()).toContain("项目");
+    expect(wrapper.text()).toContain("设置");
   });
 
   it("defaults to the dark theme", async () => {
@@ -86,7 +88,7 @@ describe("App shell", () => {
     });
 
     await vi.dynamicImportSettled();
-    await wrapper.findAll("button").find((button) => button.text().includes("Settings"))!.trigger("click");
+    await wrapper.findAll("button").find((button) => button.text().includes("设置"))!.trigger("click");
     await flushPromises();
     await wrapper.findAll("button").find((button) => button.text().includes("白色"))!.trigger("click");
 

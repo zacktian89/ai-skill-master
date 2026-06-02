@@ -27,6 +27,9 @@ import { useAsyncAction } from "../../composables/useAsyncAction";
 import { useSkillScanner } from "../../composables/useSkillScanner";
 import { useSkillPicker } from "../../composables/useSkillPicker";
 import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
+import { useI18n } from "../../composables/useI18n";
+
+const { t } = useI18n();
 
 const appStore = inject(AppStoreKey, null);
 const selectionStore = inject(SelectionStoreKey, null);
@@ -224,11 +227,11 @@ function openAddSkillDialogForCategory(category: ScannedCategory) {
       if (mappedName) {
         selectedAddTargetName.value = mappedName;
       } else {
-        selectedAddTargetName.value = category.name === "." ? (selectedProject.value?.name || "项目目录") : category.name;
+        selectedAddTargetName.value = category.name === "." ? (selectedProject.value?.name || t("projects.projectDirectory")) : category.name;
       }
     } else {
       selectedAddScope.value = "custom";
-      selectedAddTargetName.value = "自定义目录";
+      selectedAddTargetName.value = t("projects.customDirectory");
     }
   }
 
@@ -276,10 +279,10 @@ async function selectCustomAddDir() {
       const isInsideProject = selected.replace(/[\\/]+/g, "/").toLowerCase().startsWith(projectPath.replace(/[\\/]+/g, "/").toLowerCase());
       if (isInsideProject) {
         selectedAddScope.value = "project";
-        selectedAddTargetName.value = selectedProject.value?.name || "项目目录";
+        selectedAddTargetName.value = selectedProject.value?.name || t("projects.projectDirectory");
       } else {
         selectedAddScope.value = "custom";
-        selectedAddTargetName.value = "自定义目录";
+        selectedAddTargetName.value = t("projects.customDirectory");
       }
     }
   } catch (cause) {
@@ -391,8 +394,8 @@ async function confirmRemoveManagedSkillReference() {
   const { skillId, skillPath } = pendingReferenceRemoval.value;
   const refId = findReferenceIdForScannedSkill(skillId, skillPath);
   if (!refId) {
-    if (appStore) appStore.setError("无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
-    else emit("error", "无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
+    if (appStore) appStore.setError(t("reference.pathConflictError"));
+    else emit("error", t("reference.pathConflictError"));
     pendingReferenceRemoval.value = null;
     return;
   }
@@ -518,11 +521,11 @@ onBeforeUnmount(closeHeaderMenu);
 <template>
   <SplitPane>
     <template #left>
-      <ListPanel :items="projects" :has-search="true" empty-text="没有匹配的项目。">
+      <ListPanel :items="projects" :has-search="true" :empty-text="t('projects.empty')">
         <template #search-row>
           <div class="list-search-row">
-            <SearchInput v-model="projectQuery" placeholder="搜索项目名称或路径" />
-            <button class="icon-button" type="button" :disabled="busy" aria-label="添加项目" @click="addProject">
+            <SearchInput v-model="projectQuery" :placeholder="t('projects.searchPlaceholder')" />
+            <button class="icon-button" type="button" :disabled="busy" :aria-label="t('projects.addProject')" @click="addProject">
               <FolderPlus :size="18" />
             </button>
           </div>
@@ -573,8 +576,8 @@ onBeforeUnmount(closeHeaderMenu);
                 class="ghost-icon-button"
                 type="button"
                 :disabled="busy"
-                aria-label="更多操作"
-                title="更多操作"
+                :aria-label="t('projects.moreActions')"
+                :title="t('projects.moreActions')"
                 @click.stop="openHeaderMenu"
               >
                 <MoreHorizontal :size="16" />
@@ -599,7 +602,7 @@ onBeforeUnmount(closeHeaderMenu);
                 @click="runHeaderMenuAction(openAddSkillDialog)"
               >
                 <Plus :size="15" />
-                <span>增加技能</span>
+                <span>{{ t('projects.addSkill') }}</span>
               </button>
 
               <button
@@ -610,7 +613,7 @@ onBeforeUnmount(closeHeaderMenu);
                 @click="runHeaderMenuAction(openDeleteProjectDialog)"
               >
                 <Trash2 :size="15" />
-                <span>取消管理</span>
+                <span>{{ t('projects.cancelManage') }}</span>
               </button>
 
               <button
@@ -621,7 +624,7 @@ onBeforeUnmount(closeHeaderMenu);
                 @click="runHeaderMenuAction(openProjectDirectory)"
               >
                 <FolderOpen :size="15" />
-                <span>打开项目目录</span>
+                <span>{{ t('projects.openProjectDir') }}</span>
               </button>
             </div>
           </Teleport>
@@ -629,8 +632,8 @@ onBeforeUnmount(closeHeaderMenu);
           <section ref="listSectionRef" class="detail-section">
             <div class="project-skill-toolbar">
               <span class="search-row-count">{{ scannedSkillsCount }}</span>
-              <SearchInput v-model="skillQuery" placeholder="搜索技能" class="detail-search-input" />
-              <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
+              <SearchInput v-model="skillQuery" :placeholder="t('projects.searchSkillPlaceholder')" class="detail-search-input" />
+              <button class="ghost-icon-button" type="button" :disabled="busy || scanning" :aria-label="t('projects.rescan')" :title="t('projects.rescan')" @click="refreshScan">
                 <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />
               </button>
             </div>
@@ -653,24 +656,24 @@ onBeforeUnmount(closeHeaderMenu);
         </template>
       </template>
 
-      <div v-else class="content-empty">选择左侧项目查看技能列表。</div>
+      <div v-else class="content-empty">{{ t('projects.selectProjectDetail') }}</div>
     </template>
   </SplitPane>
 
   <ModalDialog
     v-if="addSkillDialogOpen && selectedProject"
-    title="添加技能"
+    :title="t('projects.addSkill')"
     card-class="modal-card--compact"
     @close="closeAddSkillDialog"
   >
     <!-- Step 1: Select directory if selectedAddDir is empty -->
     <div v-if="!selectedAddDir" class="modal-step-section">
-      <p class="modal-instruction-text" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-        请选择要添加技能引用的目标目录：
+      <p class="modal-instruction-text">
+        {{ t('projects.chooseTargetDirPrompt') }}
       </p>
 
       <!-- Quick Select Agent Profiles -->
-      <div class="target-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px;">
+      <div class="target-grid">
         <button
           v-for="profile in projectProfiles"
           :key="profile.id"
@@ -682,8 +685,8 @@ onBeforeUnmount(closeHeaderMenu);
           <span class="target-tile-icon" aria-hidden="true">
             <AgentIcon :name="profile.targetName" :size="20" />
           </span>
-          <strong style="font-size: 13px;">{{ profile.targetName }}</strong>
-          <small style="font-size: 10px; color: var(--text-muted); font-family: monospace; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px;">
+          <strong>{{ profile.targetName }}</strong>
+          <small>
             {{ profile.rootPath }}
           </small>
         </button>
@@ -697,7 +700,7 @@ onBeforeUnmount(closeHeaderMenu);
         @click="selectCustomAddDir"
       >
         <FolderOpen :size="16" />
-        选择自定义目录
+        {{ t('projects.customDirectoryButton') }}
       </button>
     </div>
 
@@ -706,7 +709,7 @@ onBeforeUnmount(closeHeaderMenu);
       <!-- Header displaying chosen path -->
       <div class="chosen-path-box">
         <div class="chosen-path-copy">
-          <span class="chosen-path-label">目标引用目录:</span>
+          <span class="chosen-path-label">{{ t('projects.targetReferenceDir') }}</span>
           <code class="chosen-path-value">
             {{ selectedAddDir }}
           </code>
@@ -717,29 +720,29 @@ onBeforeUnmount(closeHeaderMenu);
           :disabled="busy"
           @click="selectedAddDir = ''"
         >
-          修改目录
+          {{ t('projects.modifyDir') }}
         </button>
       </div>
 
       <!-- Search box inside dialog -->
-      <SearchInput v-model="addSkillQuery" placeholder="搜索技能" class="dialog-search-input" />
+      <SearchInput v-model="addSkillQuery" :placeholder="t('projects.searchSkillPlaceholder')" class="dialog-search-input" />
 
       <!-- Check all / Selected count -->
       <div class="dialog-checklist-header">
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <label class="check-all-label">
           <input
             type="checkbox"
             :checked="filteredLibrarySkills.length > 0 && selectedSkillIds.length === filteredLibrarySkills.length"
             :disabled="filteredLibrarySkills.length === 0 || busy"
             @change="toggleAllLibrarySkills(($event.target as HTMLInputElement).checked)"
           />
-          <span>全选</span>
+          <span>{{ t('projects.checkAll') }}</span>
         </label>
-        <span>已选择 {{ selectedSkillIds.length }} / {{ filteredLibrarySkills.length }} 个技能</span>
+        <span>{{ t('projects.selectedSkillsCount', { selected: selectedSkillIds.length, total: filteredLibrarySkills.length }) }}</span>
       </div>
 
       <!-- Skill list with checkboxes -->
-      <div v-if="filteredLibrarySkills.length" class="project-skill-picker" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: 8px; padding: 4px;">
+      <div v-if="filteredLibrarySkills.length" class="project-skill-picker">
         <label
           v-for="skill in filteredLibrarySkills"
           :key="skill.id"
@@ -751,30 +754,29 @@ onBeforeUnmount(closeHeaderMenu);
             :value="skill.id"
             v-model="selectedSkillIds"
             :disabled="busy"
-            style="margin-top: 3px;"
           />
-          <span style="display: flex; flex-direction: column; gap: 2px;">
+          <span class="dialog-skill-info">
             <strong>{{ skill.name }}</strong>
-            <small style="font-size: 11px; color: var(--text-secondary);">
+            <small>
               <code>{{ skill.id }}</code>
               <span v-if="skill.description"> · {{ skill.description }}</span>
             </small>
           </span>
         </label>
       </div>
-      <div v-else class="content-empty content-empty--compact">没有匹配的技能。</div>
+      <div v-else class="content-empty content-empty--compact">{{ t('projects.noMatchingSkills') }}</div>
     </div>
 
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="closeAddSkillDialog">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="closeAddSkillDialog">{{ t('dialog.cancel') }}</button>
         <button
           v-if="selectedAddDir"
           class="primary-button"
           :disabled="busy || selectedSkillIds.length === 0"
           @click="confirmAddSkillReferences"
         >
-          确定
+          {{ t('dialog.confirm') }}
         </button>
       </div>
     </template>
@@ -782,21 +784,21 @@ onBeforeUnmount(closeHeaderMenu);
 
   <ModalDialog
     v-if="pendingUnmanagedSkillDeletion"
-    title="删除未托管 Skill"
+    :title="t('deleteUnmanaged.title')"
     @close="pendingUnmanagedSkillDeletion = null"
   >
     <p class="modal-note">
-      确认删除 "{{ pendingUnmanagedSkillDeletion.skillName }}" 吗？这会删除磁盘上的 skill 文件夹。
+      {{ t('deleteUnmanaged.note', { name: pendingUnmanagedSkillDeletion.skillName }) }}
     </p>
     <dl class="modal-summary">
-      <dt>路径</dt>
+      <dt>{{ t('deleteUnmanaged.path') }}</dt>
       <dd>{{ pendingUnmanagedSkillDeletion.skillPath }}</dd>
     </dl>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="pendingUnmanagedSkillDeletion = null">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="pendingUnmanagedSkillDeletion = null">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmDeleteUnmanagedSkill">
-          删除文件夹
+          {{ t('deleteUnmanaged.deleteFolder') }}
         </button>
       </div>
     </template>
@@ -804,17 +806,17 @@ onBeforeUnmount(closeHeaderMenu);
 
   <ModalDialog
     v-if="deleteProjectDialogOpen && selectedProject"
-    title="取消管理项目"
+    :title="t('deleteProject.title')"
     @close="deleteProjectDialogOpen = false"
   >
     <p class="modal-note">
-      确认取消管理项目 "{{ selectedProject.name }}" 吗？这只会移除 SkillMaster 中的项目记录，不会删除磁盘上的项目目录。
+      {{ t('deleteProject.note', { name: selectedProject.name }) }}
     </p>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="deleteProjectDialogOpen = false">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="deleteProjectDialogOpen = false">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmDeleteProject">
-          删除项目
+          {{ t('deleteProject.deleteProjectButton') }}
         </button>
       </div>
     </template>
@@ -822,17 +824,17 @@ onBeforeUnmount(closeHeaderMenu);
 
   <ModalDialog
     v-if="pendingReferenceRemoval"
-    title="移除技能引用"
+    :title="t('deleteRefProj.title')"
     @close="pendingReferenceRemoval = null"
   >
     <p class="modal-note">
-      确认从项目中移除这个技能引用吗？这会删除对应的托管链接，不会删除技能库中的 skill。
+      {{ t('deleteRefProj.note') }}
     </p>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="pendingReferenceRemoval = null">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="pendingReferenceRemoval = null">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmRemoveManagedSkillReference">
-          移除引用
+          {{ t('deleteRefProj.removeReferenceButton') }}
         </button>
       </div>
     </template>
@@ -845,46 +847,45 @@ onBeforeUnmount(closeHeaderMenu);
   >
     <template #header>
       <div class="modal-title-row header-warning-title">
-        <div style="display: flex; align-items: center; gap: 8px; color: var(--warning-text);">
+        <div class="conflict-title-container">
           <AlertTriangle :size="20" />
-          <h2 class="conflict-modal-title">导入冲突检测</h2>
+          <h2 class="conflict-modal-title">{{ t('projects.importConflictTitle') }}</h2>
         </div>
-        <button class="ghost-icon-button" type="button" aria-label="关闭" @click="conflictState = null">
+        <button class="ghost-icon-button" type="button" :aria-label="t('dialog.close')" @click="conflictState = null">
           <X :size="16" />
         </button>
       </div>
     </template>
 
     <div class="conflict-modal-body">
-      <p>技能库中已存在同名技能 (ID: <code>{{ conflictState.skillId }}</code>)，请选择处理策略：</p>
+      <p>{{ t('projects.importConflictDesc', { id: conflictState.skillId }) }}</p>
       
       <div class="conflict-compare-box">
         <div class="conflict-compare-item">
-          <span class="conflict-compare-label">项目本地版本名称：</span>
+          <span class="conflict-compare-label">{{ t('projects.projectLocalVersion') }}</span>
           <span class="conflict-compare-value">{{ conflictState.projectName }}</span>
         </div>
         <div class="conflict-compare-item">
-          <span class="conflict-compare-label">技能库已有版本名称：</span>
+          <span class="conflict-compare-label">{{ t('projects.libraryExistingVersion') }}</span>
           <span class="conflict-compare-value">{{ conflictState.libraryName }}</span>
         </div>
       </div>
       
-      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
-        <strong>覆盖已有</strong>：使用本项目本地的版本覆盖统一技能库中的版本（建议在本项目版本有最新修改时使用）。<br/>
-        <strong>保留已有</strong>：保留技能库中的现有版本，丢弃项目中的修改，直接将本项目该目录链接至技能库现有技能。
+      <p class="conflict-explanation">
+        {{ t('projects.conflictExplain') }}
       </p>
     </div>
 
     <template #footer>
       <div class="conflict-modal-footer">
         <button class="ghost-button" :disabled="busy" @click="conflictState = null">
-          取消
+          {{ t('dialog.cancel') }}
         </button>
         <button class="primary-button" :disabled="busy" @click="handleImportSkill(conflictState.skillPath, 'keep_existing')">
-          保留已有
+          {{ t('projects.keepExisting') }}
         </button>
         <button class="primary-button danger-override-btn" :disabled="busy" @click="handleImportSkill(conflictState.skillPath, 'overwrite')">
-          覆盖已有
+          {{ t('projects.overwriteExisting') }}
         </button>
       </div>
     </template>
@@ -895,7 +896,7 @@ onBeforeUnmount(closeHeaderMenu);
 .list-search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px;
-  gap: 8px;
+  gap: var(--spacing-xs);
   align-items: center;
 }
 
@@ -906,12 +907,12 @@ onBeforeUnmount(closeHeaderMenu);
   width: 32px;
   height: 30px;
   font-family: ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--bg-input);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
@@ -919,15 +920,43 @@ onBeforeUnmount(closeHeaderMenu);
   flex: 1;
 }
 
+.modal-instruction-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+.target-tile strong {
+  font-size: var(--font-size-md);
+}
+
+.target-tile small {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: monospace;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
 .target-custom-button {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
   border: 1px dashed var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: none;
   color: var(--text-primary);
   cursor: pointer;
@@ -938,28 +967,28 @@ onBeforeUnmount(closeHeaderMenu);
   justify-content: space-between;
   align-items: center;
   background: var(--bg-panel-muted);
-  padding: 8px 12px;
+  padding: var(--spacing-xs) var(--spacing-md);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
-  margin-bottom: 14px;
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-lg);
 }
 
 .chosen-path-copy {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--spacing-2xs);
   overflow: hidden;
   flex: 1;
-  margin-right: 8px;
+  margin-right: var(--spacing-xs);
 }
 
 .chosen-path-label {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
 }
 
 .chosen-path-value {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-primary);
   text-overflow: ellipsis;
   overflow: hidden;
@@ -968,34 +997,64 @@ onBeforeUnmount(closeHeaderMenu);
 }
 
 .chosen-path-edit-btn {
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   height: 24px;
-  padding: 0 8px;
+  padding: 0 var(--spacing-xs);
   min-height: 24px;
 }
 
 .dialog-search-input {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .dialog-checklist-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: var(--spacing-xs);
+  padding: 0 var(--spacing-2xs);
+}
+
+.check-all-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.project-skill-picker {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xs);
 }
 
 .dialog-skill-pick-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 8px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
   border-bottom: 1px solid var(--border-default);
   cursor: pointer;
   transition: background 0.15s;
+}
+
+.dialog-skill-pick-row input[type="checkbox"] {
+  margin-top: 3px;
+}
+
+.dialog-skill-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+.dialog-skill-pick-row small {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
 }
 
 .dialog-skill-pick-row:hover {
@@ -1007,13 +1066,27 @@ onBeforeUnmount(closeHeaderMenu);
 }
 
 .dialog-footer-row {
-  margin-top: 18px;
+  margin-top: var(--spacing-2xl);
   border-top: 1px solid var(--border-default);
-  padding-top: 14px;
+  padding-top: var(--spacing-lg);
+}
+
+.conflict-title-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--warning-text);
+}
+
+.conflict-explanation {
+  font-size: var(--font-size-md);
+  color: var(--text-muted);
+  margin: 0;
+  white-space: pre-line;
 }
 
 .header-warning-title {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .danger-override-btn {

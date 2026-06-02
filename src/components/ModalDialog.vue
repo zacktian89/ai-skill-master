@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { X } from "lucide-vue-next";
+import { useI18n } from "../composables/useI18n";
 
 interface Props {
   title?: string;
@@ -18,6 +19,8 @@ withDefaults(defineProps<Props>(), {
 defineEmits<{
   close: [];
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -32,7 +35,7 @@ defineEmits<{
             v-if="showClose"
             class="ghost-icon-button"
             type="button"
-            aria-label="关闭"
+            :aria-label="t('dialog.close')"
             @click="$emit('close')"
           >
             <X :size="16" />

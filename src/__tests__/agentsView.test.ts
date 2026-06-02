@@ -7,6 +7,7 @@ import AgentsView from "../views/agents/AgentsView.vue";
 import type { AppSnapshot } from "../types";
 import * as api from "../api";
 import { clearSkillScannerCaches } from "../composables/useSkillScanner";
+import { useI18n } from "../composables/useI18n";
 
 const apiMocks = vi.hoisted(() => ({
   addAgent: vi.fn(),
@@ -62,6 +63,7 @@ const snapshot: AppSnapshot = {
 
 describe("AgentsView", () => {
   beforeEach(() => {
+    useI18n().locale.value = "zh";
     clearSkillScannerCaches();
     apiMocks.addAgent.mockReset();
     apiMocks.deleteAgent.mockReset();

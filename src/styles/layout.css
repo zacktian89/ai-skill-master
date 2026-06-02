@@ -1,12 +1,12 @@
 .app-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 200px) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, var(--sidebar-width-default)) minmax(0, 1fr);
   height: 100vh;
   background: var(--bg-app);
   color: var(--text-primary);
   overflow: hidden;
-  min-width: 960px;
-  transition: grid-template-columns 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: var(--app-min-width);
+  transition: grid-template-columns var(--transition-default);
 }
 
 .app-shell.app-shell--dragging {
@@ -14,15 +14,15 @@
 }
 
 .app-shell.app-shell--sidebar-collapsed {
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-collapsed-width) minmax(0, 1fr);
 }
 
 .sidebar-rail {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--spacing-2xl);
   min-width: 0;
-  padding: 18px 8px 14px;
+  padding: var(--spacing-2xl) var(--spacing-xs) var(--spacing-lg);
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-default);
   overflow: visible;
@@ -36,16 +36,16 @@
 .rail-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 3px 6px;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xs) 3px var(--spacing-sm);
 }
 
 .rail-brand-mark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
+  width: var(--spacing-6xl);
+  height: var(--spacing-6xl);
+  border-radius: var(--radius-md);
   background: var(--bg-main-soft);
   color: var(--text-primary);
   border: 1px solid var(--border-default);
@@ -61,23 +61,23 @@
 .rail-nav-copy strong {
   display: block;
   overflow-wrap: anywhere;
-  font-weight: 400;
-  font-size: 15px;
+  font-weight: var(--font-weight-regular);
+  font-size: var(--font-size-xl);
   letter-spacing: 0;
 }
 
 .rail-brand-copy small,
 .rail-nav-copy small {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--spacing-2xs);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-md);
   line-height: 1.35;
 }
 
 .rail-nav {
   display: grid;
-  gap: 6px;
+  gap: var(--spacing-sm);
 }
 
 .sidebar-rail--collapsed .rail-nav {
@@ -87,12 +87,12 @@
 .rail-nav-button {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-md);
   width: 100%;
-  min-height: 40px;
-  padding: 8px 10px;
+  min-height: var(--spacing-7xl);
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: transparent;
   color: var(--text-primary);
   text-align: left;
@@ -125,24 +125,24 @@
 
 .rail-footer {
   margin-top: auto;
-  padding: 12px 8px;
+  padding: var(--spacing-md) var(--spacing-xs);
   border-top: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-xs);
 }
 
 .sidebar-rail--collapsed .rail-footer {
   width: 100%;
-  padding: 12px 0 0;
+  padding: var(--spacing-md) 0 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-xs);
 }
 
 .rail-nav-button--footer {
-  min-height: 40px;
+  min-height: var(--spacing-7xl);
 }
 
 .sidebar-resize-handle {
@@ -199,7 +199,7 @@
 
 .split-content {
   display: grid;
-  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(var(--split-pane-left-min-width), var(--split-pane-left-max-width)) minmax(0, 1fr);
   gap: 0;
   min-height: 0;
   flex: 1;
@@ -210,12 +210,12 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: 16px 20px;
+  padding: var(--spacing-xl) var(--spacing-4xl);
   border: none;
   border-radius: 0;
   background: var(--bg-detail-panel);
   box-shadow: none;
-  gap: 14px;
+  gap: var(--spacing-lg);
   overflow: auto;
   scrollbar-gutter: stable;
 }
@@ -225,18 +225,18 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: 12px 10px;
+  padding: var(--spacing-md) var(--spacing-sm);
   border: none;
   border-right: 1px solid var(--border-default);
   border-radius: 0;
   background: var(--bg-list-panel);
   box-shadow: none;
-  gap: 10px;
+  gap: var(--spacing-sm);
 }
 
 .list-panel-head {
   display: grid;
-  gap: 10px;
-  padding-bottom: 12px;
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-md);
   border-bottom: 1px solid var(--border-default);
 }

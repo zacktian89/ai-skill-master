@@ -2,13 +2,15 @@
  * @vitest-environment jsdom
  */
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import SkillsView from "../views/skills/SkillsView.vue";
 import type { AppSnapshot } from "../types";
+import { useI18n } from "../composables/useI18n";
 
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openPath: vi.fn(),
+  openUrl: vi.fn(),
 }));
 
 
@@ -65,6 +67,10 @@ const snapshot: AppSnapshot = {
 };
 
 describe("SkillsView references tab", () => {
+  beforeEach(() => {
+    useI18n().locale.value = "zh";
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -304,11 +310,11 @@ describe("SkillsView references tab", () => {
     expect(githubLink.text()).toContain("打开 GitHub");
     expect(githubLink.attributes("href")).toBe("https://github.com/test-owner/test-repo");
 
-    // Mock openPath
+    // Mock openUrl
     const opener = await import("@tauri-apps/plugin-opener");
-    const openPathSpy = vi.spyOn(opener, "openPath");
+    const openUrlSpy = vi.spyOn(opener, "openUrl");
 
     await githubLink.trigger("click");
-    expect(openPathSpy).toHaveBeenCalledWith("https://github.com/test-owner/test-repo");
+    expect(openUrlSpy).toHaveBeenCalledWith("https://github.com/test-owner/test-repo");
   });
 });

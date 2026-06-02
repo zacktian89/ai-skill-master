@@ -2,6 +2,7 @@
 import { Folder, Link as LinkIcon, Plus } from "lucide-vue-next";
 import type { ScannedCategory, ProjectRule } from "../types";
 import SkillActionMenu from "./SkillActionMenu.vue";
+import { useI18n } from "../composables/useI18n";
 
 defineProps<{
   categories: ScannedCategory[];
@@ -11,6 +12,8 @@ defineProps<{
   showAddButton?: boolean;
   showDisabledBadge?: boolean;
 }>();
+
+const { t } = useI18n();
 
 const emit = defineEmits<{
   "add-skill-click": [category: ScannedCategory];
@@ -45,26 +48,21 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
       v-for="category in categories"
       :key="category.path"
       class="scanned-category-item"
-      :style="showCategoryTitle ? { marginBottom: '20px' } : undefined"
+      :class="{ 'scanned-category-item--with-title': showCategoryTitle }"
     >
       <!-- Category Header -->
-      <div
-        v-if="showCategoryTitle"
-        class="scanned-category-title"
-        style="margin-bottom: 8px; font-weight: 600; font-size: 13px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; width: 100%;"
-      >
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span>📁 模块:</span>
+      <div v-if="showCategoryTitle" class="scanned-category-title">
+        <div class="scanned-category-left-group">
+          <span>{{ t('agents.scannedModule') }}</span>
           <code>{{ category.name }}</code>
         </div>
         <button
           v-if="showAddButton"
-          class="ghost-icon-button"
+          class="ghost-icon-button scanned-category-add-btn"
           type="button"
           :disabled="busy"
-          aria-label="向此模块添加skill"
-          title="向此模块添加skill"
-          style="width: 24px; height: 24px; border-radius: 6px;"
+          :aria-label="t('agents.addSkillToModule')"
+          :title="t('agents.addSkillToModule')"
           @click="$emit('add-skill-click', category)"
         >
           <Plus :size="12" />
@@ -72,7 +70,7 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
       </div>
 
       <!-- Skills List -->
-      <div class="scanned-skills-list" :style="!showCategoryTitle ? { borderLeft: 'none', paddingLeft: 0 } : undefined">
+      <div class="scanned-skills-list" :class="{ 'scanned-skills-list--no-title': !showCategoryTitle }">
         <article
           v-for="skill in category.skills"
           :key="skill.path"
@@ -91,21 +89,20 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
                   v-if="skill.isManaged"
                   class="project-skill-title-icon"
                   :size="15"
-                  aria-label="已托管"
+                  :aria-label="t('general.managed')"
                 />
                 <Folder
                   v-else
                   class="project-skill-title-icon"
                   :size="15"
-                  aria-label="未托管"
+                  :aria-label="t('general.unmanaged')"
                 />
                 <strong>{{ skill.name }}</strong>
                 <span
                   v-if="showDisabledBadge && rules[skill.id] === 'disable'"
-                  class="badge badge--error"
-                  style="font-size: 10px; padding: 2px 6px;"
+                  class="badge badge--error disabled-badge"
                 >
-                  已停用
+                  {{ t('agents.disabledBadge') }}
                 </span>
               </div>
               <div class="project-skill-actions">
@@ -135,15 +132,52 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
 </template>
 
 <style scoped>
+.scanned-category-item--with-title {
+  margin-bottom: var(--spacing-3xl);
+}
+
+.scanned-category-title {
+  margin-bottom: var(--spacing-xs);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-md);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.scanned-category-left-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.scanned-category-add-btn {
+  width: var(--spacing-5xl);
+  height: var(--spacing-5xl);
+  border-radius: var(--radius-sm);
+}
+
+.scanned-skills-list--no-title {
+  border-left: none;
+  padding-left: 0;
+}
+
+.disabled-badge {
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+}
+
 .project-skill-row {
   display: block; /* Override default grid */
-  padding: 12px;
+  padding: var(--spacing-md);
 }
 
 .project-skill-main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--spacing-sm);
   width: 100%;
 }
 
@@ -152,14 +186,14 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .project-skill-title-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--spacing-xs);
   min-width: 0;
   flex: 1;
 }
@@ -167,7 +201,7 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
 .project-skill-meta {
   color: var(--text-tertiary);
   font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
-  font-size: 13px;
+  font-size: var(--font-size-md);
   line-height: 1;
 }
 
@@ -179,7 +213,7 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
 
 .project-skill-description {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-md);
   line-height: 1.45;
   overflow-wrap: anywhere;
   display: block;

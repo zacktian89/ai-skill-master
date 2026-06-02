@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from "../../../composables/useI18n";
+
 defineProps<{
   isMarkdownLoading: boolean;
   skillMarkdown: string | null;
@@ -8,12 +10,14 @@ defineProps<{
   };
   renderedMarkdown: string;
 }>();
+
+const { t } = useI18n();
 </script>
 
 <template>
   <section class="description-pane">
     <div v-if="isMarkdownLoading" class="preview-loading">
-      <span>加载中...</span>
+      <span>{{ t('skills.loading') }}</span>
     </div>
     <div v-else-if="skillMarkdown">
       <!-- Front matter metadata tags -->
@@ -27,6 +31,6 @@ defineProps<{
       <!-- Markdown Body -->
       <div class="markdown-body" v-html="renderedMarkdown"></div>
     </div>
-    <p v-else class="description-empty">暂无描述。</p>
+    <p v-else class="description-empty">{{ t('skills.noDescription') }}</p>
   </section>
 </template>

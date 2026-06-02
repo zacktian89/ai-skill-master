@@ -6,6 +6,7 @@ import ModalDialog from "../../../components/ModalDialog.vue";
 import { AppStoreKey } from "../../../stores/useAppStore";
 import { useAsyncAction } from "../../../composables/useAsyncAction";
 import type { AppSnapshot, DeleteSkillPreview } from "../../../types";
+import { useI18n } from "../../../composables/useI18n";
 
 const props = defineProps<{
   show: boolean;
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const appStore = inject(AppStoreKey, null);
+const { t } = useI18n();
 
 const { busy, run: executeAsync } = useAsyncAction({
   onError: (err) => {
@@ -67,30 +69,30 @@ watch(() => props.skillId, () => {
     <template #header>
       <div class="detail-header">
         <div>
-          <h2>删除 {{ deletePreview.skillName }}</h2>
-          <p>确认前不会修改任何文件。</p>
+          <h2>{{ t('deleteSkill.title', { name: deletePreview.skillName }) }}</h2>
+          <p>{{ t('deleteSkill.note') }}</p>
         </div>
       </div>
     </template>
 
     <dl class="detail-kv detail-kv--wide">
       <div>
-        <dt>技能库目录</dt>
+        <dt>{{ t('deleteSkill.libraryPath') }}</dt>
         <dd>{{ deletePreview.libraryPath }}</dd>
       </div>
       <div>
-        <dt>托管链接</dt>
+        <dt>{{ t('deleteSkill.managedLinkTargets') }}</dt>
         <dd>
           <template v-if="deletePreview.managedLinkTargets.length">
             <div class="meta-stack">
               <span v-for="target in deletePreview.managedLinkTargets" :key="target">{{ target }}</span>
             </div>
           </template>
-          <template v-else>无</template>
+          <template v-else>{{ t('deleteSkill.none') }}</template>
         </dd>
       </div>
       <div>
-        <dt>项目规则影响</dt>
+        <dt>{{ t('deleteSkill.affectedProjects') }}</dt>
         <dd>
           <template v-if="deletePreview.affectedProjects.length">
             <div class="meta-stack">
@@ -99,17 +101,17 @@ watch(() => props.skillId, () => {
               </span>
             </div>
           </template>
-          <template v-else>无</template>
+          <template v-else>{{ t('deleteSkill.none') }}</template>
         </dd>
       </div>
     </dl>
 
     <template #footer>
       <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="busy" @click="$emit('close')">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="$emit('close')">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmDelete">
           <Trash2 :size="16" />
-          确认删除
+          {{ t('deleteSkill.confirmDelete') }}
         </button>
       </div>
     </template>

@@ -9,6 +9,7 @@ import {
   Bot,
 } from "lucide-vue-next";
 import type { AppSnapshot } from "../types";
+import { useI18n } from "../composables/useI18n";
 
 type Section = "skills" | "projects" | "agents" | "settings";
 
@@ -27,6 +28,8 @@ const emit = defineEmits<{
   "update:isDragging": [value: boolean];
 }>();
 
+const { t } = useI18n();
+
 const workspaceState = computed(() => {
   const diagnostics = props.snapshot?.diagnostics ?? [];
   const pendingActions = props.snapshot?.state.syncStatus.pendingActions ?? [];
@@ -35,35 +38,35 @@ const workspaceState = computed(() => {
 
   if (blockingIssues) {
     return {
-      title: `${blockingIssues} 个问题待处理`,
+      title: t("sidebar.issuesPending", { count: blockingIssues }),
     };
   }
   if (pendingChanges) {
     return {
-      title: `${pendingChanges} 项未完成`,
+      title: t("sidebar.actionsPending", { count: pendingChanges }),
     };
   }
   return {
-    title: "链接状态正常",
+    title: t("sidebar.statusOk"),
   };
 });
 
 const navItems = computed(() => [
   {
     id: "skills" as const,
-    title: "Skills",
+    title: t("sidebar.skills"),
     count: props.snapshot?.state.skills.length ?? 0,
     icon: Library,
   },
   {
     id: "agents" as const,
-    title: "Agents",
+    title: t("sidebar.agents"),
     count: props.snapshot?.state.agents?.length ?? 0,
     icon: Bot,
   },
   {
     id: "projects" as const,
-    title: "Projects",
+    title: t("sidebar.projects"),
     count: props.snapshot?.state.projects.length ?? 0,
     icon: FolderKanban,
   },
@@ -139,8 +142,8 @@ const startResize = (e: MouseEvent) => {
         v-if="collapsed"
         class="rail-nav-button rail-expand-button-narrow"
         type="button"
-        aria-label="展开侧边栏"
-        title="展开侧边栏"
+        :aria-label="t('sidebar.expand')"
+        :title="t('sidebar.expand')"
         @click="emit('update:collapsed', false)"
       >
         <PanelLeftOpen :size="18" />
@@ -149,14 +152,14 @@ const startResize = (e: MouseEvent) => {
       <button
         class="rail-nav-button rail-nav-button--footer"
         :class="{ active: activeSection === 'settings' }"
-        :title="collapsed ? (workspaceState.title !== '链接状态正常' ? `Settings · ${workspaceState.title}` : 'Settings') : undefined"
-        :aria-label="collapsed ? (workspaceState.title !== '链接状态正常' ? `Settings · ${workspaceState.title}` : 'Settings') : undefined"
+        :title="collapsed ? (workspaceState.title !== t('sidebar.statusOk') ? `${t('sidebar.settings')} · ${workspaceState.title}` : t('sidebar.settings')) : undefined"
+        :aria-label="collapsed ? (workspaceState.title !== t('sidebar.statusOk') ? `${t('sidebar.settings')} · ${workspaceState.title}` : t('sidebar.settings')) : undefined"
         @click="emit('update:activeSection', 'settings')"
       >
         <Settings :size="18" />
         <span class="rail-nav-copy">
-          <strong>Settings</strong>
-          <small v-if="workspaceState.title !== '链接状态正常'">{{ workspaceState.title }}</small>
+          <strong>{{ t('sidebar.settings') }}</strong>
+          <small v-if="workspaceState.title !== t('sidebar.statusOk')">{{ workspaceState.title }}</small>
         </span>
       </button>
     </div>

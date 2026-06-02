@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { Trash2 } from "lucide-vue-next";
 import AgentIcon from "../../../components/icons/AgentIcon.vue";
 import StatusTag from "../../../components/StatusTag.vue";
 import type { SkillReferenceDetail } from "../../../types";
+import { useI18n } from "../../../composables/useI18n";
 
 defineProps<{
   selectedReferences: SkillReferenceDetail[];
@@ -13,18 +15,20 @@ defineEmits<{
   "open-delete-reference": [reference: SkillReferenceDetail];
 }>();
 
-const scopeLabels: Record<string, string> = {
-  user: "个人目录",
-  project: "项目目录",
-  custom: "自定义目录",
-};
+const { t } = useI18n();
 
-const referenceStatusLabels: Record<string, string> = {
-  healthy: "正常",
-  missing: "缺失",
-  conflict: "冲突",
-  stale: "失效",
-};
+const scopeLabels = computed<Record<string, string>>(() => ({
+  user: t("skills.refScopeUser"),
+  project: t("skills.refScopeProject"),
+  custom: t("skills.refScopeCustom"),
+}));
+
+const referenceStatusLabels = computed<Record<string, string>>(() => ({
+  healthy: t("skills.refStatusHealthy"),
+  missing: t("skills.refStatusMissing"),
+  conflict: t("skills.refStatusConflict"),
+  stale: t("skills.refStatusStale"),
+}));
 </script>
 
 <template>
@@ -53,8 +57,8 @@ const referenceStatusLabels: Record<string, string> = {
                 class="ghost-icon-button ghost-icon-button--danger"
                 type="button"
                 :disabled="busy"
-                aria-label="删除引用"
-                title="删除引用"
+                :aria-label="t('skills.deleteReference')"
+                :title="t('skills.deleteReference')"
                 @click="$emit('open-delete-reference', reference)"
               >
                 <Trash2 :size="15" />
@@ -68,7 +72,7 @@ const referenceStatusLabels: Record<string, string> = {
 
     <!-- Empty View -->
     <div v-else class="content-empty content-empty--compact">
-      暂无引用。
+      {{ t('skills.noReferences') }}
     </div>
   </section>
 </template>

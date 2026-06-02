@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useScrollableList } from "../composables/useScrollableList";
 
+import { useI18n } from "../composables/useI18n";
+
 interface Props {
   items?: any[];
   hasSearch?: boolean;
@@ -10,9 +12,9 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   items: () => [],
   hasSearch: false,
-  emptyText: "暂无数据。",
 });
 
+const { t } = useI18n();
 const { listStackRef, listStackScrollable } = useScrollableList(() => props.items);
 </script>
 
@@ -29,5 +31,5 @@ const { listStackRef, listStackScrollable } = useScrollableList(() => props.item
   >
     <slot></slot>
   </div>
-  <div v-else class="content-empty">{{ emptyText }}</div>
+  <div v-else class="content-empty">{{ emptyText || t('skills.noReferences') }}</div>
 </template>

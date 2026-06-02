@@ -27,6 +27,9 @@ import { useAsyncAction } from "../../composables/useAsyncAction";
 import { useSkillScanner } from "../../composables/useSkillScanner";
 import { useSkillPicker } from "../../composables/useSkillPicker";
 import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
+import { useI18n } from "../../composables/useI18n";
+
+const { t } = useI18n();
 
 const appStore = inject(AppStoreKey, null);
 const selectionStore = inject(SelectionStoreKey, null);
@@ -157,8 +160,8 @@ async function browseAgentPath() {
 
 async function confirmAddAgent() {
   if (!inputAgentName.value.trim() || !inputAgentPath.value.trim()) {
-    if (appStore) appStore.setError("请填写 Agent 名称和目标路径");
-    else emit("error", "请填写 Agent 名称和目标路径");
+    if (appStore) appStore.setError(t("agents.nameAndPathRequired"));
+    else emit("error", t("agents.nameAndPathRequired"));
     return;
   }
   await executeAsync(
@@ -348,8 +351,8 @@ async function confirmRemoveManagedSkillReference() {
   const { skillId, skillPath } = pendingReferenceRemoval.value;
   const refId = findReferenceIdForScannedSkill(skillId, skillPath);
   if (!refId) {
-    if (appStore) appStore.setError("无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
-    else emit("error", "无法找到该引用的记录，请确认该技能已在技能详情的引用列表中注册。");
+    if (appStore) appStore.setError(t("reference.pathConflictError"));
+    else emit("error", t("reference.pathConflictError"));
     pendingReferenceRemoval.value = null;
     return;
   }
@@ -483,11 +486,11 @@ onBeforeUnmount(closeHeaderMenu);
 <template>
   <SplitPane>
     <template #left>
-      <ListPanel :items="agents" :has-search="true" empty-text="没有匹配的 Agent。">
+      <ListPanel :items="agents" :has-search="true" :empty-text="t('agents.empty')">
         <template #search-row>
           <div class="list-search-row">
-            <SearchInput v-model="agentQuery" placeholder="搜索 Agent 名称或路径" />
-            <button class="icon-button" type="button" :disabled="busy" aria-label="添加 Agent" @click="openAddAgentDialog">
+            <SearchInput v-model="agentQuery" :placeholder="t('agents.searchPlaceholder')" />
+            <button class="icon-button" type="button" :disabled="busy" :aria-label="t('agents.addAgent')" @click="openAddAgentDialog">
               <UserPlus :size="18" />
             </button>
           </div>
@@ -540,8 +543,8 @@ onBeforeUnmount(closeHeaderMenu);
                 class="ghost-icon-button"
                 type="button"
                 :disabled="busy"
-                aria-label="更多操作"
-                title="更多操作"
+                :aria-label="t('projects.moreActions')"
+                :title="t('projects.moreActions')"
                 @click.stop="openHeaderMenu"
               >
                 <MoreHorizontal :size="16" />
@@ -566,7 +569,7 @@ onBeforeUnmount(closeHeaderMenu);
                 @click="runHeaderMenuAction(openAddSkillDialog)"
               >
                 <Plus :size="15" />
-                <span>增加技能</span>
+                <span>{{ t('projects.addSkill') }}</span>
               </button>
 
               <button
@@ -577,7 +580,7 @@ onBeforeUnmount(closeHeaderMenu);
                 @click="runHeaderMenuAction(openDeleteAgentDialog)"
               >
                 <Trash2 :size="15" />
-                <span>取消管理</span>
+                <span>{{ t('projects.cancelManage') }}</span>
               </button>
 
               <button
@@ -588,7 +591,7 @@ onBeforeUnmount(closeHeaderMenu);
                 @click="runHeaderMenuAction(openAgentSkillDirectory)"
               >
                 <FolderOpen :size="15" />
-                <span>打开Skill目录</span>
+                <span>{{ t('agents.openAgentDir') }}</span>
               </button>
             </div>
           </Teleport>
@@ -596,8 +599,8 @@ onBeforeUnmount(closeHeaderMenu);
           <section ref="listSectionRef" class="detail-section">
             <div class="project-skill-toolbar">
               <span class="search-row-count">{{ scannedSkillsCount }}</span>
-              <SearchInput v-model="skillQuery" placeholder="搜索技能" class="detail-search-input" />
-              <button class="ghost-icon-button" type="button" :disabled="busy || scanning" aria-label="重新扫描" title="重新扫描" @click="refreshScan">
+              <SearchInput v-model="skillQuery" :placeholder="t('projects.searchSkillPlaceholder')" class="detail-search-input" />
+              <button class="ghost-icon-button" type="button" :disabled="busy || scanning" :aria-label="t('projects.rescan')" :title="t('projects.rescan')" @click="refreshScan">
                 <RefreshCw :size="14" :class="{ 'spin-animation': scanning }" />
               </button>
             </div>
@@ -616,20 +619,19 @@ onBeforeUnmount(closeHeaderMenu);
               @import-skill="handleImportSkill"
               @delete-unmanaged-skill="deleteUnmanagedSkill"
             />
-            <div v-else class="content-empty" style="padding: 24px 0;">此 Agent 下尚未扫描到任何技能。</div>
+            <div v-else class="content-empty content-empty--padding-lg">{{ t('agents.noSkillsScanned') }}</div>
           </section>
         </template>
       </template>
 
-      <div v-else class="content-empty">选择左侧 Agent 查看技能列表。</div>
+      <div v-else class="content-empty">{{ t('agents.selectAgentDetail') }}</div>
     </template>
   </SplitPane>
 
   <!-- Add Agent Dialog -->
-  <!-- Add Agent Dialog -->
   <ModalDialog
     v-if="addAgentDialogOpen"
-    title="添加 Agent"
+    :title="t('agents.addAgent')"
     card-class="modal-card--agent"
     @close="closeAddAgentDialog"
   >
@@ -647,20 +649,20 @@ onBeforeUnmount(closeHeaderMenu);
           <span class="target-tile-icon" aria-hidden="true">
             <AgentIcon :name="preset.targetName" :size="20" />
           </span>
-          <strong style="font-size: 12px;">{{ preset.name }}</strong>
+          <strong class="preset-name">{{ preset.name === '自定义 Agent' ? t('agents.presetCustomAgent') : preset.name }}</strong>
         </button>
       </div>
 
       <div class="agent-form-grid">
         <div class="field-stack">
-          <label>Agent 名称</label>
-          <SearchInput v-model="inputAgentName" placeholder="输入 Agent 名称" />
+          <label>{{ t('agents.agentNameLabel') }}</label>
+          <SearchInput v-model="inputAgentName" :placeholder="t('agents.agentNamePlaceholder')" />
         </div>
 
         <div class="field-stack">
-          <label>技能引用根目录 (skills 目录)</label>
+          <label>{{ t('agents.agentPathLabel') }}</label>
           <div class="path-input-row">
-            <SearchInput v-model="inputAgentPath" placeholder="输入或浏览目录路径（可使用 ~ 开头）" />
+            <SearchInput v-model="inputAgentPath" :placeholder="t('agents.agentPathPlaceholder')" />
             <button
               class="secondary-button"
               type="button"
@@ -668,7 +670,7 @@ onBeforeUnmount(closeHeaderMenu);
               @click="browseAgentPath"
             >
               <FolderOpen :size="16" />
-              <span>浏览</span>
+              <span>{{ t('agents.browseButton') }}</span>
             </button>
           </div>
         </div>
@@ -677,9 +679,9 @@ onBeforeUnmount(closeHeaderMenu);
 
     <template #footer>
       <div class="button-row button-row--end modal-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="closeAddAgentDialog">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="closeAddAgentDialog">{{ t('dialog.cancel') }}</button>
         <button class="primary-button" :disabled="busy || !inputAgentName.trim() || !inputAgentPath.trim()" @click="confirmAddAgent">
-          确定
+          {{ t('dialog.confirm') }}
         </button>
       </div>
     </template>
@@ -687,17 +689,17 @@ onBeforeUnmount(closeHeaderMenu);
 
   <ModalDialog
     v-if="deleteAgentDialogOpen && selectedAgent"
-    title="取消管理 Agent"
+    :title="t('deleteAgent.title')"
     @close="deleteAgentDialogOpen = false"
   >
     <p class="modal-note">
-      确认取消管理 Agent "{{ selectedAgent.name }}" 吗？这不会影响其目录下的实际技能文件。
+      {{ t('deleteAgent.note', { name: selectedAgent.name }) }}
     </p>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="deleteAgentDialogOpen = false">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="deleteAgentDialogOpen = false">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmDeleteAgent">
-          删除 Agent
+          {{ t('deleteAgent.deleteAgentButton') }}
         </button>
       </div>
     </template>
@@ -705,17 +707,17 @@ onBeforeUnmount(closeHeaderMenu);
 
   <ModalDialog
     v-if="pendingReferenceRemoval"
-    title="移除技能引用"
+    :title="t('deleteRefProj.title')"
     @close="pendingReferenceRemoval = null"
   >
     <p class="modal-note">
-      确认从 Agent 中移除这个技能引用吗？这会删除对应的托管链接，不会删除技能库中的 skill。
+      {{ t('deleteRefProj.noteAgent') }}
     </p>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="pendingReferenceRemoval = null">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="pendingReferenceRemoval = null">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmRemoveManagedSkillReference">
-          移除引用
+          {{ t('deleteRefProj.removeReferenceButton') }}
         </button>
       </div>
     </template>
@@ -723,21 +725,21 @@ onBeforeUnmount(closeHeaderMenu);
 
   <ModalDialog
     v-if="pendingUnmanagedSkillDeletion"
-    title="删除未托管 Skill"
+    :title="t('deleteUnmanaged.title')"
     @close="pendingUnmanagedSkillDeletion = null"
   >
     <p class="modal-note">
-      确认删除 "{{ pendingUnmanagedSkillDeletion.skillName }}" 吗？这会删除磁盘上的 skill 文件夹。
+      {{ t('deleteUnmanaged.note', { name: pendingUnmanagedSkillDeletion.skillName }) }}
     </p>
     <dl class="modal-summary">
-      <dt>路径</dt>
+      <dt>{{ t('deleteUnmanaged.path') }}</dt>
       <dd>{{ pendingUnmanagedSkillDeletion.skillPath }}</dd>
     </dl>
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="pendingUnmanagedSkillDeletion = null">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="pendingUnmanagedSkillDeletion = null">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmDeleteUnmanagedSkill">
-          删除文件夹
+          {{ t('deleteUnmanaged.deleteFolder') }}
         </button>
       </div>
     </template>
@@ -746,30 +748,30 @@ onBeforeUnmount(closeHeaderMenu);
   <!-- Add Skill to Agent Dialog -->
   <ModalDialog
     v-if="addSkillDialogOpen && selectedAgent"
-    :title="`关联技能到 ${selectedAgent.name}`"
+    :title="t('agents.linkSkillsTo', { name: selectedAgent.name })"
     card-class="modal-card--compact"
     @close="closeAddSkillDialog"
   >
     <div class="modal-step-section">
       <!-- Search box inside dialog -->
-      <SearchInput v-model="addSkillQuery" placeholder="搜索技能" class="dialog-search-input" />
+      <SearchInput v-model="addSkillQuery" :placeholder="t('projects.searchSkillPlaceholder')" class="dialog-search-input" />
 
       <!-- Check all / Selected count -->
       <div class="dialog-checklist-header">
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <label class="check-all-label">
           <input
             type="checkbox"
             :checked="filteredLibrarySkills.length > 0 && selectedSkillIds.length === filteredLibrarySkills.length"
             :disabled="filteredLibrarySkills.length === 0 || busy"
             @change="toggleAllLibrarySkills(($event.target as HTMLInputElement).checked)"
           />
-          <span>全选</span>
+          <span>{{ t('projects.checkAll') }}</span>
         </label>
-        <span>已选择 {{ selectedSkillIds.length }} / {{ filteredLibrarySkills.length }} 个技能</span>
+        <span>{{ t('projects.selectedSkillsCount', { selected: selectedSkillIds.length, total: filteredLibrarySkills.length }) }}</span>
       </div>
 
       <!-- Skill list with checkboxes -->
-      <div v-if="filteredLibrarySkills.length" class="project-skill-picker" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: 8px; padding: 4px;">
+      <div v-if="filteredLibrarySkills.length" class="project-skill-picker">
         <label
           v-for="skill in filteredLibrarySkills"
           :key="skill.id"
@@ -781,25 +783,28 @@ onBeforeUnmount(closeHeaderMenu);
             :value="skill.id"
             v-model="selectedSkillIds"
             :disabled="busy"
-            style="margin-top: 3px;"
           />
-          <span style="display: flex; flex-direction: column; gap: 2px;">
+          <span class="dialog-skill-info">
             <strong>{{ skill.name }}</strong>
-            <small style="font-size: 11px; color: var(--text-secondary);">
+            <small>
               <code>{{ skill.id }}</code>
               <span v-if="skill.description"> · {{ skill.description }}</span>
             </small>
           </span>
         </label>
       </div>
-      <div v-else class="content-empty content-empty--compact">没有匹配的技能。</div>
+      <div v-else class="content-empty content-empty--compact">{{ t('projects.noMatchingSkills') }}</div>
     </div>
 
     <template #footer>
       <div class="button-row button-row--end dialog-footer-row">
-        <button class="secondary-button" :disabled="busy" @click="closeAddSkillDialog">取消</button>
-        <button class="primary-button" :disabled="busy || selectedSkillIds.length === 0" @click="confirmAddSkillReferences">
-          确定
+        <button class="secondary-button" :disabled="busy" @click="closeAddSkillDialog">{{ t('dialog.cancel') }}</button>
+        <button
+          class="primary-button"
+          :disabled="busy || selectedSkillIds.length === 0"
+          @click="confirmAddSkillReferences"
+        >
+          {{ t('dialog.confirm') }}
         </button>
       </div>
     </template>
@@ -813,46 +818,45 @@ onBeforeUnmount(closeHeaderMenu);
   >
     <template #header>
       <div class="modal-title-row header-warning-title">
-        <div style="display: flex; align-items: center; gap: 8px; color: var(--warning-text);">
+        <div class="conflict-title-container">
           <AlertTriangle :size="20" />
-          <h2 class="conflict-modal-title">导入冲突检测</h2>
+          <h2 class="conflict-modal-title">{{ t('projects.importConflictTitle') }}</h2>
         </div>
-        <button class="ghost-icon-button" type="button" aria-label="关闭" @click="conflictState = null">
+        <button class="ghost-icon-button" type="button" :aria-label="t('dialog.close')" @click="conflictState = null">
           <X :size="16" />
         </button>
       </div>
     </template>
 
     <div class="conflict-modal-body">
-      <p>技能库中已存在同名技能 (ID: <code>{{ conflictState.skillId }}</code>)，请选择处理策略：</p>
+      <p>{{ t('projects.importConflictDesc', { id: conflictState.skillId }) }}</p>
       
       <div class="conflict-compare-box">
         <div class="conflict-compare-item">
-          <span class="conflict-compare-label">本地版本名称：</span>
+          <span class="conflict-compare-label">{{ t('projects.projectLocalVersion') }}</span>
           <span class="conflict-compare-value">{{ conflictState.projectName }}</span>
         </div>
         <div class="conflict-compare-item">
-          <span class="conflict-compare-label">技能库已有版本名称：</span>
+          <span class="conflict-compare-label">{{ t('projects.libraryExistingVersion') }}</span>
           <span class="conflict-compare-value">{{ conflictState.libraryName }}</span>
         </div>
       </div>
       
-      <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
-        <strong>覆盖已有</strong>：使用此本地的版本覆盖统一技能库中的版本（建议在本地版本有最新修改时使用）。<br/>
-        <strong>保留已有</strong>：保留技能库中的现有版本，丢弃本地的修改，直接将该目录链接至技能库现有技能。
+      <p class="conflict-explanation">
+        {{ t('projects.conflictExplain') }}
       </p>
     </div>
 
     <template #footer>
       <div class="conflict-modal-footer">
         <button class="ghost-button" :disabled="busy" @click="conflictState = null">
-          取消
+          {{ t('dialog.cancel') }}
         </button>
         <button class="primary-button" :disabled="busy" @click="handleImportSkill(conflictState.skillPath, 'keep_existing')">
-          保留已有
+          {{ t('projects.keepExisting') }}
         </button>
         <button class="primary-button danger-override-btn" :disabled="busy" @click="handleImportSkill(conflictState.skillPath, 'overwrite')">
-          覆盖已有
+          {{ t('projects.overwriteExisting') }}
         </button>
       </div>
     </template>
@@ -863,7 +867,7 @@ onBeforeUnmount(closeHeaderMenu);
 .list-search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px;
-  gap: 8px;
+  gap: var(--spacing-xs);
   align-items: center;
 }
 
@@ -874,12 +878,12 @@ onBeforeUnmount(closeHeaderMenu);
   width: 32px;
   height: 30px;
   font-family: ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-secondary);
   background: var(--bg-input);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
@@ -887,28 +891,66 @@ onBeforeUnmount(closeHeaderMenu);
   flex: 1;
 }
 
+.content-empty--padding-lg {
+  padding: var(--spacing-4xl) 0;
+}
+
+.preset-name {
+  font-size: var(--font-size-sm);
+}
+
 .dialog-search-input {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
 }
 
 .dialog-checklist-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: var(--spacing-xs);
+  padding: 0 var(--spacing-2xs);
+}
+
+.check-all-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.project-skill-picker {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xs);
 }
 
 .dialog-skill-pick-row {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 8px;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
   border-bottom: 1px solid var(--border-default);
   cursor: pointer;
   transition: background 0.15s;
+}
+
+.dialog-skill-pick-row input[type="checkbox"] {
+  margin-top: 3px;
+}
+
+.dialog-skill-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+.dialog-skill-pick-row small {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
 }
 
 .dialog-skill-pick-row:hover {
@@ -920,9 +962,23 @@ onBeforeUnmount(closeHeaderMenu);
 }
 
 .dialog-footer-row {
-  margin-top: 18px;
+  margin-top: var(--spacing-2xl);
   border-top: 1px solid var(--border-default);
-  padding-top: 14px;
+  padding-top: var(--spacing-lg);
+}
+
+.conflict-title-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--warning-text);
+}
+
+.conflict-explanation {
+  font-size: var(--font-size-md);
+  color: var(--text-muted);
+  margin: 0;
+  white-space: pre-line;
 }
 
 .header-warning-title {

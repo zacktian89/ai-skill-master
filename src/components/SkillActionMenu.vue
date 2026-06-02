@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import { Link as LinkIcon, MoreHorizontal, Power, PowerOff, Trash2 } from "lucide-vue-next";
 import type { ProjectRule, ScannedSkill } from "../types";
+import { useI18n } from "../composables/useI18n";
 
 const props = withDefaults(defineProps<{
   skill: ScannedSkill;
@@ -21,8 +22,10 @@ const emit = defineEmits<{
   "delete-unmanaged-skill": [skillId: string, skillName: string, skillPath: string];
 }>();
 
+const { t } = useI18n();
+
 const removeAriaLabel = computed(() =>
-  props.showCategoryTitle ? "从项目移除技能引用" : "从 Agent 移除技能引用"
+  props.showCategoryTitle ? t("reference.deleteRefProj") : t("reference.deleteRefAgent")
 );
 
 const openMenu = ref<{ x: number; y: number } | null>(null);
@@ -85,8 +88,8 @@ onBeforeUnmount(closeMenu);
     class="ghost-icon-button"
     type="button"
     :disabled="busy"
-    aria-label="更多技能操作"
-    title="更多技能操作"
+    :aria-label="t('skills.moreSkillActions')"
+    :title="t('skills.moreSkillActions')"
     @click.stop="openSkillMenu"
   >
     <MoreHorizontal :size="16" />
@@ -111,7 +114,7 @@ onBeforeUnmount(closeMenu);
       >
         <Power v-if="rule === 'disable'" :size="15" />
         <PowerOff v-else :size="15" />
-        <span>{{ rule === "disable" ? "打开" : "关闭" }}</span>
+        <span>{{ rule === "disable" ? t("skills.open") : t("dialog.close") }}</span>
       </button>
 
       <button
@@ -124,7 +127,7 @@ onBeforeUnmount(closeMenu);
         @click="runMenuAction(() => emit('remove-reference', skill.id, skill.path))"
       >
         <Trash2 :size="15" />
-        <span>删除引用</span>
+        <span>{{ t("skills.deleteReference") }}</span>
       </button>
 
       <button
@@ -136,7 +139,7 @@ onBeforeUnmount(closeMenu);
         @click="runMenuAction(() => emit('import-skill', skill.path))"
       >
         <LinkIcon :size="15" />
-        <span>托管</span>
+        <span>{{ t("skills.manage") }}</span>
       </button>
 
       <button
@@ -145,11 +148,11 @@ onBeforeUnmount(closeMenu);
         role="menuitem"
         class="global-context-menu-item global-context-menu-item--danger"
         :disabled="busy"
-        aria-label="删除未托管 skill 文件夹"
+        :aria-label="t('importSkill.duplicate')"
         @click="runMenuAction(() => emit('delete-unmanaged-skill', skill.id, skill.name, skill.path))"
       >
         <Trash2 :size="15" />
-        <span>删除</span>
+        <span>{{ t("dialog.delete") }}</span>
       </button>
     </div>
   </Teleport>

@@ -1,4 +1,9 @@
 :root {
+  --app-min-width: 960px;
+  --sidebar-width-default: 200px;
+  --sidebar-collapsed-width: 54px;
+  --split-pane-left-min-width: 260px;
+  --split-pane-left-max-width: 300px;
   --bg-app: #191919;
   --bg-main: #2b2b2b;
   --bg-main-elevated: #333333;
@@ -42,6 +47,49 @@
   --offline-bg: rgba(90, 90, 90, 0.24);
   --offline-border: rgba(160, 160, 160, 0.22);
   --scrollbar-size: 8px;
+
+  /* Spacing Scale (8pt grid based) */
+  --spacing-2xs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 10px;
+  --spacing-md: 12px;
+  --spacing-lg: 14px;
+  --spacing-xl: 16px;
+  --spacing-2xl: 18px;
+  --spacing-3xl: 20px;
+  --spacing-4xl: 24px;
+  --spacing-5xl: 28px;
+  --spacing-6xl: 32px;
+  --spacing-7xl: 40px;
+
+  /* Typography Scale */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 15px;
+  --font-size-2xl: 18px;
+  --font-size-3xl: 22px;
+  --font-size-4xl: 24px;
+
+  /* Font Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 550;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 650;
+
+  /* Border Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 7px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+
+  /* Transitions */
+  --transition-default: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.15s ease;
+
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
   color: var(--text-primary);
   background: var(--bg-app);

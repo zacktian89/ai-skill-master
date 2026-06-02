@@ -7,6 +7,7 @@ import ProjectsView from "../views/projects/ProjectsView.vue";
 import type { AppSnapshot } from "../types";
 import * as api from "../api";
 import { clearSkillScannerCaches } from "../composables/useSkillScanner";
+import { useI18n } from "../composables/useI18n";
 
 const apiMocks = vi.hoisted(() => ({
   addProject: vi.fn(),
@@ -115,6 +116,7 @@ vi.mock("../utils/dialog", () => ({
 
 describe("ProjectsView", () => {
   beforeEach(() => {
+    useI18n().locale.value = "zh";
     clearSkillScannerCaches();
     apiMocks.addProject.mockReset();
     apiMocks.deleteProject.mockReset();

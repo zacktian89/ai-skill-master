@@ -6,11 +6,13 @@ import * as api from "../../api";
 import { openDirectory } from "../../utils/dialog";
 import { AppStoreKey } from "../../stores/useAppStore";
 import { useAsyncAction } from "../../composables/useAsyncAction";
+import { useI18n } from "../../composables/useI18n";
 import type { AppSnapshot } from "../../types";
 
 type ThemeMode = "dark" | "light";
 
 const appStore = inject(AppStoreKey, null);
+const { t, locale } = useI18n();
 
 const props = defineProps<{
   snapshot: AppSnapshot;
@@ -92,25 +94,27 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
   <div class="detail-panel settings-page">
     <div class="settings-container">
       <div class="settings-header">
-        <h1>系统设置</h1>
+        <h1>{{ t('settings.title') }}</h1>
       </div>
 
       <!-- Card 1: Appearance -->
       <div class="settings-card">
-        <div class="card-title">界面外观</div>
+        <div class="card-title">{{ t('settings.appearanceCard') }}</div>
+        
+        <!-- Theme selection -->
         <div class="settings-row">
           <div class="setting-info">
-            <div class="setting-title">主题</div>
+            <div class="setting-title">{{ t('settings.theme') }}</div>
           </div>
           <div class="setting-control">
-            <div class="segmented-control segmented-control--binary theme-toggle" aria-label="主题切换">
+            <div class="segmented-control segmented-control--binary theme-toggle" :aria-label="t('settings.theme')">
               <button
                 type="button"
                 :class="{ active: themeMode === 'dark' }"
                 @click="themeMode = 'dark'"
               >
                 <Moon :size="14" />
-                黑色
+                {{ t('settings.themeDark') }}
               </button>
               <button
                 type="button"
@@ -118,7 +122,32 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
                 @click="themeMode = 'light'"
               >
                 <Sun :size="14" />
-                白色
+                {{ t('settings.themeLight') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Language selection -->
+        <div class="settings-row">
+          <div class="setting-info">
+            <div class="setting-title">{{ t('settings.language') }}</div>
+          </div>
+          <div class="setting-control">
+            <div class="segmented-control segmented-control--binary language-toggle" :aria-label="t('settings.language')">
+              <button
+                type="button"
+                :class="{ active: locale === 'zh' }"
+                @click="locale = 'zh'"
+              >
+                {{ t('settings.langZh') }}
+              </button>
+              <button
+                type="button"
+                :class="{ active: locale === 'en' }"
+                @click="locale = 'en'"
+              >
+                {{ t('settings.langEn') }}
               </button>
             </div>
           </div>
@@ -127,11 +156,11 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 
       <!-- Card 2: Storage -->
       <div class="settings-card">
-        <div class="card-title">存储与数据</div>
+        <div class="card-title">{{ t('settings.storageCard') }}</div>
         
         <div class="settings-row">
           <div class="setting-info">
-            <div class="setting-title">存储根目录</div>
+            <div class="setting-title">{{ t('settings.storageRootDir') }}</div>
             <div class="path-container">
               <code class="path-display" :title="storageRootDir">{{ storageRootDir }}</code>
             </div>
@@ -139,19 +168,19 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
           <div class="setting-control">
             <button class="secondary-button compact-btn" type="button" @click="openStorageDir">
               <FolderOpen :size="14" />
-              <span>打开</span>
+              <span>{{ t('settings.openButton') }}</span>
             </button>
           </div>
         </div>
 
         <div class="settings-row">
           <div class="setting-info">
-            <div class="setting-title">技能库迁移</div>
+            <div class="setting-title">{{ t('settings.migration') }}</div>
           </div>
           <div class="setting-control">
             <button class="primary-button compact-btn" :disabled="busy" @click="chooseLibraryTarget">
               <FolderOpen :size="14" />
-              <span>迁移</span>
+              <span>{{ t('settings.migrationButton') }}</span>
             </button>
           </div>
         </div>
@@ -159,18 +188,18 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
         <!-- Migration Notice -->
         <div v-if="snapshot.state.migrationNotice" class="migration-notice-card">
           <div class="notice-header">
-            <strong>技能库迁移成功</strong>
+            <strong>{{ t('settings.migrationSuccess') }}</strong>
           </div>
           <div class="notice-body">
-            <div><span>结果：</span>{{ snapshot.state.migrationNotice.message }}</div>
-            <div><span>新目录：</span><code>{{ snapshot.state.migrationNotice.newLibraryPath }}</code></div>
-            <div><span>旧目录：</span><code>{{ snapshot.state.migrationNotice.oldLibraryPath }}</code></div>
+            <div><span>{{ t('settings.migrationResult') }}</span>{{ snapshot.state.migrationNotice.message }}</div>
+            <div><span>{{ t('settings.migrationNewDir') }}</span><code>{{ snapshot.state.migrationNotice.newLibraryPath }}</code></div>
+            <div><span>{{ t('settings.migrationOldDir') }}</span><code>{{ snapshot.state.migrationNotice.oldLibraryPath }}</code></div>
           </div>
         </div>
       </div>
 
       <div class="settings-footer">
-        <span>版本 v{{ appVersion }}</span>
+        <span>{{ t('settings.version', { version: appVersion }) }}</span>
       </div>
     </div>
   </div>
@@ -185,20 +214,20 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 .settings-container {
   max-width: 760px;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: var(--spacing-7xl) var(--spacing-4xl);
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--spacing-5xl);
 }
 
 .settings-header {
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-xs);
 }
 
 .settings-header h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 650;
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   line-height: 1.2;
 }
@@ -206,15 +235,15 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 .settings-card {
   background: var(--bg-panel-muted);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: var(--radius-2xl);
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .card-title {
-  padding: 16px 20px 10px;
-  font-size: 12px;
-  font-weight: 650;
+  padding: var(--spacing-xl) var(--spacing-3xl) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -226,8 +255,8 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
-  gap: 24px;
+  padding: var(--spacing-2xl) var(--spacing-3xl);
+  gap: var(--spacing-4xl);
 }
 
 .settings-row:not(:last-child) {
@@ -242,8 +271,8 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 }
 
 .setting-title {
-  font-size: 15px;
-  font-weight: 550;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
   color: var(--text-primary);
 }
 
@@ -254,18 +283,18 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 }
 
 .path-container {
-  margin-top: 8px;
+  margin-top: var(--spacing-xs);
   width: 100%;
 }
 
 .path-display {
   display: inline-block;
-  padding: 6px 12px;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--bg-main-elevated);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
+  font-size: var(--font-size-md);
   color: var(--text-primary);
   max-width: 100%;
   box-sizing: border-box;
@@ -278,55 +307,55 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
 .compact-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: var(--spacing-xs);
+  padding: 6px var(--spacing-lg);
   height: 32px;
-  font-size: 13px;
+  font-size: var(--font-size-md);
 }
 
 /* Migration Notice styles */
 .migration-notice-card {
-  margin: 0 20px 20px;
-  padding: 16px;
+  margin: 0 var(--spacing-3xl) var(--spacing-3xl);
+  padding: var(--spacing-xl);
   background: var(--success-bg);
   border: 1px solid var(--success-border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-xs);
 }
 
 .notice-header {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   color: var(--success-text);
 }
 
 .notice-body {
-  font-size: 13px;
+  font-size: var(--font-size-md);
   line-height: 1.5;
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-2xs);
 }
 
 .notice-body span {
-  font-weight: 550;
+  font-weight: var(--font-weight-medium);
   color: var(--success-text);
 }
 
 .notice-body code {
   font-family: monospace;
   background: rgba(0, 0, 0, 0.15);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-xs);
 }
 
 .settings-footer {
-  margin-top: 16px;
+  margin-top: var(--spacing-xl);
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
 </style>

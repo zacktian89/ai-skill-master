@@ -7,6 +7,7 @@ import AgentIcon from "../../../components/icons/AgentIcon.vue";
 import ModalDialog from "../../../components/ModalDialog.vue";
 import { AppStoreKey } from "../../../stores/useAppStore";
 import { useAsyncAction } from "../../../composables/useAsyncAction";
+import { useI18n } from "../../../composables/useI18n";
 import type {
   AppSnapshot,
   Skill,
@@ -37,6 +38,7 @@ const emit = defineEmits<{
 }>();
 
 const appStore = inject(AppStoreKey, null);
+const { t } = useI18n();
 
 const { busy, run: executeAsync } = useAsyncAction({
   onError: (err) => {
@@ -62,8 +64,8 @@ const pendingReferencePath = computed(() => {
 });
 
 const addReferenceTitle = computed(() => {
-  if (overwriteReferenceRequest.value) return "覆盖引用链接";
-  return pendingReferenceTarget.value ? "确认新增引用" : "新增引用";
+  if (overwriteReferenceRequest.value) return t("reference.overwriteTitle");
+  return pendingReferenceTarget.value ? t("reference.confirmAddTitle") : t("reference.addTitle");
 });
 
 function isRetargetedLinkError(cause: unknown): boolean {
@@ -86,7 +88,7 @@ async function selectCustomReferenceRoot() {
     if (typeof selected === "string") {
       overwriteReferenceRequest.value = null;
       pendingReferenceTarget.value = {
-        targetName: "自定义目录",
+        targetName: t("reference.customDirectory"),
         rootPath: selected,
         scope: "custom",
       };
@@ -180,11 +182,11 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
     @close="$emit('close')"
   >
     <template v-if="overwriteReferenceRequest">
-      <p class="modal-note">引用链接已存在，且指向其他位置。覆盖后会把它改为当前 skill 的托管链接。</p>
+      <p class="modal-note">{{ t('reference.overwriteNote') }}</p>
 
       <dl class="detail-kv detail-kv--wide">
         <div>
-          <dt>目标路径</dt>
+          <dt>{{ t('reference.targetPath') }}</dt>
           <dd>
             <code class="reference-path">{{ pendingReferencePath }}</code>
           </dd>
@@ -192,10 +194,10 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
       </dl>
 
       <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="busy" @click="cancelOverwriteReference">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="cancelOverwriteReference">{{ t('dialog.cancel') }}</button>
         <button class="primary-button" :disabled="busy" @click="confirmOverwriteReference">
           <Plus :size="16" />
-          覆盖引用
+          {{ t('reference.overwriteReference') }}
         </button>
       </div>
     </template>
@@ -219,14 +221,14 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
 
       <button class="target-custom-button" type="button" :disabled="busy" @click="selectCustomReferenceRoot">
         <Folder :size="18" />
-        选择 skills 目录
+        {{ t('reference.selectSkillsDirButton') }}
       </button>
     </template>
 
     <template v-else>
       <dl class="detail-kv detail-kv--wide">
         <div>
-          <dt>目标路径</dt>
+          <dt>{{ t('reference.targetPath') }}</dt>
           <dd>
             <code class="reference-path">{{ pendingReferencePath }}</code>
           </dd>
@@ -234,10 +236,10 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
       </dl>
 
       <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="busy" @click="pendingReferenceTarget = null">返回</button>
+        <button class="secondary-button" :disabled="busy" @click="pendingReferenceTarget = null">{{ t('reference.back') }}</button>
         <button class="primary-button" :disabled="busy" @click="confirmAddReference">
           <Plus :size="16" />
-          新增引用
+          {{ t('reference.addTitle') }}
         </button>
       </div>
     </template>
@@ -246,16 +248,16 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
   <!-- DELETE REFERENCE DIALOG -->
   <ModalDialog
     v-if="mode === 'delete' && referenceToDelete"
-    title="删除引用"
+    :title="t('reference.deleteTitle')"
     card-class="modal-card--compact"
     @close="$emit('close')"
   >
     <template v-if="removeReferenceConflictRequest">
-      <p class="modal-note">托管链接已指向其他位置（或存在内容冲突）。是否同时删除该外部链接？</p>
+      <p class="modal-note">{{ t('reference.deleteConflictNote') }}</p>
 
       <dl class="detail-kv detail-kv--wide">
         <div>
-          <dt>目标路径</dt>
+          <dt>{{ t('reference.targetPath') }}</dt>
           <dd>
             <code class="reference-path">{{ removeReferenceConflictRequest.symlinkPath }}</code>
           </dd>
@@ -263,12 +265,12 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
       </dl>
 
       <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="busy" @click="$emit('close')">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="$emit('close')">{{ t('dialog.cancel') }}</button>
         <button class="secondary-button" :disabled="busy" @click="confirmDeleteReferenceWithLink(false)">
-          否（只移除记录）
+          {{ t('reference.deleteConflictNo') }}
         </button>
         <button class="danger-button" :disabled="busy" @click="confirmDeleteReferenceWithLink(true)">
-          是（删除外部链接）
+          {{ t('reference.deleteConflictYes') }}
         </button>
       </div>
     </template>
@@ -276,19 +278,19 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
     <template v-else>
       <dl class="detail-kv detail-kv--wide">
         <div>
-          <dt>目标路径</dt>
+          <dt>{{ t('reference.targetPath') }}</dt>
           <dd>
             <code class="reference-path">{{ referenceToDelete.symlinkPath }}</code>
           </dd>
         </div>
       </dl>
-      <p class="modal-note">只移除这个托管引用，不会删除技能库中的 skill。</p>
+      <p class="modal-note">{{ t('reference.deleteNote') }}</p>
 
       <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="busy" @click="$emit('close')">取消</button>
+        <button class="secondary-button" :disabled="busy" @click="$emit('close')">{{ t('dialog.cancel') }}</button>
         <button class="danger-button" :disabled="busy" @click="confirmDeleteReference">
           <Trash2 :size="16" />
-          删除引用
+          {{ t('reference.deleteButton') }}
         </button>
       </div>
     </template>

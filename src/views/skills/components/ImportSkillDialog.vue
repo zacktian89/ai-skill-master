@@ -9,6 +9,7 @@ import ModalDialog from "../../../components/ModalDialog.vue";
 import { AppStoreKey } from "../../../stores/useAppStore";
 import { useAsyncAction } from "../../../composables/useAsyncAction";
 import type { AppSnapshot, ImportSkillCandidate, ImportSkillSource } from "../../../types";
+import { useI18n } from "../../../composables/useI18n";
 
 type ImportSourceMode = "local" | "github";
 
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const appStore = inject(AppStoreKey, null);
+const { t } = useI18n();
 
 const { busy, run: executeAsync } = useAsyncAction({
   onError: (err) => {
@@ -39,12 +41,12 @@ const selectedImportCandidateIds = ref<string[]>([]);
 const importScanned = ref(false);
 const currentStep = ref(1);
 
-const importStatusLabels: Record<string, string> = {
-  ready: "可导入",
-  duplicate: "已存在",
-  conflict: "冲突",
-  invalid: "无效",
-};
+const importStatusLabels = computed<Record<string, string>>(() => ({
+  ready: t("importSkill.ready"),
+  duplicate: t("importSkill.duplicate"),
+  conflict: t("importSkill.conflict"),
+  invalid: t("importSkill.invalid"),
+}));
 
 const importReadyCandidates = computed(() =>
   importCandidates.value.filter((candidate) => candidate.status === "ready")
@@ -154,7 +156,7 @@ async function confirmImportSkills() {
 <template>
   <ModalDialog
     v-if="show"
-    title="新增 Skill"
+    :title="t('importSkill.title')"
     card-class="import-modal"
     @close="$emit('close')"
   >
@@ -163,25 +165,25 @@ async function confirmImportSkills() {
       <div class="step-indicator">
         <div class="step" :class="{ active: currentStep === 1, completed: currentStep > 1 }">
           <span class="step-number">1</span>
-          <span class="step-label">设置路径</span>
+          <span class="step-label">{{ t('importSkill.stepPath') }}</span>
         </div>
         <div class="step-line" :class="{ completed: currentStep > 1 }"></div>
         <div class="step" :class="{ active: currentStep === 2 }">
           <span class="step-number">2</span>
-          <span class="step-label">导入 Skill</span>
+          <span class="step-label">{{ t('importSkill.stepImport') }}</span>
         </div>
       </div>
 
       <!-- Step 1: Set Path & Scan -->
       <div v-if="currentStep === 1" class="import-step-container">
-        <div class="segmented-control import-source-tabs" aria-label="导入来源">
+        <div class="segmented-control import-source-tabs" :aria-label="t('importSkill.sourceMode')">
           <button
             type="button"
             :class="{ active: importSourceMode === 'local' }"
             @click="setImportSourceMode('local')"
           >
             <Folder :size="15" />
-            本地
+            {{ t('importSkill.local') }}
           </button>
           <button
             type="button"
@@ -189,17 +191,17 @@ async function confirmImportSkills() {
             @click="setImportSourceMode('github')"
           >
             <Github :size="15" />
-            GitHub
+            {{ t('importSkill.github') }}
           </button>
         </div>
 
         <!-- Local Path Panel -->
         <div v-if="importSourceMode === 'local'" class="import-source-panel">
           <div class="import-path-row clickable-input-row" @click="!busy && selectImportLocalPath()">
-            <SearchInput :model-value="importLocalPath" readonly placeholder="选择本地 Skill 文件夹..." />
+            <SearchInput :model-value="importLocalPath" readonly :placeholder="t('importSkill.localPlaceholder')" />
             <button class="secondary-button" type="button" :disabled="busy" @click.stop="selectImportLocalPath">
               <Folder :size="16" />
-              选择
+              {{ t('importSkill.selectButton') }}
             </button>
           </div>
         </div>
@@ -210,25 +212,25 @@ async function confirmImportSkills() {
             <SearchInput
               v-model="importGithubUrl"
               type="url"
-              placeholder="输入 GitHub 仓库 URL 或 owner/repo (如: owner/repo)"
+              :placeholder="t('importSkill.githubPlaceholder')"
               @input="resetImportPreview"
               @keyup.enter="scanImportSource"
             />
             <button class="primary-button scan-btn" type="button" :disabled="!canScanImports" @click="scanImportSource">
               <Loader2 v-if="busy" :size="15" class="spin-animation" />
-              <span v-if="busy">扫描中...</span>
-              <span v-else>扫描</span>
+              <span v-if="busy">{{ t('importSkill.scanningButton') }}</span>
+              <span v-else>{{ t('importSkill.scanButton') }}</span>
             </button>
           </div>
           
           <div class="import-github-grid">
             <div class="input-group">
-              <span class="input-label">分支 / 标签 / 提交号 (可选)</span>
-              <SearchInput v-model="importGithubRef" placeholder="例如: main" @input="resetImportPreview" />
+              <span class="input-label">{{ t('importSkill.githubBranchLabel') }}</span>
+              <SearchInput v-model="importGithubRef" :placeholder="t('importSkill.githubBranchPlaceholder')" @input="resetImportPreview" />
             </div>
             <div class="input-group">
-              <span class="input-label">指定子目录 (可选)</span>
-              <SearchInput v-model="importGithubSubdir" placeholder="例如: skills/my-skill" @input="resetImportPreview" />
+              <span class="input-label">{{ t('importSkill.githubSubdirLabel') }}</span>
+              <SearchInput v-model="importGithubSubdir" :placeholder="t('importSkill.githubSubdirPlaceholder')" @input="resetImportPreview" />
             </div>
           </div>
         </div>
@@ -244,7 +246,7 @@ async function confirmImportSkills() {
               :disabled="importReadyCandidates.length === 0 || busy"
               @change="toggleAllImportCandidates(($event.target as HTMLInputElement).checked)"
             />
-            <span>已选 {{ selectedImportCandidateIds.length }}/{{ importReadyCandidates.length }}</span>
+            <span>{{ t('importSkill.selectedCount', { selected: selectedImportCandidateIds.length, total: importReadyCandidates.length }) }}</span>
           </label>
         </div>
 
@@ -277,30 +279,30 @@ async function confirmImportSkills() {
           </label>
         </div>
 
-        <div v-else class="content-empty content-empty--compact">没有找到 skill。</div>
+        <div v-else class="content-empty content-empty--compact">{{ t('importSkill.noSkillsFound') }}</div>
       </section>
     </div>
 
     <template #footer>
       <div class="button-row button-row--end">
         <template v-if="currentStep === 1">
-          <button class="secondary-button" :disabled="busy" @click="$emit('close')">取消</button>
+          <button class="secondary-button" :disabled="busy" @click="$emit('close')">{{ t('dialog.cancel') }}</button>
           <button
             v-if="importScanned"
             class="primary-button"
             :disabled="busy"
             @click="currentStep = 2"
           >
-            下一步
+            {{ t('importSkill.nextButton') }}
           </button>
         </template>
         <template v-else-if="currentStep === 2">
-          <button class="secondary-button" :disabled="busy" @click="currentStep = 1">上一步</button>
+          <button class="secondary-button" :disabled="busy" @click="currentStep = 1">{{ t('importSkill.prevButton') }}</button>
           <button class="primary-button" :disabled="!canConfirmImports" @click="confirmImportSkills">
             <Loader2 v-if="busy" :size="15" class="spin-animation" />
             <Plus v-else :size="16" />
-            <span v-if="busy">导入中...</span>
-            <span v-else>导入{{ selectedImportCandidateIds.length > 0 ? ` (${selectedImportCandidateIds.length})` : '' }}</span>
+            <span v-if="busy">{{ t('importSkill.importing') }}</span>
+            <span v-else>{{ selectedImportCandidateIds.length > 0 ? t('importSkill.importCount', { count: selectedImportCandidateIds.length }) : t('importSkill.import') }}</span>
           </button>
         </template>
       </div>
