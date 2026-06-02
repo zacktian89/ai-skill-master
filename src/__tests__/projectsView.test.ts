@@ -3,7 +3,7 @@
  */
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ProjectsView from "../components/ProjectsView.vue";
+import ProjectsView from "../views/projects/ProjectsView.vue";
 import type { AppSnapshot } from "../types";
 import * as api from "../api";
 
@@ -110,9 +110,10 @@ vi.mock("../api", () => ({
   removeSkillReference: apiMocks.removeSkillReference,
 }));
 
-vi.mock("../dialog", () => ({
+vi.mock("../utils/dialog", () => ({
   openDirectory: vi.fn(),
 }));
+
 
 describe("ProjectsView", () => {
   beforeEach(() => {

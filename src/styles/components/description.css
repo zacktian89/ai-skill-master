@@ -1,0 +1,19 @@
+/* Descriptions */
+.description-pane {
+  min-height: 0;
+  padding: 22px 0 0;
+  overflow: auto;
+}
+
+.description-pane p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.description-pane .description-empty {
+  color: var(--text-secondary);
+}

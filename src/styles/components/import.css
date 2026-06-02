@@ -1,0 +1,124 @@
+/* Import Dialog specific styles */
+.import-modal {
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+}
+
+.import-source-tabs {
+  width: max-content;
+}
+
+.import-source-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.import-source-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.import-path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.import-github-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.import-results {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+}
+
+.import-results-head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.import-check-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.import-check-all input,
+.import-candidate-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand-600);
+}
+
+.import-candidate-list {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.import-candidate-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+}
+
+.import-candidate-row.disabled {
+  opacity: 0.66;
+}
+
+.import-candidate-main {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.import-candidate-top,
+.import-candidate-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.import-candidate-top {
+  justify-content: space-between;
+}
+
+.import-candidate-top strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.import-candidate-meta {
+  flex-wrap: wrap;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.import-candidate-meta code {
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  color: var(--text-secondary);
+}
+
+.import-candidate-main small {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}

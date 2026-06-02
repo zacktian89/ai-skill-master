@@ -1,0 +1,242 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 200px) minmax(0, 1fr);
+  height: 100vh;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  overflow: hidden;
+  min-width: 960px;
+  transition: grid-template-columns 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-shell.app-shell--dragging {
+  transition: none;
+}
+
+.app-shell.app-shell--sidebar-collapsed {
+  grid-template-columns: 54px minmax(0, 1fr);
+}
+
+.sidebar-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding: 18px 8px 14px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-default);
+  overflow: visible;
+  position: relative;
+}
+
+.sidebar-rail--collapsed {
+  overflow: visible;
+}
+
+.rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 3px 6px;
+}
+
+.rail-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--bg-main-soft);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  flex: 0 0 auto;
+}
+
+.rail-brand-copy,
+.rail-nav-copy {
+  min-width: 0;
+}
+
+.rail-brand-copy strong,
+.rail-nav-copy strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.rail-brand-copy small,
+.rail-nav-copy small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.rail-nav {
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-rail--collapsed .rail-nav {
+  width: 100%;
+}
+
+.rail-nav-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-nav-button svg {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.rail-nav-button:hover {
+  background: var(--bg-sidebar-soft);
+}
+
+.rail-nav-button.active {
+  background: var(--bg-selected);
+  border-color: var(--border-default);
+  box-shadow: none;
+}
+
+.rail-nav-button.active strong {
+  color: var(--text-primary);
+}
+
+.sidebar-rail--collapsed .rail-brand-copy,
+.sidebar-rail--collapsed .rail-nav-copy {
+  display: none;
+}
+
+.rail-footer {
+  margin-top: auto;
+  padding: 12px 8px;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-rail--collapsed .rail-footer {
+  width: 100%;
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.rail-nav-button--footer {
+  min-height: 40px;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 100;
+}
+
+.sidebar-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 2px;
+  height: 100%;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resize-handle:hover::after {
+  background-color: var(--border-focus);
+}
+
+.workspace-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-main);
+  overflow: hidden;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.split-content {
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 0;
+  background: var(--bg-detail-panel);
+  box-shadow: none;
+  gap: 14px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.list-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 10px;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  border-radius: 0;
+  background: var(--bg-list-panel);
+  box-shadow: none;
+  gap: 10px;
+}
+
+.list-panel-head {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-default);
+}

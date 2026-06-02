@@ -1,0 +1,33 @@
+/* Tabs */
+.detail-tabs {
+  display: flex;
+  min-height: 44px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.detail-tab {
+  position: relative;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.detail-tab.active {
+  color: var(--text-primary);
+}
+
+.detail-tab.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--brand-500);
+  content: "";
+}

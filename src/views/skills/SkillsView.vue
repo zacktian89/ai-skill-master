@@ -1,0 +1,340 @@
+<script setup lang="ts">
+import { computed, ref, watch, inject } from "vue";
+import { Plus } from "lucide-vue-next";
+import SplitPane from "../../components/SplitPane.vue";
+import ListPanel from "../../components/ListPanel.vue";
+import SearchInput from "../../components/SearchInput.vue";
+
+import SkillListItem from "./components/SkillListItem.vue";
+import SkillDetail from "./components/SkillDetail.vue";
+import ImportSkillDialog from "./components/ImportSkillDialog.vue";
+import DeleteSkillDialog from "./components/DeleteSkillDialog.vue";
+import ReferenceDialogs from "./components/ReferenceDialogs.vue";
+
+import type {
+  AppSnapshot,
+  PendingSyncAction,
+  Skill,
+  SkillTargetProfile,
+  SkillReferenceDetail,
+} from "../../types";
+import { AppStoreKey } from "../../stores/useAppStore";
+import { SelectionStoreKey } from "../../stores/useSelectionStore";
+import { useAsyncAction } from "../../composables/useAsyncAction";
+import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
+
+type DetailTab = "references" | "description";
+type ReferenceViewMode = "list" | "graph";
+
+const appStore = inject(AppStoreKey, null);
+const selectionStore = inject(SelectionStoreKey, null);
+
+const props = defineProps<{
+  snapshot: AppSnapshot;
+  selectedSkillId: string | null;
+}>();
+
+const emit = defineEmits<{
+  "select-skill": [value: string | null];
+  snapshot: [value: AppSnapshot];
+  error: [value: string];
+}>();
+
+const snapshot = computed(() => appStore?.snapshot.value ?? props.snapshot);
+const selectedSkillId = computed({
+  get: () => selectionStore?.selectedSkillId.value ?? props.selectedSkillId,
+  set: (val) => {
+    if (selectionStore) {
+      selectionStore.setSelectedSkillId(val);
+    } else {
+      emit("select-skill", val);
+    }
+  }
+});
+
+const query = ref("");
+
+const { busy } = useAsyncAction({
+  onError: (err) => {
+    if (appStore) appStore.setError(String(err));
+    else emit("error", String(err));
+  }
+});
+
+const deleteDialogOpen = ref(false);
+const importDialogOpen = ref(false);
+const referenceDialogOpen = ref(false);
+const referenceDialogMode = ref<"add" | "delete">("add");
+const referenceToDelete = ref<SkillReferenceDetail | null>(null);
+
+const activeDetailTab = ref<DetailTab>("description");
+const referenceViewMode = ref<ReferenceViewMode>("list");
+
+// Composable for Markdown
+const {
+  skillMarkdown,
+  isMarkdownLoading,
+  parsedMarkdown,
+  renderedMarkdown
+} = useSkillMarkdown(
+  () => selectedSkillId.value,
+  () => activeDetailTab.value
+);
+
+function actionsForSkill(skillId: string): PendingSyncAction[] {
+  return snapshot.value.state.syncStatus.pendingActions.filter((item) => item.skillId === skillId);
+}
+
+function isReferenced(skill: Skill): boolean {
+  if (linkEnabled(skill) || (skill.references?.length ?? 0) > 0) return true;
+  return snapshot.value.state.projects.some((project) => project.rules[skill.id] === "enable");
+}
+
+function linkEnabled(skill: Skill): boolean {
+  return Boolean(skill.managedLinks.codex);
+}
+
+const skills = computed(() => {
+  const normalized = query.value.trim().toLowerCase();
+  return [...snapshot.value.state.skills]
+    .filter((skill) => {
+      if (!normalized) return true;
+      return `${skill.name} ${skill.description} ${skill.id}`.toLowerCase().includes(normalized);
+    })
+    .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
+});
+
+const selectedSkill = computed(
+  () => skills.value.find((skill) => skill.id === selectedSkillId.value) ?? skills.value[0] ?? null,
+);
+
+const selectedIssues = computed(() => {
+  if (!selectedSkill.value) return [];
+  const issues = actionsForSkill(selectedSkill.value.id)
+    .filter((item) => item.kind === "inspect")
+    .map((item) => ({
+      key: `${item.kind}-${item.target}-${item.message}`,
+      title: "需要处理",
+      detail: `${item.message} · ${item.target}`,
+    }));
+  if (selectedSkill.value.conflict) {
+    issues.unshift({
+      key: `conflict-${selectedSkill.value.conflict.path}`,
+      title: "内容冲突",
+      detail: `${selectedSkill.value.conflict.message} · ${selectedSkill.value.conflict.path}`,
+    });
+  }
+  return issues;
+});
+
+const selectedReferences = computed(() => {
+  if (!selectedSkill.value) return [];
+  return referencesForSkill(selectedSkill.value);
+});
+
+const targetProfiles = computed<SkillTargetProfile[]>(() => snapshot.value.targetProfiles ?? []);
+
+function referencesForSkill(skill: Skill): SkillReferenceDetail[] {
+  const actions = actionsForSkill(skill.id);
+  const inspectAction = actions.find((item) => item.kind === "inspect");
+  const createAction = actions.find((item) => item.kind === "create");
+
+  if (skill.conflict) {
+    return [
+      {
+        id: `codex-conflict-${skill.conflict.path}`,
+        targetName: "Codex",
+        symlinkPath: skill.conflict.path,
+        scope: "user",
+        status: "conflict",
+        removable: false,
+        legacyCodex: true,
+      },
+    ];
+  }
+
+  const references = (skill.references ?? []).map((reference) => ({
+    id: reference.id,
+    targetName: reference.targetName,
+    symlinkPath: reference.targetPath,
+    scope: reference.scope,
+    status: reference.status,
+    removable: true,
+    legacyCodex: false,
+  }));
+
+  if (inspectAction) {
+    return references.concat([
+      {
+        id: `codex-inspect-${inspectAction.target}`,
+        targetName: "Codex",
+        symlinkPath: inspectAction.target,
+        scope: "user",
+        status: "conflict",
+        removable: false,
+        legacyCodex: true,
+      },
+    ]);
+  }
+
+  if (skill.managedLinks.codex) {
+    return references.concat([
+      {
+        id: `codex-${skill.managedLinks.codex}`,
+        targetName: "Codex",
+        symlinkPath: skill.managedLinks.codex,
+        scope: "user",
+        status: "healthy",
+        removable: false,
+        legacyCodex: true,
+      },
+    ]);
+  }
+
+  if (createAction) {
+    return references.concat([
+      {
+        id: `codex-create-${createAction.target}`,
+        targetName: "Codex",
+        symlinkPath: createAction.target,
+        scope: "user",
+        status: "missing",
+        removable: false,
+        legacyCodex: true,
+      },
+    ]);
+  }
+
+  return references;
+}
+
+function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
+  if (appStore) appStore.applySnapshot(nextSnapshot);
+  else emit("snapshot", nextSnapshot);
+}
+
+function openAddReferenceDialog() {
+  referenceDialogMode.value = "add";
+  referenceToDelete.value = null;
+  referenceDialogOpen.value = true;
+}
+
+function openDeleteReferenceDialog(reference: SkillReferenceDetail) {
+  referenceDialogMode.value = "delete";
+  referenceToDelete.value = reference;
+  referenceDialogOpen.value = true;
+}
+
+// Watch selectedSkill to reset activeTab/reset detail description markdown loading
+watch(selectedSkill, () => {
+  // Let the useSkillMarkdown hook load markdown automatically
+});
+</script>
+
+<template>
+  <SplitPane>
+    <template #left>
+      <ListPanel :items="skills" :has-search="true" empty-text="没有匹配的 skill。">
+        <template #search-row>
+          <div class="list-search-row">
+            <span class="search-row-count">{{ snapshot.state.skills.length }}</span>
+            <SearchInput v-model="query" placeholder="搜索已安装 Skill" />
+            <button
+              class="icon-button"
+              type="button"
+              :disabled="busy"
+              aria-label="新增 Skill"
+              @click="importDialogOpen = true"
+            >
+              <Plus :size="18" />
+            </button>
+          </div>
+        </template>
+
+        <SkillListItem
+          v-for="skill in skills"
+          :key="skill.id"
+          :skill="skill"
+          :is-active="selectedSkill?.id === skill.id"
+          :is-referenced="isReferenced(skill)"
+          @select="selectedSkillId = skill.id"
+        />
+      </ListPanel>
+    </template>
+
+    <template #right>
+      <SkillDetail
+        v-if="selectedSkill"
+        :selected-skill="selectedSkill"
+        :selected-references="selectedReferences"
+        :selected-issues="selectedIssues"
+        :is-markdown-loading="isMarkdownLoading"
+        :skill-markdown="skillMarkdown"
+        :parsed-markdown="parsedMarkdown"
+        :rendered-markdown="renderedMarkdown"
+        :active-detail-tab="activeDetailTab"
+        :reference-view-mode="referenceViewMode"
+        :busy="busy"
+        @update:active-detail-tab="activeDetailTab = $event"
+        @update:reference-view-mode="referenceViewMode = $event"
+        @delete-click="deleteDialogOpen = true"
+        @open-add-reference="openAddReferenceDialog"
+        @open-delete-reference="openDeleteReferenceDialog"
+      />
+
+      <div v-else class="content-empty">选择左侧 skill 查看详情。</div>
+    </template>
+  </SplitPane>
+
+  <!-- Dialogs -->
+  <ImportSkillDialog
+    :show="importDialogOpen"
+    :busy="busy"
+    @close="importDialogOpen = false"
+    @success="handleSnapshotSuccess"
+  />
+
+  <DeleteSkillDialog
+    v-if="deleteDialogOpen && selectedSkill"
+    :show="deleteDialogOpen"
+    :skill-id="selectedSkill.id"
+    :skill-name="selectedSkill.name"
+    @close="deleteDialogOpen = false"
+    @success="handleSnapshotSuccess"
+  />
+
+  <ReferenceDialogs
+    v-if="referenceDialogOpen && selectedSkill"
+    :mode="referenceDialogMode"
+    :skill="selectedSkill"
+    :reference-to-delete="referenceToDelete"
+    :target-profiles="targetProfiles"
+    @close="referenceDialogOpen = false"
+    @success="handleSnapshotSuccess"
+  />
+</template>
+
+<style scoped>
+.list-search-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 30px;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-row-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+</style>

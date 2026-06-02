@@ -1,68 +1,38 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { AlertCircle } from "lucide-vue-next";
-import * as api from "./api";
 import Sidebar from "./components/Sidebar.vue";
-import ProjectsView from "./components/ProjectsView.vue";
-import SettingsView from "./components/SettingsView.vue";
-import SkillsView from "./components/SkillsView.vue";
-import AgentsView from "./components/AgentsView.vue";
-import type { AppSnapshot } from "./types";
+import { createAppStore } from "./stores/useAppStore";
+import { createSelectionStore } from "./stores/useSelectionStore";
 
 type Section = "skills" | "projects" | "agents" | "settings";
-type ThemeMode = "dark" | "light";
 
-const themeStorageKey = "skillmaster-theme";
-
-function readThemeMode(): ThemeMode {
-  if (typeof localStorage === "undefined") return "dark";
-  return localStorage.getItem(themeStorageKey) === "light" ? "light" : "dark";
-}
+const router = useRouter();
+const route = useRoute();
 
 const activeSection = ref<Section>("skills");
-const snapshot = ref<AppSnapshot | null>(null);
-const selectedSkillId = ref<string | null>(null);
-const selectedProjectId = ref<string | null>(null);
-const selectedAgentId = ref<string | null>(null);
 const sidebarCollapsed = ref(false);
 const sidebarWidth = ref(200);
 const isDragging = ref(false);
-const themeMode = ref<ThemeMode>(readThemeMode());
-const loading = ref(true);
-const error = ref<string | null>(null);
 
-async function refresh() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const next = await api.getSnapshot();
-    snapshot.value = next;
-    selectedSkillId.value = next.state.skills[0]?.id ?? null;
-    selectedProjectId.value = next.state.currentProjectId ?? next.state.projects[0]?.id ?? null;
-    selectedAgentId.value = next.state.agents?.[0]?.id ?? null;
-  } catch (cause) {
-    error.value = String(cause);
-  } finally {
-    loading.value = false;
-  }
-}
+// Initialize Stores
+const appStore = createAppStore();
+const selectionStore = createSelectionStore(appStore.snapshot);
 
-function applySnapshot(next: AppSnapshot) {
-  snapshot.value = next;
-  if (!selectedSkillId.value || !next.state.skills.some((skill) => skill.id === selectedSkillId.value)) {
-    selectedSkillId.value = next.state.skills[0]?.id ?? null;
+// Watch current route to sync activeSection
+watch(
+  () => route.name,
+  (name) => {
+    if (name) {
+      activeSection.value = name as Section;
+    }
   }
-  if (!selectedProjectId.value || !next.state.projects.some((project) => project.id === selectedProjectId.value)) {
-    selectedProjectId.value = next.state.currentProjectId ?? next.state.projects[0]?.id ?? null;
-  }
-  if (!selectedAgentId.value || !next.state.agents?.some((agent) => agent.id === selectedAgentId.value)) {
-    selectedAgentId.value = next.state.agents?.[0]?.id ?? null;
-  }
-}
+);
 
-function setThemeMode(next: ThemeMode) {
-  themeMode.value = next;
-  localStorage.setItem(themeStorageKey, next);
+// Navigate when section is changed from sidebar
+function handleSectionChange(section: Section) {
+  router.push({ name: section });
 }
 
 let wasSmall = false;
@@ -75,7 +45,7 @@ const checkWidth = () => {
 };
 
 onMounted(() => {
-  refresh();
+  appStore.refresh();
   checkWidth();
   window.addEventListener("resize", checkWidth);
 });
@@ -88,7 +58,7 @@ onUnmounted(() => {
 <template>
   <div
     class="app-shell"
-    :data-theme="themeMode"
+    :data-theme="appStore.themeMode.value"
     :class="{
       'app-shell--sidebar-collapsed': sidebarCollapsed,
       'app-shell--dragging': isDragging
@@ -96,58 +66,41 @@ onUnmounted(() => {
     :style="{ '--sidebar-width': `${sidebarCollapsed ? 54 : sidebarWidth}px` }"
   >
     <Sidebar
-      v-model:active-section="activeSection"
+      :active-section="activeSection"
+      @update:active-section="handleSectionChange"
       v-model:collapsed="sidebarCollapsed"
       v-model:sidebar-width="sidebarWidth"
       v-model:is-dragging="isDragging"
-      :snapshot="snapshot"
+      :snapshot="appStore.snapshot.value"
     />
 
     <div class="workspace-shell">
       <main class="workspace">
         <section class="workspace-frame">
-          <div v-if="error" class="notice notice--error">
+          <div v-if="appStore.error.value" class="notice notice--error">
             <AlertCircle :size="16" />
-            <span>{{ error }}</span>
+            <span>{{ appStore.error.value }}</span>
           </div>
 
-          <section v-if="loading" class="workspace-empty">正在加载 SkillMaster 工作区</section>
+          <section v-if="appStore.loading.value" class="workspace-empty">正在加载 SkillMaster 工作区</section>
 
-          <SkillsView
-            v-else-if="activeSection === 'skills' && snapshot"
-            :snapshot="snapshot"
-            :selected-skill-id="selectedSkillId"
-            @select-skill="selectedSkillId = $event"
-            @snapshot="applySnapshot"
-            @error="error = $event"
-          />
-
-          <AgentsView
-            v-else-if="activeSection === 'agents' && snapshot"
-            :snapshot="snapshot"
-            :selected-agent-id="selectedAgentId"
-            @select-agent="selectedAgentId = $event"
-            @snapshot="applySnapshot"
-            @error="error = $event"
-          />
-
-          <ProjectsView
-            v-else-if="activeSection === 'projects' && snapshot"
-            :snapshot="snapshot"
-            :selected-project-id="selectedProjectId"
-            @select-project="selectedProjectId = $event"
-            @snapshot="applySnapshot"
-            @error="error = $event"
-          />
-
-          <SettingsView
-            v-else-if="activeSection === 'settings' && snapshot"
-            :snapshot="snapshot"
-            :theme-mode="themeMode"
-            @snapshot="applySnapshot"
-            @error="error = $event"
-            @update:theme-mode="setThemeMode"
-          />
+          <router-view v-else v-slot="{ Component }">
+            <component
+              :is="Component"
+              v-if="appStore.snapshot.value"
+              :snapshot="appStore.snapshot.value"
+              :selected-skill-id="selectionStore.selectedSkillId.value"
+              :selected-project-id="selectionStore.selectedProjectId.value"
+              :selected-agent-id="selectionStore.selectedAgentId.value"
+              :theme-mode="appStore.themeMode.value"
+              @select-skill="selectionStore.setSelectedSkillId"
+              @select-project="selectionStore.setSelectedProjectId"
+              @select-agent="selectionStore.setSelectedAgentId"
+              @snapshot="appStore.applySnapshot"
+              @error="appStore.setError"
+              @update:theme-mode="appStore.setThemeMode"
+            />
+          </router-view>
         </section>
       </main>
     </div>

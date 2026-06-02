@@ -1,0 +1,256 @@
+<script setup lang="ts">
+import { computed, ref, inject } from "vue";
+import { Folder, Github, Plus } from "lucide-vue-next";
+import * as api from "../../../api";
+import { openDirectory } from "../../../utils/dialog";
+import SearchInput from "../../../components/SearchInput.vue";
+import StatusTag from "../../../components/StatusTag.vue";
+import ModalDialog from "../../../components/ModalDialog.vue";
+import { AppStoreKey } from "../../../stores/useAppStore";
+import { useAsyncAction } from "../../../composables/useAsyncAction";
+import type { AppSnapshot, ImportSkillCandidate, ImportSkillSource } from "../../../types";
+
+type ImportSourceMode = "local" | "github";
+
+defineProps<{
+  show: boolean;
+}>();
+
+const emit = defineEmits<{
+  close: [];
+  success: [nextSnapshot: AppSnapshot];
+}>();
+
+const appStore = inject(AppStoreKey, null);
+
+const { busy, run: executeAsync } = useAsyncAction({
+  onError: (err) => {
+    if (appStore) appStore.setError(String(err));
+  }
+});
+
+const importSourceMode = ref<ImportSourceMode>("local");
+const importLocalPath = ref("");
+const importGithubUrl = ref("");
+const importGithubRef = ref("");
+const importGithubSubdir = ref("");
+const importCandidates = ref<ImportSkillCandidate[]>([]);
+const selectedImportCandidateIds = ref<string[]>([]);
+const importScanned = ref(false);
+
+const importStatusLabels: Record<string, string> = {
+  ready: "可导入",
+  duplicate: "已存在",
+  conflict: "冲突",
+  invalid: "无效",
+};
+
+const importReadyCandidates = computed(() =>
+  importCandidates.value.filter((candidate) => candidate.status === "ready")
+);
+
+const importSource = computed<ImportSkillSource | null>(() => {
+  if (importSourceMode.value === "local") {
+    const path = importLocalPath.value.trim();
+    return path ? { kind: "local", path } : null;
+  }
+  const url = importGithubUrl.value.trim();
+  if (!url) return null;
+  return {
+    kind: "github",
+    url,
+    ref: importGithubRef.value.trim() || null,
+    subdir: importGithubSubdir.value.trim() || null,
+  };
+});
+
+const canScanImports = computed(() => Boolean(importSource.value) && !busy.value);
+const canConfirmImports = computed(() => selectedImportCandidateIds.value.length > 0 && !busy.value);
+
+function resetImportPreview() {
+  importCandidates.value = [];
+  selectedImportCandidateIds.value = [];
+  importScanned.value = false;
+}
+
+function setImportSourceMode(mode: ImportSourceMode) {
+  importSourceMode.value = mode;
+  resetImportPreview();
+}
+
+async function selectImportLocalPath() {
+  try {
+    const selected = await openDirectory({ directory: true, multiple: false });
+    if (typeof selected === "string") {
+      importLocalPath.value = selected;
+      resetImportPreview();
+    }
+  } catch (cause) {
+    if (appStore) appStore.setError(String(cause));
+  }
+}
+
+async function scanImportSource() {
+  if (!importSource.value) return;
+  await executeAsync(
+    () => api.previewImportSkills(importSource.value!),
+    (preview) => {
+      importCandidates.value = preview.candidates;
+      selectedImportCandidateIds.value = preview.candidates
+        .filter((candidate) => candidate.status === "ready")
+        .map((candidate) => candidate.candidateId);
+      importScanned.value = true;
+    }
+  );
+}
+
+function toggleImportCandidate(candidate: ImportSkillCandidate, checked: boolean) {
+  if (candidate.status !== "ready") return;
+  const next = new Set(selectedImportCandidateIds.value);
+  if (checked) {
+    next.add(candidate.candidateId);
+  } else {
+    next.delete(candidate.candidateId);
+  }
+  selectedImportCandidateIds.value = [...next];
+}
+
+function importCandidateChecked(candidateId: string): boolean {
+  return selectedImportCandidateIds.value.includes(candidateId);
+}
+
+function toggleAllImportCandidates(checked: boolean) {
+  selectedImportCandidateIds.value = checked
+    ? importReadyCandidates.value.map((candidate) => candidate.candidateId)
+    : [];
+}
+
+async function confirmImportSkills() {
+  if (!importSource.value || !selectedImportCandidateIds.value.length) return;
+  await executeAsync(
+    () => api.confirmImportSkills({
+      source: importSource.value!,
+      candidateIds: selectedImportCandidateIds.value,
+    }),
+    (nextSnapshot) => {
+      emit("success", nextSnapshot);
+      emit("close");
+    }
+  );
+}
+</script>
+
+<template>
+  <ModalDialog
+    v-if="show"
+    title="新增 Skill"
+    card-class="import-modal"
+    @close="$emit('close')"
+  >
+    <div class="segmented-control import-source-tabs" aria-label="导入来源">
+      <button
+        type="button"
+        :class="{ active: importSourceMode === 'local' }"
+        @click="setImportSourceMode('local')"
+      >
+        <Folder :size="15" />
+        本地
+      </button>
+      <button
+        type="button"
+        :class="{ active: importSourceMode === 'github' }"
+        @click="setImportSourceMode('github')"
+      >
+        <Github :size="15" />
+        GitHub
+      </button>
+    </div>
+
+    <!-- Local Path Panel -->
+    <div v-if="importSourceMode === 'local'" class="import-source-panel">
+      <div class="import-path-row">
+        <SearchInput :model-value="importLocalPath" readonly placeholder="选择文件夹" />
+        <button class="secondary-button" type="button" :disabled="busy" @click="selectImportLocalPath">
+          <Folder :size="16" />
+          选择
+        </button>
+      </div>
+    </div>
+
+    <!-- GitHub URL Panel -->
+    <div v-else class="import-source-panel">
+      <SearchInput
+        v-model="importGithubUrl"
+        type="url"
+        placeholder="GitHub URL"
+        @input="resetImportPreview"
+      />
+      <div class="import-github-grid">
+        <SearchInput v-model="importGithubRef" placeholder="ref" @input="resetImportPreview" />
+        <SearchInput v-model="importGithubSubdir" placeholder="subdir" @input="resetImportPreview" />
+      </div>
+    </div>
+
+    <div class="button-row button-row--end">
+      <button class="secondary-button" type="button" :disabled="!canScanImports" @click="scanImportSource">
+        扫描
+      </button>
+    </div>
+
+    <!-- Scanned Candidates Section -->
+    <section v-if="importScanned" class="import-results">
+      <div class="import-results-head">
+        <label class="import-check-all">
+          <input
+            type="checkbox"
+            :checked="importReadyCandidates.length > 0 && selectedImportCandidateIds.length === importReadyCandidates.length"
+            :disabled="importReadyCandidates.length === 0 || busy"
+            @change="toggleAllImportCandidates(($event.target as HTMLInputElement).checked)"
+          />
+          <span>{{ selectedImportCandidateIds.length }}/{{ importReadyCandidates.length }}</span>
+        </label>
+      </div>
+
+      <div v-if="importCandidates.length" class="import-candidate-list">
+        <label
+          v-for="candidate in importCandidates"
+          :key="candidate.candidateId"
+          class="import-candidate-row"
+          :class="{ disabled: candidate.status !== 'ready' }"
+        >
+          <input
+            type="checkbox"
+            :checked="importCandidateChecked(candidate.candidateId)"
+            :disabled="candidate.status !== 'ready' || busy"
+            @change="toggleImportCandidate(candidate, ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="import-candidate-main">
+            <span class="import-candidate-top">
+              <strong>{{ candidate.name }}</strong>
+              <StatusTag :type="candidate.status === 'ready' ? 'healthy' : candidate.status">
+                {{ importStatusLabels[candidate.status] }}
+              </StatusTag>
+            </span>
+            <span class="import-candidate-meta">
+              <code>{{ candidate.id }}</code>
+              <span>{{ candidate.relativePath }}</span>
+            </span>
+            <small v-if="candidate.description">{{ candidate.description }}</small>
+          </span>
+        </label>
+      </div>
+
+      <div v-else class="content-empty content-empty--compact">没有找到 skill。</div>
+    </section>
+
+    <template #footer>
+      <div class="button-row button-row--end">
+        <button class="secondary-button" :disabled="busy" @click="$emit('close')">取消</button>
+        <button class="primary-button" :disabled="!canConfirmImports" @click="confirmImportSkills">
+          <Plus :size="16" />
+          导入选中
+        </button>
+      </div>
+    </template>
+  </ModalDialog>
+</template>

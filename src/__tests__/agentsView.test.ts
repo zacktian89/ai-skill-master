@@ -3,8 +3,9 @@
  */
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import AgentsView from "../components/AgentsView.vue";
+import AgentsView from "../views/agents/AgentsView.vue";
 import type { AppSnapshot } from "../types";
+
 
 const snapshot: AppSnapshot = {
   state: {

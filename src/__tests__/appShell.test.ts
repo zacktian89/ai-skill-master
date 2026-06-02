@@ -1,9 +1,11 @@
 /**
  * @vitest-environment jsdom
  */
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App.vue";
+import { router } from "../router";
+
 vi.mock("../api", () => ({
   getSnapshot: vi.fn().mockResolvedValue({
     state: {
@@ -46,12 +48,18 @@ vi.mock("../api", () => ({
 }));
 
 describe("App shell", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    router.push("/");
+    await router.isReady();
   });
 
   it("renders the SkillMaster navigation after loading a snapshot", async () => {
-    const wrapper = mount(App);
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
 
     await vi.dynamicImportSettled();
 
@@ -62,7 +70,11 @@ describe("App shell", () => {
   });
 
   it("defaults to the dark theme", async () => {
-    const wrapper = mount(App);
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
 
     await vi.dynamicImportSettled();
 
@@ -70,11 +82,15 @@ describe("App shell", () => {
   });
 
   it("switches theme from settings and persists the preference", async () => {
-    const wrapper = mount(App);
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
 
     await vi.dynamicImportSettled();
     await wrapper.findAll("button").find((button) => button.text().includes("Settings"))!.trigger("click");
-    await wrapper.vm.$nextTick();
+    await flushPromises();
     await wrapper.findAll("button").find((button) => button.text().includes("白色"))!.trigger("click");
 
     expect(wrapper.find(".app-shell").attributes("data-theme")).toBe("light");
@@ -82,7 +98,11 @@ describe("App shell", () => {
   });
 
   it("does not render redundant skills headings", async () => {
-    const wrapper = mount(App);
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
 
     await vi.dynamicImportSettled();
 
@@ -90,3 +110,5 @@ describe("App shell", () => {
     expect(wrapper.text()).not.toContain("Skill Detail");
   });
 });
+
+

@@ -1,0 +1,133 @@
+/* Modals & Dialogs */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+}
+
+.modal-card {
+  width: min(720px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-panel-strong);
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.4);
+}
+
+.modal-card--compact {
+  width: min(540px, 100%);
+}
+
+.modal-card--agent {
+  width: min(760px, 100%);
+  max-height: min(700px, calc(100vh - 40px));
+  gap: 12px;
+  padding: 16px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.modal-step-section--scroll {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.modal-footer-row {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modal-title-row h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 560;
+}
+
+.modal-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Conflict Modals */
+.conflict-modal-card {
+  width: 460px;
+  padding: 24px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.conflict-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 640;
+  color: var(--text-primary);
+}
+
+.conflict-modal-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.conflict-compare-box {
+  background: var(--bg-panel-muted);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: inherit;
+}
+
+.conflict-compare-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.conflict-compare-item:last-child {
+  margin-bottom: 0;
+}
+
+.conflict-compare-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.conflict-compare-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.conflict-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

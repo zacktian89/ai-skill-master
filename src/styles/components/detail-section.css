@@ -1,0 +1,543 @@
+/* Extension Detail Elements */
+.extension-detail {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+
+.extension-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.extension-identity {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.extension-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+  color: var(--text-secondary);
+}
+
+.extension-title-group {
+  min-width: 0;
+}
+
+.extension-title-group h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 620;
+}
+
+.extension-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.extension-meta code {
+  color: var(--text-primary);
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
+}
+
+.extension-command-panel {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.extension-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Issues list and panels */
+.issue-strip {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.issue-strip > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--danger-border);
+  border-radius: 8px;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.issue-strip strong {
+  font-size: 13px;
+}
+
+.issue-strip span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Headers & Titles */
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.panel-title,
+.detail-header h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-weight: 620;
+}
+
+.eyebrow,
+.detail-header p,
+.inline-copy,
+.rule-copy small {
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.detail-header p,
+.inline-copy,
+.rule-copy small {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.panel-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+/* Detail Sections */
+.detail-section {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-default);
+}
+
+.detail-section--danger {
+  border-top-color: var(--danger-border);
+}
+
+.section-heading h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.detail-kv {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detail-kv--wide {
+  grid-template-columns: 1fr;
+}
+
+.detail-kv > div,
+.action-card,
+.stat-card,
+.rule-card,
+.issue-card,
+.inline-panel {
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+}
+
+.detail-kv dt {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 1.4;
+}
+
+.detail-kv dd {
+  margin: 6px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.action-card {
+  display: grid;
+  gap: 12px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat-card span {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.rule-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.rule-copy {
+  min-width: 0;
+}
+
+.rule-copy strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.project-skill-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.project-skill-summary > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+}
+
+.project-skill-summary strong {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.project-skill-summary span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.project-skill-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-skill-list {
+  display: grid;
+  gap: 10px;
+}
+
+.project-skill-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+}
+
+.project-skill-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-skill-copy strong,
+.project-skill-pick-row strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.project-skill-copy small,
+.project-skill-pick-row small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.project-skill-copy code,
+.project-skill-pick-row code {
+  color: var(--text-tertiary);
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
+}
+
+.project-skill-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.segmented-control {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+}
+
+.segmented-control button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.segmented-control button.active {
+  background: var(--bg-selected);
+  color: var(--text-primary);
+}
+
+.segmented-control--binary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.segmented-control--compact {
+  flex: 0 0 auto;
+}
+
+.segmented-control--compact button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  padding: 0;
+}
+
+.project-skill-picker {
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 2px;
+  display: grid;
+  gap: 10px;
+}
+
+.project-skill-pick-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-skill-pick-row:hover {
+  background: var(--bg-hover);
+}
+
+/* Issue Cards & Inline Panels */
+.issue-card {
+  display: grid;
+  gap: 6px;
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.issue-card--warning {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.issue-card--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.issue-card--neutral {
+  border-color: var(--border-default);
+  background: var(--bg-panel-muted);
+}
+
+.issue-card p,
+.issue-card small,
+.inline-panel span {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.inline-panel {
+  display: grid;
+  gap: 6px;
+}
+
+.inline-panel--success {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+}
+
+.inline-panel--warning {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.inline-panel--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.inline-panel--neutral {
+  border-color: var(--border-default);
+  background: var(--bg-panel-muted);
+}
+
+.expander {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+  padding: 12px;
+}
+
+.expander summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 620;
+  list-style: none;
+}
+
+.expander summary::-webkit-details-marker {
+  display: none;
+}
+
+.expander summary::after {
+  content: "展开";
+  float: right;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.expander[open] summary::after {
+  content: "收起";
+}
+
+.meta-stack span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.button-row--end {
+  justify-content: flex-end;
+}
+
+/* Project Local Skills Scan Styles */
+.detail-section-divider {
+  margin-top: 24px;
+  border-top: 1px solid var(--border-default);
+  padding-top: 20px;
+}
+
+.scanned-categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.scanned-category-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scanned-category-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: ui-monospace, "SFMono-Regular", "SF Mono", monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scanned-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-default);
+}

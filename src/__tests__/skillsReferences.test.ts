@@ -4,8 +4,9 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
-import SkillsView from "../components/SkillsView.vue";
+import SkillsView from "../views/skills/SkillsView.vue";
 import type { AppSnapshot } from "../types";
+
 
 const snapshot: AppSnapshot = {
   state: {

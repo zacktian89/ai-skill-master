@@ -1,0 +1,63 @@
+/* Status Tags */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-panel-muted);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.status-tag--brand {
+  border-color: var(--brand-100);
+  background: var(--brand-050);
+  color: var(--brand-700);
+}
+
+.status-tag--success,
+.status-tag--healthy {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.status-tag--missing,
+.status-tag--stale,
+.status-tag--warning {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.status-tag--conflict,
+.status-tag--danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.status-tag--neutral,
+.status-tag--muted {
+  border-color: var(--border-default);
+  background: var(--bg-panel-muted);
+  color: var(--text-secondary);
+}
+
+.status-tag--interactive {
+  cursor: pointer;
+  user-select: none;
+}
+
+.status-tag--interactive:hover {
+  border-color: var(--border-focus);
+}
+
+.status-tag--disabled {
+  opacity: 0.55;
+  cursor: default;
+}
