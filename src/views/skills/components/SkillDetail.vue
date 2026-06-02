@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onBeforeUnmount } from "vue";
 import { CircleHelp, Folder, Github, Plus, ShoppingBag, Trash2, MoreHorizontal, FolderOpen } from "lucide-vue-next";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import SkillDescriptionTab from "./SkillDescriptionTab.vue";
 import SkillReferencesTab from "./SkillReferencesTab.vue";
 import type { Skill, SkillSourceKind, SkillReferenceDetail } from "../../../types";
@@ -109,6 +109,34 @@ async function openSkillLibraryDirectory() {
   }
 }
 
+const formattedGithubUrl = computed(() => {
+  const url = props.selectedSkill.source?.url;
+  if (!url) return "";
+  
+  let cleanUrl = url.trim();
+  if (cleanUrl.startsWith("git@github.com:")) {
+    cleanUrl = cleanUrl.replace("git@github.com:", "https://github.com/");
+  } else if (cleanUrl.startsWith("git://github.com/")) {
+    cleanUrl = cleanUrl.replace("git://github.com/", "https://github.com/");
+  } else if (!/^https?:\/\//.test(cleanUrl) && cleanUrl.includes("/") && cleanUrl.split("/").length === 2) {
+    cleanUrl = `https://github.com/${cleanUrl}`;
+  }
+  
+  if (cleanUrl.endsWith(".git")) {
+    cleanUrl = cleanUrl.slice(0, -4);
+  }
+  
+  return cleanUrl;
+});
+
+async function openGithubUrl(url: string) {
+  try {
+    await openUrl(url);
+  } catch (cause) {
+    console.error(cause);
+  }
+}
+
 onBeforeUnmount(closeMoreMenu);
 </script>
 
@@ -124,6 +152,16 @@ onBeforeUnmount(closeMoreMenu);
           <div class="extension-meta">
             <code>{{ selectedSkill.id }}</code>
             <span>{{ label }}</span>
+            <a
+              v-if="selectedSkill.source?.kind === 'github' && formattedGithubUrl"
+              :href="formattedGithubUrl"
+              class="github-link"
+              title="打开"
+              @click.prevent="openGithubUrl(formattedGithubUrl)"
+            >
+              <Github :size="13" />
+              <span>打开</span>
+            </a>
           </div>
         </div>
       </div>

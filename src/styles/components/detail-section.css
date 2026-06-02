@@ -59,6 +59,23 @@
   font-family: ui-monospace, "SFMono-Regular", "SF Mono", "JetBrains Mono", "Menlo", monospace;
 }
 
+.extension-meta a.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--border-focus);
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.extension-meta a.github-link:hover {
+  color: var(--brand-600);
+  border-bottom-color: var(--brand-600);
+}
+
+
 .extension-command-panel {
   display: grid;
   justify-items: end;

@@ -7,6 +7,10 @@ import * as api from "../api";
 import SkillsView from "../views/skills/SkillsView.vue";
 import type { AppSnapshot } from "../types";
 
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openPath: vi.fn(),
+}));
+
 
 const snapshot: AppSnapshot = {
   state: {
@@ -221,5 +225,90 @@ describe("SkillsView references tab", () => {
     await flushPromises();
 
     expect(removeSkillReference).toHaveBeenCalledWith("ref-claude-writer-pro", false);
+  });
+
+  it("navigates import steps: allows going back to step 1 and clicking next", async () => {
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot,
+        selectedSkillId: "writer-pro",
+      },
+    });
+
+    await wrapper.find('button[aria-label="新增 Skill"]').trigger("click");
+    expect(wrapper.text()).toContain("新增 Skill");
+
+    // Initially in step 1
+    expect(wrapper.text()).toContain("设置路径");
+    expect(wrapper.text()).toContain("本地");
+    expect(wrapper.text()).toContain("GitHub");
+
+    await wrapper.findAll(".import-source-tabs button")[1].trigger("click");
+    await wrapper.find('input[type="url"]').setValue("https://github.com/acme/skills");
+    await wrapper.find(".scan-btn").trigger("click");
+    await flushPromises();
+
+    // After scanning, automatically moves to step 2
+    expect(wrapper.text()).toContain("已选 2/2");
+    expect(wrapper.find('button.primary-button').text()).toContain("导入");
+
+    // Click back to step 1
+    await wrapper.findAll("button").find(b => b.text() === "上一步")!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("设置路径");
+    expect(wrapper.text()).toContain("下一步");
+
+    // Click next to step 2 again
+    await wrapper.findAll("button").find(b => b.text() === "下一步")!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("已选 2/2");
+  });
+
+  it("renders a GitHub link for GitHub-imported skills in details", async () => {
+    const githubSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "writer-git",
+            name: "Writer Git",
+            description: "Git 仓库里的写作技能",
+            libraryPath: "/library/writer-git",
+            source: {
+              kind: "github",
+              label: "GitHub",
+              url: "git@github.com:test-owner/test-repo.git",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot: githubSnapshot,
+        selectedSkillId: "writer-git",
+      },
+    });
+
+    await flushPromises();
+
+    const githubLink = wrapper.find("a.github-link");
+    expect(githubLink.exists()).toBe(true);
+    expect(githubLink.text()).toContain("打开 GitHub");
+    expect(githubLink.attributes("href")).toBe("https://github.com/test-owner/test-repo");
+
+    // Mock openPath
+    const opener = await import("@tauri-apps/plugin-opener");
+    const openPathSpy = vi.spyOn(opener, "openPath");
+
+    await githubLink.trigger("click");
+    expect(openPathSpy).toHaveBeenCalledWith("https://github.com/test-owner/test-repo");
   });
 });
