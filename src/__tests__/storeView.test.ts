@@ -128,7 +128,7 @@ describe("StoreView", () => {
     });
 
     await flushPromises();
-    await wrapper.findAll(".segmented-control button")[1]!.trigger("click");
+    await wrapper.findAll(".segmented-control button")[2]!.trigger("click");
     await flushPromises();
 
     expect(api.fetchStoreLeaderboard).toHaveBeenLastCalledWith("trending");

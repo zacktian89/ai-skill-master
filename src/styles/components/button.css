@@ -99,3 +99,16 @@ button:disabled {
   transform: none;
   box-shadow: none;
 }
+
+.primary-button--sm,
+.secondary-button--sm {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.ghost-icon-button--sm {
+  width: 28px;
+  height: 28px;
+}

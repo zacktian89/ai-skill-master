@@ -46,7 +46,7 @@ export const zh = {
     backToSkillList: "返回技能列表",
     groupByGithub: "按 GitHub 仓库聚合",
     localGroup: "其他 / 本地",
-    tabReadme: "Readme",
+    tabReadme: "说明",
   },
   projects: {
     empty: "没有匹配的项目。",
@@ -233,9 +233,9 @@ export const zh = {
     empty: "没有匹配的商店技能。",
     searchPlaceholder: "搜索 skills.sh 技能",
     selectDetail: "选择左侧技能查看商店详情。",
-    hot: "Hot",
-    trending: "Trending",
-    alltime: "All Time",
+    hot: "最热",
+    trending: "趋势",
+    alltime: "所有时间",
     sourceAll: "全部来源",
     installs: "{count} 安装",
     installsLabel: "安装量",
@@ -248,6 +248,10 @@ export const zh = {
     sourceFilter: "来源筛选",
     marketSource: "skills.sh",
     importTitle: "导入 Skill",
+    loadMarkdownFailed: "### 加载 SKILL.md 失败\n\n无法从 GitHub 加载此技能的 SKILL.md，请检查网络连接。",
+    loadReadmeFailed: "### 读取 README 失败\n\n无法从 GitHub 加载此技能的 README.md，请检查网络连接。",
+    skillNotFound: "未在仓库中找到该 Skill",
+    getDetailFailed: "获取 Skill 详情失败",
   },
 };
 

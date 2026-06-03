@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onBeforeUnmount } from "vue";
-import { CircleHelp, Folder, Github, Plus, ShoppingBag, Trash2, MoreHorizontal, FolderOpen } from "lucide-vue-next";
+import { CircleHelp, Folder, Github, Plus, ShoppingBag, Trash2, MoreHorizontal, FolderOpen, Download, Loader2 } from "lucide-vue-next";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
 import SkillDescriptionTab from "./SkillDescriptionTab.vue";
 import SkillReferencesTab from "./SkillReferencesTab.vue";
@@ -25,6 +25,9 @@ const props = defineProps<{
   renderedReadme: string;
   activeDetailTab: DetailTab;
   busy: boolean;
+  isStoreMode?: boolean;
+  isInstalled?: boolean;
+  importBusy?: boolean;
 }>();
 
 defineEmits<{
@@ -32,6 +35,7 @@ defineEmits<{
   "delete-click": [];
   "open-add-reference": [];
   "open-delete-reference": [reference: SkillReferenceDetail];
+  "download-click": [];
 }>();
 
 const { t } = useI18n();
@@ -184,6 +188,38 @@ onBeforeUnmount(closeMoreMenu);
       <div class="extension-command-panel">
         <div class="extension-actions">
           <button
+            v-if="isStoreMode && !isInstalled"
+            class="primary-button primary-button--sm"
+            type="button"
+            :disabled="importBusy"
+            :aria-label="t('store.download')"
+            @click="$emit('download-click')"
+          >
+            <Loader2 v-if="importBusy" :size="14" class="spin-animation" />
+            <Download v-else :size="14" />
+            <span>{{ importBusy ? 'downloading...' : 'download' }}</span>
+          </button>
+          <template v-else-if="isStoreMode && isInstalled">
+            <button
+              class="secondary-button secondary-button--sm"
+              type="button"
+              disabled
+            >
+              <span>{{ t('store.installed') }}</span>
+            </button>
+            <button
+              class="ghost-icon-button ghost-icon-button--sm"
+              type="button"
+              :disabled="busy"
+              :aria-label="t('skills.moreActions')"
+              :title="t('skills.moreActions')"
+              @click.stop="openMoreMenu"
+            >
+              <MoreHorizontal :size="14" />
+            </button>
+          </template>
+          <button
+            v-else
             class="ghost-icon-button"
             type="button"
             :disabled="busy"

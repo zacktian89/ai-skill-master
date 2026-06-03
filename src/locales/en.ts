@@ -250,5 +250,9 @@ export const en: TranslationKey = {
     sourceFilter: "Source filter",
     marketSource: "skills.sh",
     importTitle: "Import Skill",
+    loadMarkdownFailed: "### Failed to load SKILL.md\n\nUnable to load the SKILL.md for this skill from GitHub. Please check your network connection.",
+    loadReadmeFailed: "### Failed to read README\n\nUnable to load the README.md for this skill from GitHub. Please check your network connection.",
+    skillNotFound: "Skill not found in the repository",
+    getDetailFailed: "Failed to get Skill details",
   },
 };
