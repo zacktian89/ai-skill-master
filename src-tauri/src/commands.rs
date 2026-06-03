@@ -176,7 +176,14 @@ fn discover_plugins(skills: &[Skill]) -> Vec<crate::models::Plugin> {
             if plugin_json_path.exists() {
                 if let Ok(content) = fs::read_to_string(&plugin_json_path) {
                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                        let id = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "codex-plugin".to_string());
+                        let id = val["name"]
+                            .as_str()
+                            .map(|s| s.to_lowercase().replace(' ', "-"))
+                            .unwrap_or_else(|| {
+                                dir.file_name()
+                                    .map(|n| n.to_string_lossy().to_string())
+                                    .unwrap_or_else(|| "codex-plugin".to_string())
+                            });
                         let name = val["name"].as_str().unwrap_or(&id).to_string();
                         let description = val["description"].as_str().unwrap_or("").to_string();
                         let version = val["version"].as_str().map(|v| v.to_string());
