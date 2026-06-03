@@ -103,6 +103,58 @@ export const mockSnapshot: AppSnapshot = {
         rules: {},
       },
     ],
+    plugins: [
+      {
+        id: "codex-superpowers",
+        name: "superpowers",
+        description: "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
+        path: "/Users/demo/.codex/plugins/cache/openai-curated/superpowers/5e86d584",
+        version: "5.1.0",
+        author: "Jesse Vincent",
+        agentTargets: ["Codex"],
+        skills: [
+          {
+            id: "writer-pro",
+            name: "Writer Pro",
+            description: "长文写作与风格控制",
+            libraryPath: "/Users/demo/.skillmaster/skills/writer-pro",
+            references: [
+              {
+                id: "ref-claude-writer-pro",
+                targetName: "Claude Code",
+                targetPath: "/Users/demo/.claude/skills/writer-pro",
+                scope: "user",
+                status: "healthy",
+              },
+            ],
+            managedLinks: {},
+            conflict: null,
+          }
+        ],
+        type: "standard",
+        enabled: true,
+      },
+      {
+        id: "claude-mcp-filesystem",
+        name: "filesystem",
+        description: "Claude Code MCP server for filesystem access control",
+        path: "/Users/demo/.claude.json",
+        version: "1.0.0",
+        author: "Anthropic",
+        agentTargets: ["Claude Code"],
+        skills: [],
+        mcpServers: ["filesystem"],
+        mcpConfig: {
+          command: "node",
+          args: [
+            "/usr/local/lib/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
+            "/Users/demo/workspace"
+          ]
+        },
+        type: "mcp",
+        enabled: true,
+      }
+    ],
   },
   targetProfiles: [
     {

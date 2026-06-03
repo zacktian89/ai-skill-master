@@ -6,7 +6,7 @@ import Sidebar from "./components/Sidebar.vue";
 import { createAppStore } from "./stores/useAppStore";
 import { createSelectionStore } from "./stores/useSelectionStore";
 
-type Section = "skills" | "projects" | "agents" | "settings";
+type Section = "skills" | "projects" | "agents" | "plugins" | "settings";
 
 const router = useRouter();
 const route = useRoute();
@@ -19,6 +19,19 @@ const isDragging = ref(false);
 // Initialize Stores
 const appStore = createAppStore();
 const selectionStore = createSelectionStore(appStore.snapshot);
+
+const selectedPluginId = ref<string | null>(null);
+
+watch(
+  () => appStore.snapshot.value,
+  (next) => {
+    if (!next) return;
+    if (!selectedPluginId.value || !next.state.plugins?.some((p) => p.id === selectedPluginId.value)) {
+      selectedPluginId.value = next.state.plugins?.[0]?.id ?? null;
+    }
+  },
+  { immediate: true }
+);
 
 watch(
   () => appStore.themeMode.value,
@@ -100,10 +113,12 @@ onUnmounted(() => {
               :selected-skill-id="selectionStore.selectedSkillId.value"
               :selected-project-id="selectionStore.selectedProjectId.value"
               :selected-agent-id="selectionStore.selectedAgentId.value"
+              :selected-plugin-id="selectedPluginId"
               :theme-mode="appStore.themeMode.value"
               @select-skill="selectionStore.setSelectedSkillId"
               @select-project="selectionStore.setSelectedProjectId"
               @select-agent="selectionStore.setSelectedAgentId"
+              @select-plugin="(id) => selectedPluginId = id"
               @snapshot="appStore.applySnapshot"
               @error="appStore.setError"
               @update:theme-mode="appStore.setThemeMode"

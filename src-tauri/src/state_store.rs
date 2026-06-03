@@ -14,6 +14,7 @@ pub fn default_state(skill_library_path: PathBuf) -> AppState {
         skills: Vec::new(),
         projects: Vec::new(),
         agents: Vec::new(),
+        plugins: Vec::new(),
     }
 }
 

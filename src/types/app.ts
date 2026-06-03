@@ -9,6 +9,7 @@ export type ReferenceStatus = "healthy" | "missing" | "conflict" | "stale";
 import type { Skill } from "./skill";
 import type { Project } from "./project";
 import type { Agent } from "./agent";
+import type { Plugin } from "./plugin";
 
 export interface PendingSyncAction {
   kind: PendingSyncActionKind;
@@ -39,6 +40,7 @@ export interface AppState {
   skills: Skill[];
   projects: Project[];
   agents: Agent[];
+  plugins?: Plugin[];
 }
 
 export interface DiagnosticItem {

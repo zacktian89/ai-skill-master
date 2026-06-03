@@ -7,11 +7,12 @@ import {
   Settings,
   Sparkles,
   Bot,
+  Puzzle,
 } from "lucide-vue-next";
 import type { AppSnapshot } from "../types";
 import { useI18n } from "../composables/useI18n";
 
-type Section = "skills" | "projects" | "agents" | "settings";
+type Section = "skills" | "projects" | "agents" | "plugins" | "settings";
 
 const props = defineProps<{
   activeSection: Section;
@@ -63,6 +64,12 @@ const navItems = computed(() => [
     title: t("sidebar.agents"),
     count: props.snapshot?.state.agents?.length ?? 0,
     icon: Bot,
+  },
+  {
+    id: "plugins" as const,
+    title: t("sidebar.plugins") || "插件",
+    count: props.snapshot?.state.plugins?.length ?? 0,
+    icon: Puzzle,
   },
   {
     id: "projects" as const,

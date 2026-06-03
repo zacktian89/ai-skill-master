@@ -25,6 +25,11 @@ const routes = [
     component: AgentsView,
   },
   {
+    path: "/plugins",
+    name: "plugins",
+    component: () => import("../views/plugins/PluginsView.vue"),
+  },
+  {
     path: "/settings",
     name: "settings",
     component: SettingsView,

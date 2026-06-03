@@ -16,6 +16,8 @@ pub struct AppState {
     pub projects: Vec<Project>,
     #[serde(default)]
     pub agents: Vec<Agent>,
+    #[serde(default)]
+    pub plugins: Vec<Plugin>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -212,4 +214,26 @@ pub struct Agent {
     pub path: PathBuf,
     #[serde(default)]
     pub rules: BTreeMap<String, ProjectRule>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Plugin {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub path: PathBuf,
+    pub version: Option<String>,
+    pub author: Option<String>,
+    pub agent_targets: Vec<String>,
+    pub skills: Vec<Skill>,
+    pub mcp_servers: Option<Vec<String>>,
+    pub mcp_config: Option<serde_json::Value>,
+    pub r#type: String, // "standard" | "mcp"
+    #[serde(default = "default_plugin_enabled")]
+    pub enabled: bool,
+}
+
+fn default_plugin_enabled() -> bool {
+    true
 }
