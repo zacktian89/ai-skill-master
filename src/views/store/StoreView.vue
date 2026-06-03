@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, watch } from "vue";
-import { Download, Loader2, Search } from "lucide-vue-next";
+import { computed, inject, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue";
+import { Download, Loader2, Search, Plus, Trash2, FolderOpen } from "lucide-vue-next";
 import { marked } from "marked";
+import { openPath } from "@tauri-apps/plugin-opener";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
 import AppLoadingAnimation from "../../components/AppLoadingAnimation.vue";
@@ -232,6 +233,76 @@ function openDeleteReferenceDialog(reference: SkillReferenceDetail) {
 function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
   applySnapshot(nextSnapshot);
 }
+
+const contextMenuOpen = ref<{ x: number; y: number; skill: StoreSkill } | null>(null);
+const contextMenuRef = ref<HTMLElement | null>(null);
+let contextMenuCloseTimer: number | null = null;
+const menuMargin = 8;
+const fallbackMenuWidth = 148;
+
+function closeContextMenu() {
+  contextMenuOpen.value = null;
+  if (contextMenuCloseTimer !== null) {
+    window.clearTimeout(contextMenuCloseTimer);
+    contextMenuCloseTimer = null;
+  }
+  document.removeEventListener("click", closeContextMenu);
+  document.removeEventListener("keydown", contextMenuOnEscape);
+}
+
+function contextMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === "Escape") closeContextMenu();
+}
+
+function clampMenuPosition(x: number, y: number, width: number, height: number) {
+  const maxX = Math.max(menuMargin, window.innerWidth - width - menuMargin);
+  const maxY = Math.max(menuMargin, window.innerHeight - height - menuMargin);
+  return {
+    x: Math.min(Math.max(menuMargin, x), maxX),
+    y: Math.min(Math.max(menuMargin, y), maxY),
+  };
+}
+
+async function handleStoreSkillContextMenu(event: MouseEvent, skill: StoreSkill) {
+  event.preventDefault();
+  closeContextMenu();
+  
+  // Select the skill first when right-clicking it
+  selectStoreSkill(skill.id);
+  
+  const initialPosition = clampMenuPosition(event.clientX, event.clientY, fallbackMenuWidth, 0);
+  contextMenuOpen.value = { ...initialPosition, skill };
+  
+  await nextTick();
+  const menuRect = contextMenuRef.value?.getBoundingClientRect();
+  if (contextMenuOpen.value && menuRect) {
+    const menuWidth = menuRect.width || fallbackMenuWidth;
+    const position = clampMenuPosition(event.clientX, event.clientY, menuWidth, menuRect.height);
+    contextMenuOpen.value = { ...position, skill };
+  }
+  
+  contextMenuCloseTimer = window.setTimeout(() => {
+    contextMenuCloseTimer = null;
+    document.addEventListener("click", closeContextMenu);
+    document.addEventListener("keydown", contextMenuOnEscape);
+  });
+}
+
+function runContextMenuAction(action: () => void) {
+  action();
+  closeContextMenu();
+}
+
+async function openSkillLibraryDirectory(path: string | undefined) {
+  if (!path) return;
+  try {
+    await openPath(path);
+  } catch (cause) {
+    console.error(cause);
+  }
+}
+
+onBeforeUnmount(closeContextMenu);
 
 const matchedInstalledSkill = computed(() => {
   if (!selectedStoreSkill.value) return null;
@@ -541,6 +612,7 @@ watch(query, () => {
           :class="{ active: selectedStoreSkill?.id === skill.id }"
           type="button"
           @click="selectStoreSkill(skill.id)"
+          @contextmenu.prevent="handleStoreSkillContextMenu($event, skill)"
         >
           <div class="store-list-top">
             <strong>{{ skill.name }}</strong>
@@ -672,4 +744,62 @@ watch(query, () => {
     @close="referenceDialogOpen = false"
     @success="handleSnapshotSuccess"
   />
+
+  <Teleport to="body">
+    <div
+      v-if="contextMenuOpen"
+      ref="contextMenuRef"
+      class="global-context-menu"
+      :style="{ left: `${contextMenuOpen.x}px`, top: `${contextMenuOpen.y}px` }"
+      role="menu"
+      @click.stop
+    >
+      <template v-if="isInstalled(contextMenuOpen.skill)">
+        <button
+          type="button"
+          role="menuitem"
+          class="global-context-menu-item"
+          :disabled="importBusy"
+          @click="runContextMenuAction(openAddReferenceDialog)"
+        >
+          <Plus :size="15" />
+          <span>{{ t('reference.addReference') }}</span>
+        </button>
+
+        <button
+          type="button"
+          role="menuitem"
+          class="global-context-menu-item"
+          :disabled="importBusy"
+          @click="runContextMenuAction(() => { deleteDialogOpen = true; })"
+        >
+          <Trash2 :size="15" />
+          <span>{{ t('skills.deleteSkill') }}</span>
+        </button>
+
+        <button
+          type="button"
+          role="menuitem"
+          class="global-context-menu-item"
+          :disabled="importBusy"
+          @click="runContextMenuAction(() => openSkillLibraryDirectory(matchedInstalledSkill?.libraryPath))"
+        >
+          <FolderOpen :size="15" />
+          <span>{{ t('skills.openDirectory') }}</span>
+        </button>
+      </template>
+      <template v-else>
+        <button
+          type="button"
+          role="menuitem"
+          class="global-context-menu-item"
+          :disabled="importBusy"
+          @click="runContextMenuAction(prepareImport)"
+        >
+          <Download :size="15" />
+          <span>{{ t('store.download') }}</span>
+        </button>
+      </template>
+    </div>
+  </Teleport>
 </template>

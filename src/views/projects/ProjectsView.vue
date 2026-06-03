@@ -504,17 +504,67 @@ function runHeaderMenuAction(action: () => void) {
   closeHeaderMenu();
 }
 
-async function openProjectDirectory() {
-  if (!selectedProject.value) return;
+async function openProjectDirectory(path?: string) {
+  const targetPath = path || selectedProject.value?.path;
+  if (!targetPath) return;
   try {
-    await openPath(selectedProject.value.path);
+    await openPath(targetPath);
   } catch (cause) {
     if (appStore) appStore.setError(String(cause));
     else emit("error", String(cause));
   }
 }
 
+const contextMenuOpen = ref<{ x: number; y: number; project: Project } | null>(null);
+const contextMenuRef = ref<HTMLElement | null>(null);
+let contextMenuCloseTimer: number | null = null;
+
+function closeContextMenu() {
+  contextMenuOpen.value = null;
+  if (contextMenuCloseTimer !== null) {
+    window.clearTimeout(contextMenuCloseTimer);
+    contextMenuCloseTimer = null;
+  }
+  document.removeEventListener("click", closeContextMenu);
+  document.removeEventListener("keydown", contextMenuOnEscape);
+}
+
+function contextMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === "Escape") closeContextMenu();
+}
+
+async function handleProjectContextMenu(event: MouseEvent, project: Project) {
+  event.preventDefault();
+  closeContextMenu();
+  
+  // Select the project first when right-clicking it
+  selectedProjectId.value = project.id;
+  
+  const initialPosition = clampMenuPosition(event.clientX, event.clientY, fallbackMenuWidth, 0);
+  contextMenuOpen.value = { ...initialPosition, project };
+  
+  await nextTick();
+  const menuRect = contextMenuRef.value?.getBoundingClientRect();
+  if (contextMenuOpen.value && menuRect) {
+    const menuWidth = menuRect.width || fallbackMenuWidth;
+    const position = clampMenuPosition(event.clientX, event.clientY, menuWidth, menuRect.height);
+    contextMenuOpen.value = { ...position, project };
+  }
+  
+  contextMenuCloseTimer = window.setTimeout(() => {
+    contextMenuCloseTimer = null;
+    document.addEventListener("click", closeContextMenu);
+    document.addEventListener("keydown", contextMenuOnEscape);
+  });
+}
+
+function runContextMenuAction(action: () => void) {
+  action();
+  closeContextMenu();
+}
+
 onBeforeUnmount(closeHeaderMenu);
+onBeforeUnmount(closeContextMenu);
 </script>
 
 <template>
@@ -536,6 +586,7 @@ onBeforeUnmount(closeHeaderMenu);
           class="list-row"
           :class="{ active: selectedProject?.id === project.id }"
           @click="emit('select-project', project.id)"
+          @contextmenu.prevent="handleProjectContextMenu($event, project)"
         >
           <div class="list-row-copy">
             <strong>{{ project.name }}</strong>
@@ -850,5 +901,49 @@ onBeforeUnmount(closeHeaderMenu);
       </div>
     </template>
   </ModalDialog>
+
+  <Teleport to="body">
+    <div
+      v-if="contextMenuOpen"
+      ref="contextMenuRef"
+      class="global-context-menu"
+      :style="{ left: `${contextMenuOpen.x}px`, top: `${contextMenuOpen.y}px` }"
+      role="menu"
+      @click.stop
+    >
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="busy"
+        @click="runContextMenuAction(openAddSkillDialog)"
+      >
+        <Plus :size="15" />
+        <span>{{ t('projects.addSkill') }}</span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="busy"
+        @click="runContextMenuAction(openDeleteProjectDialog)"
+      >
+        <Trash2 :size="15" />
+        <span>{{ t('projects.cancelManage') }}</span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="busy"
+        @click="runContextMenuAction(() => openProjectDirectory(contextMenuOpen?.project?.path))"
+      >
+        <FolderOpen :size="15" />
+        <span>{{ t('projects.openProjectDir') }}</span>
+      </button>
+    </div>
+  </Teleport>
 </template>
 

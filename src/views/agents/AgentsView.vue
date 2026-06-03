@@ -476,17 +476,67 @@ function runHeaderMenuAction(action: () => void) {
   closeHeaderMenu();
 }
 
-async function openAgentSkillDirectory() {
-  if (!selectedAgent.value) return;
+async function openAgentSkillDirectory(path?: string) {
+  const targetPath = path || selectedAgent.value?.path;
+  if (!targetPath) return;
   try {
-    await openPath(selectedAgent.value.path);
+    await openPath(targetPath);
   } catch (cause) {
     if (appStore) appStore.setError(String(cause));
     else emit("error", String(cause));
   }
 }
 
+const contextMenuOpen = ref<{ x: number; y: number; agent: Agent } | null>(null);
+const contextMenuRef = ref<HTMLElement | null>(null);
+let contextMenuCloseTimer: number | null = null;
+
+function closeContextMenu() {
+  contextMenuOpen.value = null;
+  if (contextMenuCloseTimer !== null) {
+    window.clearTimeout(contextMenuCloseTimer);
+    contextMenuCloseTimer = null;
+  }
+  document.removeEventListener("click", closeContextMenu);
+  document.removeEventListener("keydown", contextMenuOnEscape);
+}
+
+function contextMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === "Escape") closeContextMenu();
+}
+
+async function handleAgentContextMenu(event: MouseEvent, agent: Agent) {
+  event.preventDefault();
+  closeContextMenu();
+  
+  // Select the agent first when right-clicking it
+  selectedAgentId.value = agent.id;
+  
+  const initialPosition = clampMenuPosition(event.clientX, event.clientY, fallbackMenuWidth, 0);
+  contextMenuOpen.value = { ...initialPosition, agent };
+  
+  await nextTick();
+  const menuRect = contextMenuRef.value?.getBoundingClientRect();
+  if (contextMenuOpen.value && menuRect) {
+    const menuWidth = menuRect.width || fallbackMenuWidth;
+    const position = clampMenuPosition(event.clientX, event.clientY, menuWidth, menuRect.height);
+    contextMenuOpen.value = { ...position, agent };
+  }
+  
+  contextMenuCloseTimer = window.setTimeout(() => {
+    contextMenuCloseTimer = null;
+    document.addEventListener("click", closeContextMenu);
+    document.addEventListener("keydown", contextMenuOnEscape);
+  });
+}
+
+function runContextMenuAction(action: () => void) {
+  action();
+  closeContextMenu();
+}
+
 onBeforeUnmount(closeHeaderMenu);
+onBeforeUnmount(closeContextMenu);
 </script>
 
 <template>
@@ -508,6 +558,7 @@ onBeforeUnmount(closeHeaderMenu);
           class="list-row list-row--agent"
           :class="{ active: selectedAgent?.id === agent.id }"
           @click="emit('select-agent', agent.id)"
+          @contextmenu.prevent="handleAgentContextMenu($event, agent)"
         >
           <div class="list-row-agent-icon">
             <AgentIcon :name="agent.name" :size="20" />
@@ -874,6 +925,50 @@ onBeforeUnmount(closeHeaderMenu);
       </div>
     </template>
   </ModalDialog>
+
+  <Teleport to="body">
+    <div
+      v-if="contextMenuOpen"
+      ref="contextMenuRef"
+      class="global-context-menu"
+      :style="{ left: `${contextMenuOpen.x}px`, top: `${contextMenuOpen.y}px` }"
+      role="menu"
+      @click.stop
+    >
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="busy"
+        @click="runContextMenuAction(openAddSkillDialog)"
+      >
+        <Plus :size="15" />
+        <span>{{ t('projects.addSkill') }}</span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="busy"
+        @click="runContextMenuAction(openDeleteAgentDialog)"
+      >
+        <Trash2 :size="15" />
+        <span>{{ t('projects.cancelManage') }}</span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="busy"
+        @click="runContextMenuAction(() => openAgentSkillDirectory(contextMenuOpen?.agent?.path))"
+      >
+        <FolderOpen :size="15" />
+        <span>{{ t('agents.openAgentDir') }}</span>
+      </button>
+    </div>
+  </Teleport>
 </template>
 
 

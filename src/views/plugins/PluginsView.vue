@@ -177,14 +177,65 @@ function runMoreMenuAction(action: () => void) {
   closeMoreMenu();
 }
 
-async function openPluginDirectory() {
-  if (!selectedPlugin.value) return;
+async function openPluginDirectory(path?: string) {
+  const targetPath = path || selectedPlugin.value?.path;
+  if (!targetPath) return;
   try {
-    await openPath(selectedPlugin.value.path);
+    await openPath(targetPath);
   } catch (cause) {
     console.error(cause);
   }
 }
+
+const contextMenuOpen = ref<{ x: number; y: number; plugin: any } | null>(null);
+const contextMenuRef = ref<HTMLElement | null>(null);
+let contextMenuCloseTimer: number | null = null;
+
+function closeContextMenu() {
+  contextMenuOpen.value = null;
+  if (contextMenuCloseTimer !== null) {
+    window.clearTimeout(contextMenuCloseTimer);
+    contextMenuCloseTimer = null;
+  }
+  document.removeEventListener("click", closeContextMenu);
+  document.removeEventListener("keydown", contextMenuOnEscape);
+}
+
+function contextMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === "Escape") closeContextMenu();
+}
+
+async function handlePluginContextMenu(event: MouseEvent, plugin: any) {
+  event.preventDefault();
+  closeContextMenu();
+  
+  // Select the plugin first when right-clicking it
+  handleSelectPlugin(plugin.id);
+  
+  const initialPosition = clampMenuPosition(event.clientX, event.clientY, fallbackMenuWidth, 0);
+  contextMenuOpen.value = { ...initialPosition, plugin };
+  
+  await nextTick();
+  const menuRect = contextMenuRef.value?.getBoundingClientRect();
+  if (contextMenuOpen.value && menuRect) {
+    const menuWidth = menuRect.width || fallbackMenuWidth;
+    const position = clampMenuPosition(event.clientX, event.clientY, menuWidth, menuRect.height);
+    contextMenuOpen.value = { ...position, plugin };
+  }
+  
+  contextMenuCloseTimer = window.setTimeout(() => {
+    contextMenuCloseTimer = null;
+    document.addEventListener("click", closeContextMenu);
+    document.addEventListener("keydown", contextMenuOnEscape);
+  });
+}
+
+function runContextMenuAction(action: () => void) {
+  action();
+  closeContextMenu();
+}
+
+onBeforeUnmount(closeContextMenu);
 </script>
 
 <template>
@@ -212,6 +263,7 @@ async function openPluginDirectory() {
           tabindex="0"
           @click="handleSelectPlugin(plugin.id)"
           @keydown.enter="handleSelectPlugin(plugin.id)"
+          @contextmenu.prevent="handlePluginContextMenu($event, plugin)"
         >
           <div class="plugin-item-icon-wrapper" :class="`icon-type--${plugin.type}`">
             <component :is="plugin.type === 'mcp' ? Terminal : Puzzle" :size="16" />
@@ -486,4 +538,35 @@ async function openPluginDirectory() {
       </div>
     </template>
   </ModalDialog>
+
+  <Teleport to="body">
+    <div
+      v-if="contextMenuOpen"
+      ref="contextMenuRef"
+      class="global-context-menu"
+      :style="{ left: `${contextMenuOpen.x}px`, top: `${contextMenuOpen.y}px` }"
+      role="menu"
+      @click.stop
+    >
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item delete-action-btn"
+        @click="runContextMenuAction(() => deleteDialogOpen = true)"
+      >
+        <Trash2 :size="15" />
+        <span>{{ t('dialog.delete') }}</span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        @click="runContextMenuAction(() => openPluginDirectory(contextMenuOpen?.plugin?.path))"
+      >
+        <FolderOpen :size="15" />
+        <span>{{ t('skills.openDirectory') }}</span>
+      </button>
+    </div>
+  </Teleport>
 </template>

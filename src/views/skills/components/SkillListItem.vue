@@ -11,6 +11,7 @@ const props = defineProps<{
 
 defineEmits<{
   select: [];
+  contextmenu: [event: MouseEvent];
 }>();
 
 const sourceIcons = {
@@ -38,6 +39,7 @@ const icon = computed(() => sourceIcons[sourceKind.value]);
     class="list-row"
     :class="{ active: isActive }"
     @click="$emit('select')"
+    @contextmenu.prevent="$emit('contextmenu', $event)"
   >
     <div class="list-row-main">
       <div class="list-row-top">
