@@ -6,6 +6,8 @@ import type {
   ConfirmImportSkillsRequest,
   DeleteSkillPreview,
   AddSkillReferenceRequest,
+  StoreLeaderboardType,
+  StoreSkill,
 } from "../../types";
 import { mockSnapshot, snapshot } from "./data";
 
@@ -56,6 +58,43 @@ export function previewImportSkills(source: ImportSkillSource): Promise<ImportSk
   return Promise.resolve({
     candidates: mockImportCandidates(source),
   });
+}
+
+const mockStoreSkills: StoreSkill[] = [
+  {
+    id: "openai/skills/playwright",
+    skillId: "playwright",
+    name: "Playwright",
+    source: "openai/skills",
+    installs: 4200,
+  },
+  {
+    id: "acme/skills/installed-skill",
+    skillId: "installed-skill",
+    name: "Installed Skill",
+    source: "acme/skills",
+    installs: 1200,
+  },
+  {
+    id: "anthropic/skills/researcher",
+    skillId: "researcher",
+    name: "Researcher",
+    source: "anthropic/skills",
+    installs: 1800,
+  },
+];
+
+export function fetchStoreLeaderboard(_board: StoreLeaderboardType): Promise<StoreSkill[]> {
+  return Promise.resolve(mockStoreSkills);
+}
+
+export function searchStoreSkills(query: string, _limit = 60): Promise<StoreSkill[]> {
+  const normalized = query.trim().toLowerCase();
+  return Promise.resolve(
+    mockStoreSkills.filter((skill) =>
+      `${skill.name} ${skill.skillId} ${skill.source}`.toLowerCase().includes(normalized)
+    )
+  );
 }
 
 export function confirmImportSkills(request: ConfirmImportSkillsRequest): Promise<AppSnapshot> {

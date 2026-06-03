@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Folder, CircleHelp, Bot } from "lucide-vue-next";
+import { Folder, Bot } from "lucide-vue-next";
 
 const props = defineProps<{
   name: string;
@@ -230,5 +230,4 @@ const mappedIconFile = computed(() => {
     :class="className"
   />
 </template>
-
 

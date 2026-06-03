@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject, nextTick, onBeforeUnmount } from "vue";
-import { useRouter } from "vue-router";
-import { Puzzle, Terminal, Cpu, ArrowRight, Folder, User, Tag, Code, MoreHorizontal, Trash2, FolderOpen } from "lucide-vue-next";
+import { Puzzle, Terminal, Cpu, Folder, User, Tag, MoreHorizontal, Trash2, FolderOpen } from "lucide-vue-next";
 import { openPath } from "@tauri-apps/plugin-opener";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
@@ -9,13 +8,10 @@ import SearchInput from "../../components/SearchInput.vue";
 import SwitchToggle from "../../components/SwitchToggle.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
 import { useI18n } from "../../composables/useI18n";
-import type { AppSnapshot, Plugin } from "../../types";
-import { SelectionStoreKey } from "../../stores/useSelectionStore";
+import type { AppSnapshot } from "../../types";
 import { AppStoreKey } from "../../stores/useAppStore";
 
 const { t } = useI18n();
-const router = useRouter();
-const selectionStore = inject(SelectionStoreKey, null);
 const appStore = inject(AppStoreKey, null);
 
 const props = defineProps<{
@@ -25,7 +21,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "select-plugin": [value: string | null];
-  "select-skill": [value: string | null];
 }>();
 
 const query = ref("");
@@ -103,16 +98,6 @@ watch(
 
 function handleSelectPlugin(id: string) {
   emit("select-plugin", id);
-}
-
-// Redirect and select a skill in the SkillsView
-function navigateToSkill(skillId: string) {
-  if (selectionStore) {
-    selectionStore.setSelectedSkillId(skillId);
-  } else {
-    emit("select-skill", skillId);
-  }
-  router.push("/skills");
 }
 
 function getAgentBadgeClass(agent: string): string {

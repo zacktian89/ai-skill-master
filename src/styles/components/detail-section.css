@@ -616,20 +616,20 @@
 .scanned-categories-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 8px;
 }
 
 .scanned-category-item {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .scanned-category-title {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-family: ui-monospace, "SFMono-Regular", "SF Mono", monospace;
   display: flex;
   align-items: center;

@@ -3,6 +3,7 @@ import { computed } from "vue";
 import {
   FolderKanban,
   Library,
+  ShoppingBag,
   PanelLeftOpen,
   Settings,
   Bot,
@@ -12,7 +13,7 @@ import brandLogoSrc from "../assets/skillmaster-logo-dark.png";
 import type { AppSnapshot } from "../types";
 import { useI18n } from "../composables/useI18n";
 
-type Section = "skills" | "projects" | "agents" | "plugins" | "settings";
+type Section = "skills" | "store" | "projects" | "agents" | "plugins" | "settings";
 
 const props = defineProps<{
   activeSection: Section;
@@ -58,6 +59,11 @@ const navItems = computed(() => [
     title: t("sidebar.skills"),
     count: props.snapshot?.state.skills.length ?? 0,
     icon: Library,
+  },
+  {
+    id: "store" as const,
+    title: t("sidebar.store"),
+    icon: ShoppingBag,
   },
   {
     id: "agents" as const,

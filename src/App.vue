@@ -6,7 +6,7 @@ import Sidebar from "./components/Sidebar.vue";
 import { createAppStore } from "./stores/useAppStore";
 import { createSelectionStore } from "./stores/useSelectionStore";
 
-type Section = "skills" | "projects" | "agents" | "plugins" | "settings";
+type Section = "skills" | "store" | "projects" | "agents" | "plugins" | "settings";
 
 const router = useRouter();
 const route = useRoute();
@@ -21,6 +21,10 @@ const appStore = createAppStore();
 const selectionStore = createSelectionStore(appStore.snapshot);
 
 const selectedPluginId = ref<string | null>(null);
+
+function handlePluginSelection(id: string | null) {
+  selectedPluginId.value = id;
+}
 
 watch(
   () => appStore.snapshot.value,
@@ -118,7 +122,7 @@ onUnmounted(() => {
               @select-skill="selectionStore.setSelectedSkillId"
               @select-project="selectionStore.setSelectedProjectId"
               @select-agent="selectionStore.setSelectedAgentId"
-              @select-plugin="(id) => selectedPluginId = id"
+              @select-plugin="handlePluginSelection"
               @snapshot="appStore.applySnapshot"
               @error="appStore.setError"
               @update:theme-mode="appStore.setThemeMode"

@@ -1,6 +1,7 @@
 type DialogOpenOptions = {
   directory?: boolean;
   multiple?: boolean;
+  defaultPath?: string;
 };
 
 type DialogResult = string | string[] | null;

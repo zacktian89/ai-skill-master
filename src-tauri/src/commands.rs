@@ -13,6 +13,7 @@ use crate::skill_library::{
     import_skill as import_skill_into_library, migrate_skill_library,
     preview_import_skills as preview_import_source, ImportSkillPreview, ImportSkillSource,
 };
+use crate::store_market::{self, LeaderboardType, StoreSkill};
 use crate::state_store::{
     load_or_create_state, save_state, state_backup_path, LoadedState,
     StateLoadStatus,
@@ -112,6 +113,13 @@ pub struct AddSkillReferenceRequest {
 pub struct ConfirmImportSkillsRequest {
     pub source: ImportSkillSource,
     pub candidate_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchStoreSkillsRequest {
+    pub query: String,
+    pub limit: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -949,6 +957,22 @@ pub fn get_snapshot(app: AppHandle) -> std::result::Result<AppSnapshot, String> 
         &command_state.load_status,
     )
     .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn fetch_store_leaderboard(board: String) -> std::result::Result<Vec<StoreSkill>, String> {
+    store_market::fetch_leaderboard(LeaderboardType::from_str(&board)).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn search_store_skills(
+    request: SearchStoreSkillsRequest,
+) -> std::result::Result<Vec<StoreSkill>, String> {
+    let query = request.query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    store_market::search_skills(query, request.limit.unwrap_or(60)).map_err(|error| error.to_string())
 }
 
 #[tauri::command]

@@ -33,6 +33,10 @@
   border-radius: 4px;
 }
 
+.list-stack--scrollable .skill-group-header {
+  width: calc(100% + var(--scrollbar-size));
+}
+
 .skill-group-header:hover {
   background: var(--bg-hover);
   color: var(--text-primary);

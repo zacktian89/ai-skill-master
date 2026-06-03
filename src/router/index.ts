@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import SkillsView from "../views/skills/SkillsView.vue";
+import StoreView from "../views/store/StoreView.vue";
 import ProjectsView from "../views/projects/ProjectsView.vue";
 import AgentsView from "../views/agents/AgentsView.vue";
 import SettingsView from "../views/settings/SettingsView.vue";
@@ -13,6 +14,11 @@ const routes = [
     path: "/skills",
     name: "skills",
     component: SkillsView,
+  },
+  {
+    path: "/store",
+    name: "store",
+    component: StoreView,
   },
   {
     path: "/projects",

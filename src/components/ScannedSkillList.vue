@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Folder, Link as LinkIcon, Plus } from "lucide-vue-next";
+import { ref } from "vue";
+import { Folder, Link as LinkIcon, Plus, ChevronRight } from "lucide-vue-next";
 import type { ScannedCategory, ProjectRule } from "../types";
 import SkillActionMenu from "./SkillActionMenu.vue";
 import { useI18n } from "../composables/useI18n";
@@ -23,6 +24,12 @@ const emit = defineEmits<{
   "delete-unmanaged-skill": [skillId: string, skillName: string, skillPath: string];
   "preview-skill": [skill: ScannedCategory["skills"][number]];
 }>();
+
+const collapsedPaths = ref<Record<string, boolean>>({});
+
+function toggleCollapse(path: string) {
+  collapsedPaths.value[path] = !collapsedPaths.value[path];
+}
 
 function forwardToggleRule(skillId: string) {
   emit("toggle-rule", skillId);
@@ -51,10 +58,24 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
       :class="{ 'scanned-category-item--with-title': showCategoryTitle }"
     >
       <!-- Category Header -->
-      <div v-if="showCategoryTitle" class="scanned-category-title">
+      <div
+        v-if="showCategoryTitle"
+        class="scanned-category-title"
+        style="cursor: pointer; user-select: none;"
+        @click="toggleCollapse(category.path)"
+      >
         <div class="scanned-category-left-group">
-          <span>{{ t('agents.scannedModule') }}</span>
+          <ChevronRight
+            :size="15"
+            :style="{
+              transform: collapsedPaths[category.path] ? 'rotate(0deg)' : 'rotate(90deg)',
+              transition: 'transform 0.2s ease',
+              marginRight: '2px'
+            }"
+          />
+          <Folder :size="15" style="color: var(--brand-600); margin-right: 2px;" />
           <code>{{ category.name }}</code>
+          <span class="category-skills-count" style="margin-left: 4px; opacity: 0.6; font-size: 0.9em;">({{ category.skills.length }})</span>
         </div>
         <button
           v-if="showAddButton"
@@ -63,14 +84,18 @@ function forwardDeleteUnmanagedSkill(skillId: string, skillName: string, skillPa
           :disabled="busy"
           :aria-label="t('agents.addSkillToModule')"
           :title="t('agents.addSkillToModule')"
-          @click="$emit('add-skill-click', category)"
+          @click.stop="$emit('add-skill-click', category)"
         >
           <Plus :size="12" />
         </button>
       </div>
 
       <!-- Skills List -->
-      <div class="scanned-skills-list" :class="{ 'scanned-skills-list--no-title': !showCategoryTitle }">
+      <div
+        v-show="!collapsedPaths[category.path]"
+        class="scanned-skills-list"
+        :class="{ 'scanned-skills-list--no-title': !showCategoryTitle }"
+      >
         <article
           v-for="skill in category.skills"
           :key="skill.path"

@@ -1,12 +1,12 @@
 .scanned-category-item--with-title {
-  margin-bottom: var(--spacing-3xl);
+  margin-bottom: var(--spacing-2xs);
 }
 
 .scanned-category-title {
   margin-bottom: var(--spacing-xs);
   font-weight: var(--font-weight-semibold);
-  font-size: var(--font-size-md);
-  color: var(--text-muted);
+  font-size: var(--font-size-xl);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;

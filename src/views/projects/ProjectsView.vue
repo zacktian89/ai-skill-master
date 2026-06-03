@@ -12,7 +12,6 @@ import {
 } from "lucide-vue-next";
 import { openPath } from "@tauri-apps/plugin-opener";
 import * as api from "../../api";
-import AgentIcon from "../../components/icons/AgentIcon.vue";
 import { openDirectory } from "../../utils/dialog";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
@@ -70,15 +69,6 @@ const pendingUnmanagedSkillDeletion = ref<{ skillId: string; skillName: string; 
 const previewSkill = ref<ScannedSkill | null>(null);
 const listSectionRef = ref<HTMLElement | null>(null);
 const lastListScrollTop = ref(0);
-const profileQuery = ref("");
-
-const filteredProjectProfiles = computed(() => {
-  const normalized = profileQuery.value.trim().toLowerCase();
-  if (!normalized) return projectProfiles.value;
-  return projectProfiles.value.filter((profile) =>
-    profile.targetName.toLowerCase().includes(normalized)
-  );
-});
 
 // Composable for Async Actions
 const { busy, run: executeAsync } = useAsyncAction({
@@ -172,11 +162,31 @@ const {
 } = useSkillPicker(() => snapshot.value.state.skills || []);
 
 function openAddSkillDialog() {
-  selectedAddDir.value = "";
-  selectedAddScope.value = "project";
-  selectedAddTargetName.value = "";
-  profileQuery.value = "";
   resetPicker();
+  if (!selectedProject.value) return;
+
+  const projectPath = selectedProject.value.path;
+  const rootPath = `${projectPath}/.agents/skills`.replace(/[\\/]+/g, "/");
+  selectedAddDir.value = rootPath;
+
+  const matchingProfile = projectProfiles.value.find(
+    (profile) => profile.rootPath.replace(/[\\/]+/g, "/").toLowerCase() === rootPath.toLowerCase()
+  );
+
+  if (matchingProfile) {
+    selectedAddScope.value = matchingProfile.scope;
+    selectedAddTargetName.value = matchingProfile.targetName;
+  } else {
+    selectedAddScope.value = "project";
+    const nameMap = getNameMap();
+    const mappedName = nameMap[".agents"];
+    if (mappedName) {
+      selectedAddTargetName.value = mappedName;
+    } else {
+      selectedAddTargetName.value = "Codex";
+    }
+  }
+
   addSkillDialogOpen.value = true;
 }
 
@@ -218,7 +228,6 @@ function closeAddSkillDialog() {
   selectedAddDir.value = "";
   selectedAddScope.value = "project";
   selectedAddTargetName.value = "";
-  profileQuery.value = "";
   resetPicker();
 }
 
@@ -240,15 +249,29 @@ async function confirmDeleteProject() {
   );
 }
 
-function selectAddProfile(profile: any) {
-  selectedAddDir.value = profile.rootPath;
-  selectedAddScope.value = profile.scope;
-  selectedAddTargetName.value = profile.targetName;
-}
-
 async function selectCustomAddDir() {
   try {
-    const selected = await openDirectory({ directory: true, multiple: false });
+    let defaultPath: string | undefined = undefined;
+    if (selectedAddDir.value) {
+      const normalizedPath = selectedAddDir.value.replace(/[\\/]+/g, "/");
+      const agentsIndex = normalizedPath.lastIndexOf("/.agents");
+      if (agentsIndex !== -1) {
+        defaultPath = normalizedPath.substring(0, agentsIndex);
+      } else {
+        const lastSlash = normalizedPath.lastIndexOf("/");
+        if (lastSlash !== -1) {
+          defaultPath = normalizedPath.substring(0, lastSlash);
+        }
+      }
+    } else if (selectedProject.value) {
+      defaultPath = selectedProject.value.path;
+    }
+
+    const selected = await openDirectory({
+      directory: true,
+      multiple: false,
+      defaultPath,
+    });
     if (typeof selected === "string") {
       selectedAddDir.value = selected;
       const projectPath = selectedProject.value?.path || "";
@@ -642,53 +665,7 @@ onBeforeUnmount(closeHeaderMenu);
     card-class="modal-card--compact"
     @close="closeAddSkillDialog"
   >
-    <!-- Step 1: Select directory if selectedAddDir is empty -->
-    <div v-if="!selectedAddDir" class="modal-step-section">
-      <p class="modal-instruction-text">
-        {{ t('projects.chooseTargetDirPrompt') }}
-      </p>
-
-      <!-- Search Input for profiles -->
-      <div class="preset-search-row" style="margin-bottom: 12px;">
-        <SearchInput v-model="profileQuery" :placeholder="t('agents.searchPresetPlaceholder') || '搜索目标...'" />
-      </div>
-
-      <!-- Quick Select Agent Profiles with Scrollbar -->
-      <div class="target-profiles-scroll-wrapper" style="max-height: 260px; overflow-y: auto; margin-bottom: 12px; border: 1px solid var(--border-default); border-radius: 8px; padding: 8px; background: var(--bg-panel);">
-        <div class="target-grid">
-          <button
-            v-for="profile in filteredProjectProfiles"
-            :key="profile.id"
-            class="target-tile"
-            type="button"
-            :disabled="busy"
-            @click="selectAddProfile(profile)"
-          >
-            <span class="target-tile-icon" aria-hidden="true">
-              <AgentIcon :name="profile.targetName" :size="20" />
-            </span>
-            <strong>{{ profile.targetName }}</strong>
-            <small>
-              {{ profile.rootPath }}
-            </small>
-          </button>
-        </div>
-      </div>
-
-      <!-- Custom Directory Picker Button -->
-      <button
-        class="target-custom-button"
-        type="button"
-        :disabled="busy"
-        @click="selectCustomAddDir"
-      >
-        <FolderOpen :size="16" />
-        {{ t('projects.customDirectoryButton') }}
-      </button>
-    </div>
-
-    <!-- Step 2: Show selected path and skill checklist if selectedAddDir is NOT empty -->
-    <div v-else class="modal-step-section">
+    <div class="modal-step-section">
       <!-- Header displaying chosen path -->
       <div class="chosen-path-box">
         <div class="chosen-path-copy">
@@ -701,7 +678,7 @@ onBeforeUnmount(closeHeaderMenu);
           class="secondary-button chosen-path-edit-btn"
           type="button"
           :disabled="busy"
-          @click="selectedAddDir = ''"
+          @click="selectCustomAddDir"
         >
           {{ t('projects.modifyDir') }}
         </button>
@@ -874,5 +851,4 @@ onBeforeUnmount(closeHeaderMenu);
     </template>
   </ModalDialog>
 </template>
-
 

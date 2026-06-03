@@ -40,7 +40,7 @@ const snapshot: AppSnapshot = {
           {
             id: "ref-writer-pro",
             targetName: "Codex",
-            targetPath: "/work/acme/.agent/skills/writer-pro",
+            targetPath: "/work/acme/.agents/skills/writer-pro",
             scope: "project",
             status: "healthy",
           }
@@ -132,21 +132,21 @@ describe("ProjectsView", () => {
     apiMocks.scanProjectSkills.mockReset();
     apiMocks.scanProjectSkills.mockResolvedValue([
       {
-        name: ".agent",
-        path: "/work/acme/.agent",
+        name: ".agents",
+        path: "/work/acme/.agents",
         skills: [
           {
             id: "writer-pro",
             name: "Writer Pro",
             description: "长文写作与风格控制",
-            path: "/work/acme/.agent/skills/writer-pro",
+            path: "/work/acme/.agents/skills/writer-pro",
             isManaged: true,
           },
           {
             id: "reviewer",
             name: "Reviewer",
             description: "审阅内容",
-            path: "/work/acme/.agent/skills/reviewer",
+            path: "/work/acme/.agents/skills/reviewer",
             isManaged: true,
           },
         ],
@@ -191,14 +191,14 @@ version: "2.1"
     const longDescription = "A production-grade memory management system using attention-weighted architecture with semantic routing and dependency modeling.";
     apiMocks.scanProjectSkills.mockResolvedValue([
       {
-        name: ".agent",
-        path: "/work/acme/.agent",
+        name: ".agents",
+        path: "/work/acme/.agents",
         skills: [
           {
             id: "attention-memory",
             name: "attention-memory",
             description: longDescription,
-            path: "/work/acme/.agent/skills/attention-memory",
+            path: "/work/acme/.agents/skills/attention-memory",
             isManaged: true,
           },
         ],
@@ -373,8 +373,8 @@ version: "2.1"
     addSkillItem.click();
     await flushPromises();
     
-    // Choose Codex target profile
-    await wrapper.find(".target-tile").trigger("click");
+    // Directly on the second page (showing the default path)
+    expect(wrapper.text()).toContain("/work/acme/.agents/skills");
     expect(wrapper.text()).toContain("Deploy Guard");
 
     // Select Deploy Guard and confirm
@@ -386,7 +386,7 @@ version: "2.1"
     expect(api.addSkillReference).toHaveBeenCalledWith({
       skillId: "deploy-guard",
       targetName: "Codex",
-      rootPath: "/work/acme/.codex/skills",
+      rootPath: "/work/acme/.agents/skills",
       scope: "project",
       overwrite: true,
     });

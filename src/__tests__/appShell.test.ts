@@ -64,8 +64,24 @@ describe("App shell", () => {
 
     expect(wrapper.text()).toContain("SkillMaster");
     expect(wrapper.text()).toContain("技能");
+    expect(wrapper.text()).toContain("商店");
     expect(wrapper.text()).toContain("项目");
     expect(wrapper.text()).toContain("设置");
+  });
+
+  it("navigates to the store workspace from the sidebar", async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    await vi.dynamicImportSettled();
+
+    await wrapper.findAll("button").find((button) => button.text().includes("商店"))!.trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("store");
   });
 
   it("uses the application logo in the top brand mark", async () => {
@@ -104,7 +120,7 @@ describe("App shell", () => {
     await vi.dynamicImportSettled();
     await wrapper.findAll("button").find((button) => button.text().includes("设置"))!.trigger("click");
     await flushPromises();
-    await wrapper.findAll("button").find((button) => button.text().includes("白色"))!.trigger("click");
+    await wrapper.findAll(".theme-toggle button")[1]!.trigger("click");
 
     expect(wrapper.find(".app-shell").attributes("data-theme")).toBe("light");
     expect(localStorage.getItem("skillmaster-theme")).toBe("light");

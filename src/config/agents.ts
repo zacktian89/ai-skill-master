@@ -3,6 +3,7 @@ export interface AgentPreset {
   targetName: string;
   defaultPath: string;
   relPath: string;
+  projectRelPath?: string;
   detectedDirNames?: string[];
 }
 
@@ -12,7 +13,8 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Codex",
     defaultPath: "~/.codex/skills",
     relPath: ".codex/skills",
-    detectedDirNames: [".codex", ".agent", ".agents"],
+    projectRelPath: ".agents/skills",
+    detectedDirNames: [".agents", ".codex"],
   },
   {
     name: "Claude Code",
@@ -26,6 +28,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Gemini CLI",
     defaultPath: "~/.gemini/config/skills",
     relPath: ".gemini/config/skills",
+    projectRelPath: ".gemini/skills",
     detectedDirNames: [".gemini"],
   },
   {
@@ -68,6 +71,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "OpenCode",
     defaultPath: "~/.config/opencode/skill",
     relPath: ".config/opencode/skill",
+    projectRelPath: ".opencode/skills",
     detectedDirNames: [".opencode"],
   },
   {
@@ -82,7 +86,8 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Antigravity",
     defaultPath: "~/.gemini/antigravity/skills",
     relPath: ".gemini/antigravity/skills",
-    detectedDirNames: [".gemini/antigravity"],
+    projectRelPath: ".agent/skills",
+    detectedDirNames: [".agent", ".gemini/antigravity"],
   },
   {
     name: "Amp",
@@ -138,6 +143,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Cline",
     defaultPath: "~/.agents/skills",
     relPath: ".agents/skills",
+    projectRelPath: ".cline/skills",
     detectedDirNames: [".cline"],
   },
   {
@@ -145,6 +151,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Deep Agents",
     defaultPath: "~/.deepagents/agent/skills",
     relPath: ".deepagents/agent/skills",
+    projectRelPath: ".deepagents/skills",
     detectedDirNames: [".deepagents"],
   },
   {
@@ -159,6 +166,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Kimi Code CLI",
     defaultPath: "~/.config/agents/skills",
     relPath: ".config/agents/skills",
+    projectRelPath: ".kimi/skills",
     detectedDirNames: [".kimi"],
   },
   {
@@ -166,6 +174,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Replit",
     defaultPath: "~/.config/agents/skills",
     relPath: ".config/agents/skills",
+    projectRelPath: ".replit/skills",
     detectedDirNames: [".replit"],
   },
   {
@@ -173,6 +182,7 @@ export const AGENT_PRESETS: AgentPreset[] = [
     targetName: "Warp",
     defaultPath: "~/.agents/skills",
     relPath: ".agents/skills",
+    projectRelPath: ".warp/skills",
     detectedDirNames: [".warp"],
   },
   {
@@ -360,7 +370,7 @@ export const DEFAULT_SKILLS_DIR = "skills";
 export function getRelPathForTarget(targetName: string, rootPath?: string): string {
   const preset = AGENT_PRESETS.find((p) => p.targetName === targetName);
   if (preset) {
-    return preset.relPath;
+    return preset.projectRelPath ?? preset.relPath;
   }
   if (rootPath) {
     const match = rootPath.match(/[\\/](\.[^\\/]+[\\/].*)$/);

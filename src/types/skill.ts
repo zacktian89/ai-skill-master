@@ -20,6 +20,16 @@ export interface SkillReferenceDetail {
   legacyCodex: boolean;
 }
 
+export type StoreLeaderboardType = "alltime" | "trending" | "hot";
+
+export interface StoreSkill {
+  id: string;
+  skillId: string;
+  name: string;
+  source: string;
+  installs: number;
+}
+
 export type SkillSourceKind = "local" | "github" | "openclawMarket" | "unknown";
 
 export interface SkillSource {
