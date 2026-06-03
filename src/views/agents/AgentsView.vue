@@ -84,7 +84,7 @@ const listSectionRef = ref<HTMLElement | null>(null);
 const lastListScrollTop = ref(0);
 
 const PRESET_AGENTS = [
-  { name: "Codex", defaultPath: "~/.agents/skills", targetName: "Codex" },
+  { name: "Codex", defaultPath: "~/.codex/skills", targetName: "Codex" },
   { name: "Claude Code", defaultPath: "~/.claude/skills", targetName: "Claude Code" },
   { name: "Gemini CLI", defaultPath: "~/.gemini/config/skills", targetName: "Gemini CLI" },
   { name: "GitHub Copilot", defaultPath: "~/.copilot/skills", targetName: "GitHub Copilot" },

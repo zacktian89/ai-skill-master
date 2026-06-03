@@ -90,7 +90,7 @@ export const mockSnapshot: AppSnapshot = {
       {
         id: "codex-agent",
         name: "Codex",
-        path: "/Users/demo/.agents/skills",
+        path: "/Users/demo/.codex/skills",
         rules: {
           "writer-pro": "enable",
           "legacy-review": "disable",
@@ -108,7 +108,7 @@ export const mockSnapshot: AppSnapshot = {
     {
       id: "codex-user",
       targetName: "Codex",
-      rootPath: "/Users/demo/.agents/skills",
+      rootPath: "/Users/demo/.codex/skills",
       scope: "user",
     },
     {

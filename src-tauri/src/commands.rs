@@ -279,7 +279,7 @@ fn built_in_target_profiles() -> Vec<SkillTargetProfile> {
         SkillTargetProfile {
             id: "codex-user".to_string(),
             target_name: "Codex".to_string(),
-            root_path: home.join(".agents").join("skills"),
+            root_path: home.join(".codex").join("skills"),
             scope: ReferenceScope::User,
         },
         SkillTargetProfile {

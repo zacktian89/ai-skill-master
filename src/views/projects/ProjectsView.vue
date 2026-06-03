@@ -106,7 +106,7 @@ const projectProfiles = computed(() => {
     let relPath = "";
     switch (profile.targetName) {
       case "Codex":
-        relPath = ".agents/skills";
+        relPath = ".codex/skills";
         break;
       case "Claude Code":
         relPath = ".claude/skills";
@@ -214,6 +214,7 @@ function openAddSkillDialogForCategory(category: ScannedCategory) {
     if (isInsideProject) {
       selectedAddScope.value = "project";
       const nameMap: Record<string, string> = {
+        ".codex": "Codex",
         ".agent": "Codex",
         ".agents": "Codex",
         ".claude": "Claude Code",

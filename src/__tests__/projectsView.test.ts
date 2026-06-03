@@ -386,7 +386,7 @@ version: "2.1"
     expect(api.addSkillReference).toHaveBeenCalledWith({
       skillId: "deploy-guard",
       targetName: "Codex",
-      rootPath: "/work/acme/.agents/skills",
+      rootPath: "/work/acme/.codex/skills",
       scope: "project",
       overwrite: true,
     });

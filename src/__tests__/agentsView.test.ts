@@ -132,7 +132,7 @@ description: "本地 skill 描述"
           {
             id: "codex",
             name: "Codex",
-            path: "~/.agents/skills",
+            path: "~/.codex/skills",
             rules: {},
           },
         ],
@@ -197,7 +197,7 @@ description: "本地 skill 描述"
           {
             id: "codex",
             name: "Codex",
-            path: "~/.agents/skills",
+            path: "~/.codex/skills",
             rules: {},
           },
         ],
@@ -207,13 +207,13 @@ description: "本地 skill 描述"
     apiMocks.scanAgentSkills.mockResolvedValue([
       {
         name: ".",
-        path: "~/.agents/skills",
+        path: "~/.codex/skills",
         skills: [
           {
             id: "writer-pro",
             name: "Writer Pro",
             description: "长文写作",
-            path: "~/.agents/skills/writer-pro",
+            path: "~/.codex/skills/writer-pro",
             isManaged: true,
           },
         ],
@@ -262,7 +262,7 @@ description: "本地 skill 描述"
           {
             id: "codex",
             name: "Codex",
-            path: "~/.agents/skills",
+            path: "~/.codex/skills",
             rules: {},
           },
         ],
@@ -329,7 +329,7 @@ description: "本地 skill 描述"
           {
             id: "codex",
             name: "Codex",
-            path: "/agents/skills",
+            path: "/codex/skills",
             rules: {},
           },
         ],
@@ -340,13 +340,13 @@ description: "本地 skill 描述"
       .mockResolvedValueOnce([
         {
           name: ".",
-          path: "/agents/skills",
+          path: "/codex/skills",
           skills: [
             {
               id: "legacy-review",
               name: "Legacy Review",
               description: "旧系统审计",
-              path: "/agents/skills/legacy-review",
+              path: "/codex/skills/legacy-review",
               isManaged: false,
             },
           ],
@@ -355,13 +355,13 @@ description: "本地 skill 描述"
       .mockResolvedValueOnce([
         {
           name: ".",
-          path: "/agents/skills",
+          path: "/codex/skills",
           skills: [
             {
               id: "legacy-review",
               name: "Legacy Review",
               description: "旧系统审计",
-              path: "/agents/skills/legacy-review",
+              path: "/codex/skills/legacy-review",
               isManaged: true,
             },
           ],
@@ -386,7 +386,7 @@ description: "本地 skill 描述"
     importItem.click();
     await flushPromises();
 
-    expect(api.importProjectSkill).toHaveBeenCalledWith("Codex", "/agents/skills/legacy-review", undefined);
+    expect(api.importProjectSkill).toHaveBeenCalledWith("Codex", "/codex/skills/legacy-review", undefined);
     expect(api.scanAgentSkills).toHaveBeenCalledTimes(2);
 
     await wrapper.find('button[aria-label="更多技能操作"]').trigger("click", { clientX: 300, clientY: 120 });
@@ -407,7 +407,7 @@ description: "本地 skill 描述"
           {
             id: "codex",
             name: "Codex",
-            path: "/agents/skills",
+            path: "/codex/skills",
             rules: {},
           },
         ],
@@ -417,13 +417,13 @@ description: "本地 skill 描述"
     apiMocks.scanAgentSkills.mockResolvedValue([
       {
         name: ".",
-        path: "/agents/skills",
+        path: "/codex/skills",
         skills: [
           {
             id: "speckit-checklist",
             name: "speckit-checklist",
             description: "",
-            path: "/agents/skills/speckit-checklist",
+            path: "/codex/skills/speckit-checklist",
             isManaged: false,
           },
         ],
@@ -442,7 +442,7 @@ description: "本地 skill 描述"
     await flushPromises();
 
     expect(api.readSkillFile).not.toHaveBeenCalled();
-    expect(api.readSkillFileAtPath).toHaveBeenCalledWith("/agents/skills/speckit-checklist");
+    expect(api.readSkillFileAtPath).toHaveBeenCalledWith("/codex/skills/speckit-checklist");
     expect(wrapper.text()).toContain("这是本地详情内容。");
   });
 });
