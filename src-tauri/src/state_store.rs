@@ -173,6 +173,7 @@ mod tests {
                 rules,
             }],
             agents: Vec::new(),
+            plugins: Vec::new(),
         };
 
         save_state(&path, &state).unwrap();

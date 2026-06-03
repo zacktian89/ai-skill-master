@@ -29,7 +29,20 @@ const emit = defineEmits<{
 }>();
 
 const query = ref("");
-const selectedAgentFilter = ref<"all" | "Codex" | "Claude Code">("all");
+const selectedAgentFilter = ref<string>("all");
+
+const availableAgents = computed(() => {
+  const agents = new Set<string>();
+  const list = props.snapshot.state.plugins ?? [];
+  for (const p of list) {
+    if (p.agentTargets) {
+      for (const target of p.agentTargets) {
+        agents.add(target);
+      }
+    }
+  }
+  return Array.from(agents).sort((a, b) => a.localeCompare(b));
+});
 
 // More Actions Menu State
 const moreMenuOpen = ref<{ x: number; y: number } | null>(null);
@@ -198,8 +211,9 @@ async function openPluginDirectory() {
             <SearchInput v-model="query" :placeholder="t('plugins.searchPlaceholder')" />
             <select v-model="selectedAgentFilter" class="agent-filter-select" :aria-label="t('plugins.filterAgent')">
               <option value="all">{{ t("plugins.typeAll") }}</option>
-              <option value="Codex">Codex</option>
-              <option value="Claude Code">Claude Code</option>
+              <option v-for="agent in availableAgents" :key="agent" :value="agent">
+                {{ agent }}
+              </option>
             </select>
           </div>
         </template>

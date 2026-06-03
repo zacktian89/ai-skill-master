@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Folder, CircleHelp } from "lucide-vue-next";
+import { Folder, CircleHelp, Bot } from "lucide-vue-next";
 
 const props = defineProps<{
   name: string;
@@ -13,6 +13,75 @@ const iconSize = computed(() => props.size ?? 16);
 // Normalise target name for comparison
 const normalizedName = computed(() => {
   return props.name.trim().toLowerCase();
+});
+
+const AGENT_ICON_MAP: Record<string, string> = {
+  "adal": "adal.png",
+  "amp": "amp.svg",
+  "antigravity": "antigravity.png",
+  "augment": "augment.svg",
+  "bob": "bob.png",
+  "claude code": "claude_code.svg",
+  "claude_code": "claude_code.svg",
+  "cline": "cline.png",
+  "codebuddy": "codebuddy.svg",
+  "codex": "codex.svg",
+  "command code": "command_code.svg",
+  "command_code": "command_code.svg",
+  "continue": "continue.png",
+  "cortex": "cortex.png",
+  "cortex code": "cortex.png",
+  "crush": "crush.png",
+  "cursor": "cursor.png",
+  "deep agents": "deepagents.png",
+  "deepagents": "deepagents.png",
+  "droid": "droid.svg",
+  "firebender": "firebender.svg",
+  "gemini cli": "gemini_cli.svg",
+  "gemini_cli": "gemini_cli.svg",
+  "github copilot": "github_copilot.png",
+  "github_copilot": "github_copilot.png",
+  "copilot": "github_copilot.png",
+  "goose": "goose.png",
+  "hermes": "hermes.png",
+  "hermes agent": "hermes.png",
+  "iflow": "iflow.png",
+  "iflow cli": "iflow.png",
+  "junie": "junie.png",
+  "kilo code": "kilo_code.svg",
+  "kilo_code": "kilo_code.svg",
+  "kimi": "kimi.svg",
+  "kimi code cli": "kimi.svg",
+  "kiro": "kiro.svg",
+  "kiro cli": "kiro.svg",
+  "kode": "kode.png",
+  "mcpjam": "mcpjam.png",
+  "mistral vibe": "mistral_vibe.svg",
+  "mistral_vibe": "mistral_vibe.svg",
+  "mux": "mux.png",
+  "neovate": "neovate.png",
+  "openclaw": "openclaw.svg",
+  "opencode": "opencode.png",
+  "openhands": "openhands.png",
+  "pi": "pi.svg",
+  "pochi": "pochi.png",
+  "qoder": "qoder.svg",
+  "qwen code": "qwen_code.png",
+  "qwen_code": "qwen_code.png",
+  "replit": "replit.png",
+  "roo code": "roo_code.svg",
+  "roo_code": "roo_code.svg",
+  "trae": "trae.svg",
+  "trae ide": "trae.svg",
+  "trae cn": "trae_cn.svg",
+  "trae_cn": "trae_cn.svg",
+  "warp": "warp.svg",
+  "windsurf": "windsurf.svg",
+  "zencoder": "zencoder.png",
+};
+
+const mappedIconFile = computed(() => {
+  return AGENT_ICON_MAP[normalizedName.value] || null;
 });
 </script>
 
@@ -142,8 +211,20 @@ const normalizedName = computed(() => {
     :class="className"
   />
 
-  <!-- Fallback to CircleHelp -->
-  <CircleHelp
+  <!-- Mapped Image Icons -->
+  <img
+    v-else-if="mappedIconFile"
+    :src="`/agent-icons/${mappedIconFile}`"
+    alt=""
+    :width="iconSize"
+    :height="iconSize"
+    class="object-contain"
+    :class="className"
+    draggable="false"
+  />
+
+  <!-- Fallback to Bot -->
+  <Bot
     v-else
     :size="iconSize"
     :class="className"

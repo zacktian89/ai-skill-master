@@ -70,6 +70,15 @@ const pendingUnmanagedSkillDeletion = ref<{ skillId: string; skillName: string; 
 const previewSkill = ref<ScannedSkill | null>(null);
 const listSectionRef = ref<HTMLElement | null>(null);
 const lastListScrollTop = ref(0);
+const profileQuery = ref("");
+
+const filteredProjectProfiles = computed(() => {
+  const normalized = profileQuery.value.trim().toLowerCase();
+  if (!normalized) return projectProfiles.value;
+  return projectProfiles.value.filter((profile) =>
+    profile.targetName.toLowerCase().includes(normalized)
+  );
+});
 
 // Composable for Async Actions
 const { busy, run: executeAsync } = useAsyncAction({
@@ -166,6 +175,7 @@ function openAddSkillDialog() {
   selectedAddDir.value = "";
   selectedAddScope.value = "project";
   selectedAddTargetName.value = "";
+  profileQuery.value = "";
   resetPicker();
   addSkillDialogOpen.value = true;
 }
@@ -208,6 +218,7 @@ function closeAddSkillDialog() {
   selectedAddDir.value = "";
   selectedAddScope.value = "project";
   selectedAddTargetName.value = "";
+  profileQuery.value = "";
   resetPicker();
 }
 
@@ -637,24 +648,31 @@ onBeforeUnmount(closeHeaderMenu);
         {{ t('projects.chooseTargetDirPrompt') }}
       </p>
 
-      <!-- Quick Select Agent Profiles -->
-      <div class="target-grid">
-        <button
-          v-for="profile in projectProfiles"
-          :key="profile.id"
-          class="target-tile"
-          type="button"
-          :disabled="busy"
-          @click="selectAddProfile(profile)"
-        >
-          <span class="target-tile-icon" aria-hidden="true">
-            <AgentIcon :name="profile.targetName" :size="20" />
-          </span>
-          <strong>{{ profile.targetName }}</strong>
-          <small>
-            {{ profile.rootPath }}
-          </small>
-        </button>
+      <!-- Search Input for profiles -->
+      <div class="preset-search-row" style="margin-bottom: 12px;">
+        <SearchInput v-model="profileQuery" :placeholder="t('agents.searchPresetPlaceholder') || '搜索目标...'" />
+      </div>
+
+      <!-- Quick Select Agent Profiles with Scrollbar -->
+      <div class="target-profiles-scroll-wrapper" style="max-height: 260px; overflow-y: auto; margin-bottom: 12px; border: 1px solid var(--border-default); border-radius: 8px; padding: 8px; background: var(--bg-panel);">
+        <div class="target-grid">
+          <button
+            v-for="profile in filteredProjectProfiles"
+            :key="profile.id"
+            class="target-tile"
+            type="button"
+            :disabled="busy"
+            @click="selectAddProfile(profile)"
+          >
+            <span class="target-tile-icon" aria-hidden="true">
+              <AgentIcon :name="profile.targetName" :size="20" />
+            </span>
+            <strong>{{ profile.targetName }}</strong>
+            <small>
+              {{ profile.rootPath }}
+            </small>
+          </button>
+        </div>
       </div>
 
       <!-- Custom Directory Picker Button -->

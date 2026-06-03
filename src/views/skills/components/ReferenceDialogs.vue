@@ -5,6 +5,7 @@ import * as api from "../../../api";
 import { openDirectory } from "../../../utils/dialog";
 import AgentIcon from "../../../components/icons/AgentIcon.vue";
 import ModalDialog from "../../../components/ModalDialog.vue";
+import SearchInput from "../../../components/SearchInput.vue";
 import { AppStoreKey } from "../../../stores/useAppStore";
 import { useAsyncAction } from "../../../composables/useAsyncAction";
 import { useI18n } from "../../../composables/useI18n";
@@ -49,6 +50,15 @@ const { busy, run: executeAsync } = useAsyncAction({
 // Add Reference States
 const pendingReferenceTarget = ref<PendingReferenceTarget | null>(null);
 const overwriteReferenceRequest = ref<AddSkillReferenceRequest | null>(null);
+const profileQuery = ref("");
+
+const filteredTargetProfiles = computed(() => {
+  const normalized = profileQuery.value.trim().toLowerCase();
+  if (!normalized) return props.targetProfiles;
+  return props.targetProfiles.filter((p) =>
+    p.targetName.toLowerCase().includes(normalized)
+  );
+});
 
 // Delete Reference States
 const removeReferenceConflictRequest = ref<{ referenceId: string; symlinkPath: string } | null>(null);
@@ -203,23 +213,30 @@ async function confirmDeleteReferenceWithLink(removeExternalLink: boolean) {
     </template>
 
     <template v-else-if="!pendingReferenceTarget">
-      <div class="target-grid">
-        <button
-          v-for="profile in targetProfiles"
-          :key="profile.id"
-          class="target-tile"
-          type="button"
-          :disabled="busy"
-          @click="selectTargetProfile(profile)"
-        >
-          <span class="target-tile-icon" aria-hidden="true">
-            <AgentIcon :name="profile.targetName" :size="22" />
-          </span>
-          <strong>{{ profile.targetName }}</strong>
-        </button>
+      <!-- Search Input for target profiles -->
+      <div class="preset-search-row" style="margin-bottom: 12px;">
+        <SearchInput v-model="profileQuery" :placeholder="t('agents.searchPresetPlaceholder') || '搜索目标...'" />
       </div>
 
-      <button class="target-custom-button" type="button" :disabled="busy" @click="selectCustomReferenceRoot">
+      <div class="target-profiles-scroll-wrapper" style="max-height: 260px; overflow-y: auto; margin-bottom: 12px; border: 1px solid var(--border-default); border-radius: 8px; padding: 8px; background: var(--bg-panel);">
+        <div class="target-grid">
+          <button
+            v-for="profile in filteredTargetProfiles"
+            :key="profile.id"
+            class="target-tile"
+            type="button"
+            :disabled="busy"
+            @click="selectTargetProfile(profile)"
+          >
+            <span class="target-tile-icon" aria-hidden="true">
+              <AgentIcon :name="profile.targetName" :size="22" />
+            </span>
+            <strong>{{ profile.targetName }}</strong>
+          </button>
+        </div>
+      </div>
+
+      <button class="target-custom-button" type="button" :disabled="busy" @click="selectCustomReferenceRoot" style="width: 100%;">
         <Folder :size="18" />
         {{ t('reference.selectSkillsDirButton') }}
       </button>

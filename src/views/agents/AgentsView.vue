@@ -71,9 +71,10 @@ const { busy, run: executeAsync } = useAsyncAction({
 
 // Add Agent Dialog State
 const addAgentDialogOpen = ref(false);
-const selectedPresetIndex = ref<number>(0);
+const selectedPresetTargetName = ref<string>("");
 const inputAgentName = ref("");
 const inputAgentPath = ref("");
+const presetQuery = ref("");
 
 // Add Skill Dialog State (linking library skills to selected agent)
 const addSkillDialogOpen = ref(false);
@@ -88,6 +89,17 @@ const PRESET_AGENTS = [
   ...AGENT_PRESETS.map(({ name, defaultPath, targetName }) => ({ name, defaultPath, targetName })),
   { name: "自定义 Agent", defaultPath: "", targetName: "自定义" },
 ];
+
+const filteredPresetAgents = computed(() => {
+  const normalized = presetQuery.value.trim().toLowerCase();
+  if (!normalized) return PRESET_AGENTS;
+  return PRESET_AGENTS.filter((preset) => {
+    if (preset.name === "自定义 Agent") {
+      return preset.name.toLowerCase().includes(normalized) || "custom".includes(normalized) || "自定义".includes(normalized);
+    }
+    return preset.name.toLowerCase().includes(normalized) || preset.targetName.toLowerCase().includes(normalized);
+  });
+});
 
 // Compute active skills count for each agent
 function agentSkillCount(agent: Agent): number {
@@ -121,9 +133,11 @@ async function run(action: () => Promise<AppSnapshot>) {
 
 // Add Agent functions
 function openAddAgentDialog() {
-  selectedPresetIndex.value = 0;
-  inputAgentName.value = PRESET_AGENTS[0].name;
-  inputAgentPath.value = PRESET_AGENTS[0].defaultPath;
+  presetQuery.value = "";
+  const firstPreset = PRESET_AGENTS[0];
+  selectedPresetTargetName.value = firstPreset.targetName;
+  inputAgentName.value = firstPreset.name;
+  inputAgentPath.value = firstPreset.defaultPath;
   addAgentDialogOpen.value = true;
 }
 
@@ -132,10 +146,10 @@ function closeAddAgentDialog() {
   addAgentDialogOpen.value = false;
 }
 
-function selectPreset(index: number) {
-  selectedPresetIndex.value = index;
-  inputAgentName.value = PRESET_AGENTS[index].name === "自定义 Agent" ? "" : PRESET_AGENTS[index].name;
-  inputAgentPath.value = PRESET_AGENTS[index].defaultPath;
+function selectPreset(preset: typeof PRESET_AGENTS[number]) {
+  selectedPresetTargetName.value = preset.targetName;
+  inputAgentName.value = preset.name === "自定义 Agent" ? "" : preset.name;
+  inputAgentPath.value = preset.defaultPath;
 }
 
 async function browseAgentPath() {
@@ -628,21 +642,28 @@ onBeforeUnmount(closeHeaderMenu);
     @close="closeAddAgentDialog"
   >
     <div class="modal-step-section modal-step-section--scroll">
-      <div class="target-grid target-grid--agent-presets">
-        <button
-          v-for="(preset, index) in PRESET_AGENTS"
-          :key="preset.name"
-          class="target-tile"
-          :class="{ active: selectedPresetIndex === index }"
-          type="button"
-          :disabled="busy"
-          @click="selectPreset(index)"
-        >
-          <span class="target-tile-icon" aria-hidden="true">
-            <AgentIcon :name="preset.targetName" :size="20" />
-          </span>
-          <strong class="preset-name">{{ preset.name === '自定义 Agent' ? t('agents.presetCustomAgent') : preset.name }}</strong>
-        </button>
+      <!-- Search Input for Presets -->
+      <div class="preset-search-row" style="margin-bottom: 12px;">
+        <SearchInput v-model="presetQuery" :placeholder="t('agents.searchPresetPlaceholder') || '搜索预设智能体...'" />
+      </div>
+
+      <div class="target-presets-scroll-wrapper" style="max-height: 260px; overflow-y: auto; margin-bottom: 14px; border: 1px solid var(--border-default); border-radius: 8px; padding: 8px; background: var(--bg-panel);">
+        <div class="target-grid target-grid--agent-presets">
+          <button
+            v-for="preset in filteredPresetAgents"
+            :key="preset.name"
+            class="target-tile"
+            :class="{ active: selectedPresetTargetName === preset.targetName }"
+            type="button"
+            :disabled="busy"
+            @click="selectPreset(preset)"
+          >
+            <span class="target-tile-icon" aria-hidden="true">
+              <AgentIcon :name="preset.targetName" :size="20" />
+            </span>
+            <strong class="preset-name">{{ preset.name === '自定义 Agent' ? t('agents.presetCustomAgent') : preset.name }}</strong>
+          </button>
+        </div>
       </div>
 
       <div class="agent-form-grid">
