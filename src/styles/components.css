@@ -16,6 +16,7 @@
 @import "./components/import.css";
 @import "./components/form.css";
 @import "./components/detail-section.css";
+@import "./components/loading-animation.css";
 
 /* Extracted & Redesigned Component Styles */
 @import "./components/agent-icon.css";

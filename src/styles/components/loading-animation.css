@@ -1,0 +1,111 @@
+.app-loading-animation {
+  display: grid;
+  width: 100%;
+  min-height: 100%;
+}
+
+.app-loading-animation--panel {
+  padding: var(--spacing-sm) 0 0;
+}
+
+.app-loading-animation--inline {
+  padding: var(--spacing-lg) 0;
+}
+
+.app-loading-animation__list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  width: 100%;
+}
+
+.app-loading-animation__row {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+}
+
+.app-loading-animation__row-top,
+.app-loading-animation__row-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.app-loading-animation__bar {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--bg-panel-muted) 92%, white 8%) 0%,
+      color-mix(in srgb, var(--bg-panel-muted) 78%, white 22%) 48%,
+      color-mix(in srgb, var(--bg-panel-muted) 92%, white 8%) 100%
+    );
+  background-size: 220% 100%;
+  animation: loading-skeleton-shimmer 1.45s ease-in-out infinite;
+}
+
+.app-loading-animation__row-title {
+  height: 15px;
+  flex: 0 1 auto;
+}
+
+.app-loading-animation__row-title--0 {
+  width: 56%;
+}
+
+.app-loading-animation__row-title--1 {
+  width: 64%;
+}
+
+.app-loading-animation__row-title--2 {
+  width: 48%;
+}
+
+.app-loading-animation__row-badge {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.app-loading-animation__row-meta {
+  width: 42%;
+}
+
+.app-loading-animation__row-meta--0 {
+  width: 38%;
+}
+
+.app-loading-animation__row-meta--1 {
+  width: 44%;
+}
+
+.app-loading-animation__row-meta--2 {
+  width: 34%;
+}
+
+.app-loading-animation__row-meta--3 {
+  width: 40%;
+}
+
+.app-loading-animation__row-count {
+  width: 56px;
+  flex: 0 0 auto;
+}
+
+@keyframes loading-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}

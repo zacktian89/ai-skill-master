@@ -4,7 +4,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StoreView from "../views/store/StoreView.vue";
-import type { AppSnapshot } from "../types";
+import type { AppSnapshot, StoreSkill } from "../types";
 import * as api from "../api";
 import { useI18n } from "../composables/useI18n";
 
@@ -118,6 +118,47 @@ describe("StoreView", () => {
     expect(wrapper.text()).toContain("Installed Skill");
     expect(wrapper.text()).toContain("Playwright");
     expect(wrapper.text()).toContain("已安装");
+  });
+
+  it("shows the initial loading animation before the first store response resolves", async () => {
+    let resolveLeaderboard: ((value: StoreSkill[]) => void) | undefined;
+    vi.mocked(api.fetchStoreLeaderboard).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLeaderboard = resolve;
+        })
+    );
+
+    const wrapper = mount(StoreView, {
+      props: {
+        snapshot,
+      },
+    });
+
+    await flushPromises();
+
+    const loadingAnimation = wrapper.get("[data-testid='app-loading-animation']");
+    expect(loadingAnimation.classes()).toContain("app-loading-animation--panel");
+    expect(loadingAnimation.classes()).toContain("store-initial-loading");
+    expect(wrapper.findAll("[data-testid='loading-skeleton-row']")).toHaveLength(7);
+
+    if (!resolveLeaderboard) {
+      throw new Error("expected leaderboard request to be pending");
+    }
+
+    resolveLeaderboard([
+      {
+        id: "acme/skills/installed-skill",
+        skillId: "installed-skill",
+        name: "Installed Skill",
+        source: "acme/skills",
+        installs: 1200,
+      },
+    ]);
+    await flushPromises();
+
+    expect(wrapper.find("[data-testid='app-loading-animation']").exists()).toBe(false);
+    expect(wrapper.text()).toContain("Installed Skill");
   });
 
   it("switches leaderboard tabs and uses search results", async () => {

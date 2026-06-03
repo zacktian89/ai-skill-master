@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref, watch } from "vue";
-import { Download, ExternalLink, Loader2, RefreshCw, Search } from "lucide-vue-next";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { Download, Loader2, Search } from "lucide-vue-next";
 import { marked } from "marked";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
+import AppLoadingAnimation from "../../components/AppLoadingAnimation.vue";
 import SearchInput from "../../components/SearchInput.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
 import StatusTag from "../../components/StatusTag.vue";
@@ -21,7 +21,6 @@ import type {
   StoreSkill,
   Skill,
   SkillReferenceDetail,
-  PendingSyncAction,
   SkillTargetProfile,
 } from "../../types";
 
@@ -53,6 +52,7 @@ const board = ref<StoreLeaderboardType>(getSavedBoard());
 const query = ref("");
 const sourceFilter = ref("all");
 const loading = ref(false);
+const hasLoadedOnce = ref(false);
 const errorMessage = ref<string | null>(null);
 const storeSkills = ref<StoreSkill[]>([]);
 const selectedStoreSkillId = ref<string | null>(null);
@@ -61,17 +61,14 @@ const importBusy = ref(false);
 const importCandidates = ref<ImportSkillCandidate[]>([]);
 const selectedCandidateIds = ref<string[]>([]);
 
-const sourceOptions = computed(() => {
-  const values = new Set(storeSkills.value.map((skill) => skill.source));
-  return Array.from(values).sort((left, right) => left.localeCompare(right, "en"));
-});
-
 const filteredSkills = computed(() => {
   if (sourceFilter.value === "all") {
     return storeSkills.value;
   }
   return storeSkills.value.filter((skill) => skill.source === sourceFilter.value);
 });
+
+const showInitialLoading = computed(() => loading.value && !hasLoadedOnce.value);
 
 const selectedStoreSkill = computed(() => {
   const match = filteredSkills.value.find((skill) => skill.id === selectedStoreSkillId.value);
@@ -161,13 +158,8 @@ async function loadBoard() {
     reportError(error);
   } finally {
     loading.value = false;
+    hasLoadedOnce.value = true;
   }
-}
-
-async function openRepository() {
-  if (!selectedStoreSkill.value) return;
-  const repoUrl = `https://github.com/${selectedStoreSkill.value.source}`;
-  await openUrl(repoUrl);
 }
 
 async function prepareImport() {
@@ -463,7 +455,7 @@ watch(
 
 watch(
   [selectedStoreSkill, selectedSkillRelativePath, activeDetailTab],
-  async ([newSkill, newPath, newTab]) => {
+  async ([newSkill, , newTab]) => {
     if (newSkill && newTab === "description") {
       await loadSkillMarkdown();
     }
@@ -530,6 +522,16 @@ watch(query, () => {
               </div>
             </div>
           </div>
+        </template>
+
+        <template #empty>
+          <AppLoadingAnimation
+            v-if="showInitialLoading"
+            class="store-initial-loading"
+            :rows="7"
+            variant="panel"
+          />
+          <div v-else class="content-empty">{{ t("store.empty") }}</div>
         </template>
 
         <button

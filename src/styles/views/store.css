@@ -47,6 +47,11 @@
   gap: var(--spacing-xs);
 }
 
+.store-initial-loading {
+  min-height: 100%;
+  width: 100%;
+}
+
 .store-list-top,
 .store-list-meta {
   display: flex;

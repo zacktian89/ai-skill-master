@@ -31,5 +31,7 @@ const { listStackRef, listStackScrollable } = useScrollableList(() => props.item
   >
     <slot></slot>
   </div>
-  <div v-else class="content-empty">{{ emptyText || t('skills.noReferences') }}</div>
+  <slot v-else name="empty">
+    <div class="content-empty">{{ emptyText || t('skills.noReferences') }}</div>
+  </slot>
 </template>
