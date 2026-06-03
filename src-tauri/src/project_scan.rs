@@ -1,6 +1,7 @@
 use crate::error::{Result, SkillMasterError};
 use crate::models::{AppState, Skill, SkillReference, SkillSource, ReferenceScope, ReferenceStatus, ManagedLinks};
 use crate::managed_link::{validate_managed_link, create_directory_link, ManagedLinkValidation};
+use crate::path_utils::reference_id;
 use crate::skill_library::{read_skill_metadata, copy_dir_all, should_skip_scan_dir};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -198,10 +199,7 @@ pub fn import_project_skill(
     create_directory_link(&target_library_path, skill_path)?;
 
     if let Some(skill) = state.skills.iter_mut().find(|s| s.id == skill_id) {
-        let ref_id = format!(
-            "ref-{:x}",
-            crate::commands::md5_like_hash(skill_path.to_string_lossy().as_bytes())
-        );
+        let ref_id = reference_id(skill_path);
         skill.references.retain(|r| r.target_path != skill_path);
         skill.references.push(SkillReference {
             id: ref_id,

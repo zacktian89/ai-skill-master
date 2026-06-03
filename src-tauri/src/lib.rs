@@ -1,13 +1,22 @@
+pub mod agent_state;
 pub mod app_paths;
-pub mod managed_link;
+pub mod command_context;
 pub mod commands;
 pub mod effective_state;
 pub mod error;
+pub mod managed_link;
 pub mod models;
-pub mod skill_library;
-pub mod state_store;
+pub mod path_utils;
+pub mod plugin_discovery;
 pub mod project_scan;
+pub mod project_state;
+pub mod skill_files;
+pub mod skill_library;
+pub mod skill_references;
+pub mod snapshot;
+pub mod state_store;
 pub mod store_market;
+pub mod target_profiles;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

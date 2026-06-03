@@ -27,8 +27,12 @@ pub fn create_directory_link(source: &Path, target: &Path) -> Result<()> {
 }
 
 pub fn remove_managed_link(target: &Path) -> Result<()> {
-    if fs::symlink_metadata(target).is_ok() {
-        fs::remove_dir(target)?;
+    if let Ok(metadata) = fs::symlink_metadata(target) {
+        if metadata.file_type().is_symlink() {
+            fs::remove_file(target)?;
+        } else {
+            fs::remove_dir(target)?;
+        }
     }
     Ok(())
 }
