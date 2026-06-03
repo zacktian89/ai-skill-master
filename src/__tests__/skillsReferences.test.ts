@@ -491,7 +491,7 @@ describe("SkillsView references tab", () => {
 
     // Verify Readme tab button exists because it's a GitHub skill
     const tabs = wrapper.findAll(".detail-tab");
-    const readmeTab = tabs.find((tab) => tab.text() === "Readme");
+    const readmeTab = tabs.find((tab) => tab.text() === useI18n().t("skills.tabReadme"));
     expect(readmeTab).toBeDefined();
 
     // Click on Readme tab
@@ -559,7 +559,7 @@ describe("SkillsView references tab", () => {
 
     await flushPromises();
 
-    const readmeTab = wrapper.findAll(".detail-tab").find((tab) => tab.text() === "Readme");
+    const readmeTab = wrapper.findAll(".detail-tab").find((tab) => tab.text() === useI18n().t("skills.tabReadme"));
     await readmeTab!.trigger("click");
     await flushPromises();
 

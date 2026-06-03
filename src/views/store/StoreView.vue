@@ -25,7 +25,7 @@ import type {
   SkillTargetProfile,
 } from "../../types";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const appStore = inject(AppStoreKey, null);
 
 const props = defineProps<{
@@ -100,6 +100,14 @@ function normalizeRepoName(url: string | null | undefined): string | null {
 
 function isInstalled(skill: StoreSkill): boolean {
   return installedKeys.value.has(`${skill.source}/${skill.skillId}`);
+}
+
+function formatInstalls(count: number): string {
+  const lang = locale.value === "zh" ? "zh-CN" : "en-US";
+  return new Intl.NumberFormat(lang, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(count);
 }
 
 function selectStoreSkill(skillId: string) {
@@ -542,7 +550,7 @@ watch(query, () => {
           <div class="store-list-meta">
             <code>{{ skill.source }}</code>
             <span class="store-install-count">
-              {{ skill.installs }}
+              {{ formatInstalls(skill.installs) }}
               <Download :size="12" />
             </span>
           </div>
