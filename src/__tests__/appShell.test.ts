@@ -68,6 +68,20 @@ describe("App shell", () => {
     expect(wrapper.text()).toContain("设置");
   });
 
+  it("uses the application logo in the top brand mark", async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    await vi.dynamicImportSettled();
+
+    const brandLogo = wrapper.get(".rail-brand-mark img");
+    expect(brandLogo.attributes("src")).toContain("skillmaster-logo-dark.png");
+    expect(wrapper.findComponent({ name: "Sparkles" }).exists()).toBe(false);
+  });
+
   it("defaults to the dark theme", async () => {
     const wrapper = mount(App, {
       global: {

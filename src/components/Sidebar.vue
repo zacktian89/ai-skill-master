@@ -5,10 +5,10 @@ import {
   Library,
   PanelLeftOpen,
   Settings,
-  Sparkles,
   Bot,
   Puzzle,
 } from "lucide-vue-next";
+import brandLogoSrc from "../assets/skillmaster-logo-dark.png";
 import type { AppSnapshot } from "../types";
 import { useI18n } from "../composables/useI18n";
 
@@ -120,7 +120,7 @@ const startResize = (e: MouseEvent) => {
 
     <div class="rail-brand" title="SkillMaster">
       <div class="rail-brand-mark">
-        <Sparkles :size="18" />
+        <img :src="brandLogoSrc" alt="" />
       </div>
       <div class="rail-brand-copy">
         <strong>SkillMaster</strong>

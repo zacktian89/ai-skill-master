@@ -1,0 +1,25 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 512 512"
+  fill="none"
+>
+  <defs>
+    <mask id="skillmaster-s-cut">
+      <rect width="512" height="512" fill="#fff" />
+      <path
+        d="M256 118V160C256 208 156 192 156 256C156 320 256 304 256 352V394"
+        stroke="#000"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="72"
+      />
+    </mask>
+  </defs>
+
+  <g mask="url(#skillmaster-s-cut)">
+    <rect x="58" y="58" width="186" height="186" rx="36" fill="#80A0FF" />
+    <rect x="268" y="58" width="186" height="186" rx="36" fill="#D97757" />
+    <rect x="58" y="268" width="186" height="186" rx="36" fill="#F7F7F4" />
+    <rect x="268" y="268" width="186" height="186" rx="36" fill="#B7B1B1" />
+  </g>
+</svg>

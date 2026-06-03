@@ -45,7 +45,7 @@ export const zh = {
     backToSkillList: "返回技能列表",
     groupByGithub: "按 GitHub 仓库聚合",
     localGroup: "其他 / 本地",
-    tabReadme: "Readme",
+    tabReadme: "说明",
   },
   projects: {
     empty: "没有匹配的项目。",

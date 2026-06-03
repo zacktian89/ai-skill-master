@@ -107,22 +107,20 @@ function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
             <div class="setting-title">{{ t('settings.theme') }}</div>
           </div>
           <div class="setting-control">
-            <div class="segmented-control segmented-control--binary theme-toggle" :aria-label="t('settings.theme')">
+            <div class="segmented-control theme-toggle segmented-control--compact" :aria-label="t('settings.theme')">
               <button
                 type="button"
                 :class="{ active: themeMode === 'dark' }"
                 @click="themeMode = 'dark'"
               >
-                <Moon :size="14" />
-                {{ t('settings.themeDark') }}
+                <Moon :size="16" />
               </button>
               <button
                 type="button"
                 :class="{ active: themeMode === 'light' }"
                 @click="themeMode = 'light'"
               >
-                <Sun :size="14" />
-                {{ t('settings.themeLight') }}
+                <Sun :size="16" />
               </button>
             </div>
           </div>
