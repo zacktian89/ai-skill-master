@@ -157,7 +157,7 @@ describe("StoreView", () => {
       kind: "github",
       url: "https://github.com/openai/skills.git",
       ref: null,
-      subdir: "playwright",
+      subdir: null,
     });
 
     expect(wrapper.text()).toContain("导入 Skill");

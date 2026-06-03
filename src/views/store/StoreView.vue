@@ -154,11 +154,11 @@ async function prepareImport() {
       kind: "github",
       url: `https://github.com/${selectedStoreSkill.value.source}.git`,
       ref: null,
-      subdir: selectedStoreSkill.value.skillId,
+      subdir: null,
     });
     importCandidates.value = preview.candidates;
     selectedCandidateIds.value = preview.candidates
-      .filter((candidate) => candidate.status === "ready")
+      .filter((candidate) => candidate.status === "ready" && candidate.id === selectedStoreSkill.value.skillId)
       .map((candidate) => candidate.candidateId);
     importDialogOpen.value = true;
   } catch (error) {
@@ -177,7 +177,7 @@ async function confirmImport() {
         kind: "github",
         url: `https://github.com/${selectedStoreSkill.value.source}.git`,
         ref: null,
-        subdir: selectedStoreSkill.value.skillId,
+        subdir: null,
       },
       candidateIds: selectedCandidateIds.value,
     });
