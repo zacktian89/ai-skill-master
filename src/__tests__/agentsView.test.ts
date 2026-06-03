@@ -8,6 +8,7 @@ import type { AppSnapshot } from "../types";
 import * as api from "../api";
 import { clearSkillScannerCaches } from "../composables/useSkillScanner";
 import { useI18n } from "../composables/useI18n";
+import { AGENT_PRESETS } from "../config/agents";
 
 const apiMocks = vi.hoisted(() => ({
   addAgent: vi.fn(),
@@ -117,8 +118,9 @@ description: "本地 skill 描述"
     expect(wrapper.find(".modal-step-section--scroll").exists()).toBe(true);
     expect(wrapper.find(".target-grid--agent-presets").exists()).toBe(true);
     await wrapper.findAll(".target-tile").find((button) => button.text() === "Gemini CLI")!.trigger("click");
+    const geminiPreset = AGENT_PRESETS.find((p) => p.targetName === "Gemini CLI")!;
     expect(wrapper.find('input[placeholder="输入或浏览目录路径（可使用 ~ 开头）"]').element).toMatchObject({
-      value: "~/.gemini/config/skills",
+      value: geminiPreset.defaultPath,
     });
     expect(wrapper.text()).toContain("WorkBuddy");
   });

@@ -28,6 +28,7 @@ import { useSkillScanner } from "../../composables/useSkillScanner";
 import { useSkillPicker } from "../../composables/useSkillPicker";
 import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
 import { useI18n } from "../../composables/useI18n";
+import { getRelPathForTarget, getNameMap, DEFAULT_SKILLS_DIR } from "../../config/agents";
 
 const { t } = useI18n();
 
@@ -103,34 +104,7 @@ const projectProfiles = computed(() => {
   if (!selectedProject.value) return [];
   const projectRoot = selectedProject.value.path;
   return (snapshot.value.targetProfiles || []).map((profile) => {
-    let relPath = "";
-    switch (profile.targetName) {
-      case "Codex":
-        relPath = ".codex/skills";
-        break;
-      case "Claude Code":
-        relPath = ".claude/skills";
-        break;
-      case "GitHub Copilot":
-        relPath = ".copilot/skills";
-        break;
-      case "Cursor":
-        relPath = ".cursor/skills";
-        break;
-      case "Windsurf":
-        relPath = ".codeium/windsurf/skills";
-        break;
-      case "Kiro":
-        relPath = ".kiro/skills";
-        break;
-      default:
-        const match = profile.rootPath.match(/[\\/](\.[^\\/]+[\\/].*)$/);
-        if (match) {
-          relPath = match[1];
-        } else {
-          relPath = "skills";
-        }
-    }
+    const relPath = getRelPathForTarget(profile.targetName, profile.rootPath);
     const fullPath = `${projectRoot}/${relPath}`.replace(/[\\/]+/g, "/");
     return {
       ...profile,
@@ -197,7 +171,7 @@ function openAddSkillDialog() {
 }
 
 function openAddSkillDialogForCategory(category: ScannedCategory) {
-  const rootPath = `${category.path}/skills`.replace(/[\\/]+/g, "/");
+  const rootPath = `${category.path}/${DEFAULT_SKILLS_DIR}`.replace(/[\\/]+/g, "/");
   selectedAddDir.value = rootPath;
   resetPicker();
 
@@ -213,17 +187,7 @@ function openAddSkillDialogForCategory(category: ScannedCategory) {
     const isInsideProject = rootPath.toLowerCase().startsWith(projectPath.replace(/[\\/]+/g, "/").toLowerCase());
     if (isInsideProject) {
       selectedAddScope.value = "project";
-      const nameMap: Record<string, string> = {
-        ".codex": "Codex",
-        ".agent": "Codex",
-        ".agents": "Codex",
-        ".claude": "Claude Code",
-        ".copilot": "GitHub Copilot",
-        ".cursor": "Cursor",
-        ".codeium/windsurf": "Windsurf",
-        ".kiro": "Kiro",
-        ".opencode": "OpenCode",
-      };
+      const nameMap = getNameMap();
       const mappedName = nameMap[category.name];
       if (mappedName) {
         selectedAddTargetName.value = mappedName;

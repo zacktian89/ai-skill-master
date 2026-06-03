@@ -28,6 +28,7 @@ import { useSkillScanner } from "../../composables/useSkillScanner";
 import { useSkillPicker } from "../../composables/useSkillPicker";
 import { useSkillMarkdown } from "../../composables/useSkillMarkdown";
 import { useI18n } from "../../composables/useI18n";
+import { AGENT_PRESETS } from "../../config/agents";
 
 const { t } = useI18n();
 
@@ -84,16 +85,7 @@ const listSectionRef = ref<HTMLElement | null>(null);
 const lastListScrollTop = ref(0);
 
 const PRESET_AGENTS = [
-  { name: "Codex", defaultPath: "~/.codex/skills", targetName: "Codex" },
-  { name: "Claude Code", defaultPath: "~/.claude/skills", targetName: "Claude Code" },
-  { name: "Gemini CLI", defaultPath: "~/.gemini/config/skills", targetName: "Gemini CLI" },
-  { name: "GitHub Copilot", defaultPath: "~/.copilot/skills", targetName: "GitHub Copilot" },
-  { name: "Cursor", defaultPath: "~/.cursor/skills", targetName: "Cursor" },
-  { name: "WorkBuddy", defaultPath: "~/.workbuddy/skills", targetName: "WorkBuddy" },
-  { name: "Windsurf", defaultPath: "~/.codeium/windsurf/skills", targetName: "Windsurf" },
-  { name: "Kiro", defaultPath: "~/.kiro/skills", targetName: "Kiro" },
-  { name: "OpenCode", defaultPath: "~/.config/opencode/skill", targetName: "OpenCode" },
-  { name: "CodeBuddy", defaultPath: "~/.codebuddy/skills", targetName: "CodeBuddy" },
+  ...AGENT_PRESETS.map(({ name, defaultPath, targetName }) => ({ name, defaultPath, targetName })),
   { name: "自定义 Agent", defaultPath: "", targetName: "自定义" },
 ];
 
