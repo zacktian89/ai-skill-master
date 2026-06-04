@@ -17,6 +17,7 @@
 @import "./components/form.css";
 @import "./components/detail-section.css";
 @import "./components/loading-animation.css";
+@import "./components/toast.css";
 
 /* Extracted & Redesigned Component Styles */
 @import "./components/agent-icon.css";

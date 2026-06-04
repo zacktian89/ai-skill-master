@@ -273,6 +273,42 @@ describe("StoreView", () => {
     expect(wrapper.text()).not.toContain("加载 SKILL.md 失败");
   });
 
+  it("loads store skill markdown from the unified agents skills directory", async () => {
+    vi.mocked(api.fetchStoreLeaderboard).mockResolvedValue([
+      {
+        id: "acme/agent-skills/code-review",
+        skillId: "code-review",
+        name: "code-review",
+        source: "acme/agent-skills",
+        installs: 1234,
+      },
+    ]);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return {
+        ok: url.includes("/.agents/skills/code-review/SKILL.md"),
+        statusText: "Not Found",
+        text: async () => "# Code Review\n\nLoaded from unified agents skills dir.",
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const wrapper = mount(StoreView, {
+      props: {
+        snapshot,
+      },
+    });
+
+    await flushPromises();
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://raw.githubusercontent.com/acme/agent-skills/main/.agents/skills/code-review/SKILL.md"
+    );
+    expect(wrapper.text()).toContain("Code Review");
+    expect(wrapper.text()).not.toContain("加载 SKILL.md 失败");
+  });
+
   it("resolves nested store markdown paths from the GitHub tree when direct paths miss", async () => {
     vi.mocked(api.fetchStoreLeaderboard).mockResolvedValue([
       {
@@ -374,6 +410,84 @@ describe("StoreView", () => {
     );
     expect(wrapper.text()).toContain("Vercel React Best Practices");
     expect(wrapper.text()).not.toContain("加载 SKILL.md 失败");
+  });
+
+  it("downloads using the frontmatter-resolved markdown path when directory and id differ", async () => {
+    vi.mocked(api.fetchStoreLeaderboard).mockResolvedValue([
+      {
+        id: "vercel-labs/agent-skills/vercel-react-best-practices",
+        skillId: "vercel-react-best-practices",
+        name: "vercel-react-best-practices",
+        source: "vercel-labs/agent-skills",
+        installs: 448733,
+      },
+    ]);
+    vi.mocked(api.previewImportSkills).mockResolvedValue({
+      candidates: [
+        {
+          candidateId: ".",
+          id: "vercel-react-best-practices",
+          name: "vercel-react-best-practices",
+          description: "Vercel React best practices",
+          relativePath: ".",
+          status: "ready",
+          message: null,
+        },
+      ],
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/git/trees/main?recursive=1")) {
+        return {
+          ok: true,
+          json: async () => ({
+            tree: [
+              { path: "skills/composition-patterns/SKILL.md", type: "blob" },
+              { path: "skills/react-best-practices/SKILL.md", type: "blob" },
+            ],
+          }),
+        } as Response;
+      }
+      if (url.includes("/skills/composition-patterns/SKILL.md")) {
+        return {
+          ok: true,
+          text: async () => "---\nname: vercel-composition-patterns\n---\n# Composition",
+        } as Response;
+      }
+      return {
+        ok: url.includes("/skills/react-best-practices/SKILL.md"),
+        statusText: "Not Found",
+        text: async () => "---\nname: vercel-react-best-practices\n---\n# Vercel React Best Practices",
+      } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const wrapper = mount(StoreView, {
+      props: {
+        snapshot,
+      },
+    });
+
+    await flushPromises();
+    await flushPromises();
+    await wrapper.find('button[aria-label="下载 Skill"]').trigger("click");
+    await flushPromises();
+
+    expect(api.previewImportSkills).toHaveBeenCalledWith({
+      kind: "github",
+      url: "https://github.com/vercel-labs/agent-skills.git",
+      ref: null,
+      subdir: "skills/react-best-practices",
+    });
+    expect(api.confirmImportSkills).toHaveBeenCalledWith({
+      source: {
+        kind: "github",
+        url: "https://github.com/vercel-labs/agent-skills.git",
+        ref: null,
+        subdir: "skills/react-best-practices",
+      },
+      candidateIds: ["."],
+    });
   });
 
   it("downloads using the markdown path resolved for store details", async () => {

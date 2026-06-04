@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { AlertCircle } from "lucide-vue-next";
 import Sidebar from "./components/Sidebar.vue";
+import ToastContainer from "./components/ToastContainer.vue";
 import { createAppStore } from "./stores/useAppStore";
 import { createSelectionStore } from "./stores/useSelectionStore";
 
@@ -102,11 +102,6 @@ onUnmounted(() => {
     <div class="workspace-shell">
       <main class="workspace">
         <section class="workspace-frame">
-          <div v-if="appStore.error.value" class="notice notice--error">
-            <AlertCircle :size="16" />
-            <span>{{ appStore.error.value }}</span>
-          </div>
-
           <section v-if="appStore.loading.value" class="workspace-empty">正在加载 SkillMaster 工作区</section>
 
           <router-view v-else v-slot="{ Component }">
@@ -131,5 +126,7 @@ onUnmounted(() => {
         </section>
       </main>
     </div>
+
+    <ToastContainer />
   </div>
 </template>

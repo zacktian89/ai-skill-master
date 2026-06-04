@@ -390,7 +390,10 @@ function storeSkillMarkdownPaths(relativePath: string): string[] {
   if (!relativePath.startsWith("skills/")) {
     paths.push(`skills/${relativePath}`);
   }
-  return paths;
+  if (!relativePath.startsWith(".agents/skills/")) {
+    paths.push(`.agents/skills/${relativePath}`);
+  }
+  return [...new Set(paths)];
 }
 
 async function fetchStoreSkillMarkdown(ownerRepo: string, relativePath: string): Promise<StoreSkillMarkdownResult> {
