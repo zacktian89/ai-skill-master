@@ -125,3 +125,7 @@ src-tauri/           Tauri and Rust backend commands
 docs/                Design docs, verification notes, and README screenshots
 public/              Icons and static assets
 ```
+
+## License
+
+SkillMaster is licensed under the GNU General Public License v3.0 only. See [LICENSE](LICENSE).
