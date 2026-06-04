@@ -29,10 +29,6 @@ SkillMaster 是一个本地桌面应用，解决 agent skills 在日常使用中
 
 ![Store view](docs/screenshots/store.png)
 
-### 智能体目录
-
-![Agents view](docs/screenshots/agents.png)
-
 ### 插件详情
 
 ![Plugins view](docs/screenshots/plugins.png)

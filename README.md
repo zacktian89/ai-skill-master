@@ -29,10 +29,6 @@ When you switch between projects, try different coding agents, download communit
 
 ![Store view](docs/screenshots/store.png)
 
-### Agent Directories
-
-![Agents view](docs/screenshots/agents.png)
-
 ### Plugin Details
 
 ![Plugins view](docs/screenshots/plugins.png)
