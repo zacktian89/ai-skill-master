@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Sidebar from "./components/Sidebar.vue";
 import ToastContainer from "./components/ToastContainer.vue";
+import { checkForAppUpdate } from "./api/updater";
 import { createAppStore } from "./stores/useAppStore";
 import { createSelectionStore } from "./stores/useSelectionStore";
 
@@ -71,6 +72,7 @@ const checkWidth = () => {
 
 onMounted(() => {
   appStore.refresh();
+  checkForAppUpdate({ notify: appStore.addToast });
   checkWidth();
   window.addEventListener("resize", checkWidth);
 });
