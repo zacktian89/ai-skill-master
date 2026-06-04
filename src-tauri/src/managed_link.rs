@@ -29,6 +29,9 @@ pub fn create_directory_link(source: &Path, target: &Path) -> Result<()> {
 pub fn remove_managed_link(target: &Path) -> Result<()> {
     if let Ok(metadata) = fs::symlink_metadata(target) {
         if metadata.file_type().is_symlink() {
+            #[cfg(windows)]
+            fs::remove_dir(target)?;
+            #[cfg(not(windows))]
             fs::remove_file(target)?;
         } else {
             fs::remove_dir(target)?;
