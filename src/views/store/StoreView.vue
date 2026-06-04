@@ -7,8 +7,6 @@ import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
 import AppLoadingAnimation from "../../components/AppLoadingAnimation.vue";
 import SearchInput from "../../components/SearchInput.vue";
-import ModalDialog from "../../components/ModalDialog.vue";
-import StatusTag from "../../components/StatusTag.vue";
 import { useI18n } from "../../composables/useI18n";
 import { AppStoreKey } from "../../stores/useAppStore";
 import * as api from "../../api";
@@ -57,10 +55,10 @@ const hasLoadedOnce = ref(false);
 const errorMessage = ref<string | null>(null);
 const storeSkills = ref<StoreSkill[]>([]);
 const selectedStoreSkillId = ref<string | null>(null);
-const importDialogOpen = ref(false);
 const importBusy = ref(false);
-const importCandidates = ref<ImportSkillCandidate[]>([]);
-const selectedCandidateIds = ref<string[]>([]);
+const searchDebounceMs = 250;
+let searchDebounceTimer: number | null = null;
+let loadBoardRequestId = 0;
 
 const filteredSkills = computed(() => {
   if (sourceFilter.value === "all") {
@@ -75,10 +73,6 @@ const selectedStoreSkill = computed(() => {
   const match = filteredSkills.value.find((skill) => skill.id === selectedStoreSkillId.value);
   return match ?? filteredSkills.value[0] ?? null;
 });
-
-const readyCandidates = computed(() =>
-  importCandidates.value.filter((candidate) => candidate.status === "ready")
-);
 
 const installedKeys = computed(() => {
   const keys = new Set<string>();
@@ -100,6 +94,30 @@ function isInstalled(skill: StoreSkill): boolean {
   return installedKeys.value.has(`${skill.source}/${skill.skillId}`);
 }
 
+function candidatesForStoreSkill(
+  candidates: ImportSkillCandidate[],
+  skill: StoreSkill,
+  sourceSubdir: string | null
+): ImportSkillCandidate[] {
+  if (sourceSubdir) {
+    return candidates.filter((candidate) => candidate.relativePath === "." || candidate.id === skill.skillId);
+  }
+  return candidates.filter((candidate) => candidate.id === skill.skillId);
+}
+
+function githubImportSource(skill: StoreSkill, subdir: string | null = null) {
+  return {
+    kind: "github" as const,
+    url: `https://github.com/${skill.source}.git`,
+    ref: null,
+    subdir,
+  };
+}
+
+function storeSkillKey(skill: StoreSkill): string {
+  return `${skill.source}/${skill.skillId}`;
+}
+
 function formatInstalls(count: number): string {
   const lang = locale.value === "zh" ? "zh-CN" : "en-US";
   return new Intl.NumberFormat(lang, {
@@ -110,17 +128,6 @@ function formatInstalls(count: number): string {
 
 function selectStoreSkill(skillId: string) {
   selectedStoreSkillId.value = skillId;
-}
-
-function selectCandidate(candidateId: string, checked: boolean) {
-  const next = new Set(selectedCandidateIds.value);
-  if (checked) next.add(candidateId);
-  else next.delete(candidateId);
-  selectedCandidateIds.value = [...next];
-}
-
-function setAllCandidates(checked: boolean) {
-  selectedCandidateIds.value = checked ? readyCandidates.value.map((candidate) => candidate.candidateId) : [];
 }
 
 function applySnapshot(nextSnapshot: AppSnapshot) {
@@ -142,12 +149,16 @@ function reportError(error: unknown) {
 }
 
 async function loadBoard() {
+  const requestId = ++loadBoardRequestId;
+  const searchQuery = query.value.trim();
+  const activeBoard = board.value;
   loading.value = true;
   errorMessage.value = null;
   try {
-    const nextSkills = query.value.trim()
-      ? await api.searchStoreSkills(query.value.trim(), 60)
-      : await api.fetchStoreLeaderboard(board.value);
+    const nextSkills = searchQuery
+      ? await api.searchStoreSkills(searchQuery, 60)
+      : await api.fetchStoreLeaderboard(activeBoard);
+    if (requestId !== loadBoardRequestId) return;
     storeSkills.value = nextSkills;
     if (!nextSkills.some((skill) => skill.id === selectedStoreSkillId.value)) {
       selectedStoreSkillId.value = nextSkills[0]?.id ?? null;
@@ -156,51 +167,42 @@ async function loadBoard() {
       sourceFilter.value = "all";
     }
   } catch (error) {
+    if (requestId !== loadBoardRequestId) return;
     reportError(error);
   } finally {
-    loading.value = false;
-    hasLoadedOnce.value = true;
+    if (requestId === loadBoardRequestId) {
+      loading.value = false;
+      hasLoadedOnce.value = true;
+    }
   }
+}
+
+function scheduleSearchLoad() {
+  if (searchDebounceTimer !== null) {
+    window.clearTimeout(searchDebounceTimer);
+  }
+  searchDebounceTimer = window.setTimeout(() => {
+    searchDebounceTimer = null;
+    void loadBoard();
+  }, searchDebounceMs);
 }
 
 async function prepareImport() {
-  if (!selectedStoreSkill.value) return;
+  const skill = selectedStoreSkill.value;
+  if (!skill) return;
   importBusy.value = true;
   errorMessage.value = null;
   try {
-    const preview = await api.previewImportSkills({
-      kind: "github",
-      url: `https://github.com/${selectedStoreSkill.value.source}.git`,
-      ref: null,
-      subdir: null,
-    });
-    importCandidates.value = preview.candidates;
-    selectedCandidateIds.value = preview.candidates
-      .filter((candidate) => candidate.status === "ready" && candidate.id === selectedStoreSkill.value.skillId)
-      .map((candidate) => candidate.candidateId);
-    importDialogOpen.value = true;
-  } catch (error) {
-    reportError(error);
-  } finally {
-    importBusy.value = false;
-  }
-}
-
-async function confirmImport() {
-  if (!selectedStoreSkill.value || selectedCandidateIds.value.length === 0) return;
-  importBusy.value = true;
-  try {
-    const nextSnapshot = await api.confirmImportSkills({
-      source: {
-        kind: "github",
-        url: `https://github.com/${selectedStoreSkill.value.source}.git`,
-        ref: null,
-        subdir: null,
-      },
-      candidateIds: selectedCandidateIds.value,
-    });
+    const sourceSubdir = await resolveStoreSkillImportSubdir(skill);
+    const source = githubImportSource(skill, sourceSubdir);
+    const preview = await api.previewImportSkills(source);
+    const candidates = candidatesForStoreSkill(preview.candidates, skill, sourceSubdir);
+    const candidate = candidates.find((candidate) => candidate.status === "ready");
+    if (!candidate) {
+      throw new Error(candidates[0]?.message ?? t("store.skillNotFound"));
+    }
+    const nextSnapshot = await api.confirmImportSkills({ source, candidateIds: [candidate.candidateId] });
     applySnapshot(nextSnapshot);
-    importDialogOpen.value = false;
   } catch (error) {
     reportError(error);
   } finally {
@@ -302,7 +304,16 @@ async function openSkillLibraryDirectory(path: string | undefined) {
   }
 }
 
-onBeforeUnmount(closeContextMenu);
+function cleanupStoreView() {
+  closeContextMenu();
+  if (searchDebounceTimer !== null) {
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
+  loadBoardRequestId++;
+}
+
+onBeforeUnmount(cleanupStoreView);
 
 const matchedInstalledSkill = computed(() => {
   if (!selectedStoreSkill.value) return null;
@@ -313,10 +324,7 @@ const matchedInstalledSkill = computed(() => {
   });
 });
 
-const loadingPreview = ref(false);
-const previewError = ref<string | null>(null);
-const selectedSkillRelativePath = ref<string | null>(null);
-const selectedSkillDescription = ref("");
+const selectedSkillRelativePath = computed(() => selectedStoreSkill.value?.skillId ?? null);
 
 const virtualSkill = computed<Skill | null>(() => {
   if (!selectedStoreSkill.value) return null;
@@ -324,7 +332,7 @@ const virtualSkill = computed<Skill | null>(() => {
   return {
     id: selectedStoreSkill.value.skillId,
     name: selectedStoreSkill.value.name,
-    description: selectedSkillDescription.value || "",
+    description: "",
     libraryPath: "",
     source: {
       kind: "github",
@@ -369,41 +377,163 @@ const selectedReferences = computed(() => {
 
 const skillMarkdown = ref("");
 const isMarkdownLoading = ref(false);
+let markdownRequestId = 0;
+const resolvedMarkdownPaths = new Map<string, string>();
+
+type StoreSkillMarkdownResult = {
+  text: string;
+  path: string;
+};
+
+function storeSkillMarkdownPaths(relativePath: string): string[] {
+  const paths = [relativePath];
+  if (!relativePath.startsWith("skills/")) {
+    paths.push(`skills/${relativePath}`);
+  }
+  return paths;
+}
+
+async function fetchStoreSkillMarkdown(ownerRepo: string, relativePath: string): Promise<StoreSkillMarkdownResult> {
+  for (const branch of ["main", "master"]) {
+    for (const path of storeSkillMarkdownPaths(relativePath)) {
+      const url = `https://raw.githubusercontent.com/${ownerRepo}/${branch}/${path}/SKILL.md`;
+      const res = await fetch(url);
+      if (res.ok) {
+        return { text: await res.text(), path: `${path}/SKILL.md` };
+      }
+    }
+    const resolvedPath = await resolveSkillMarkdownPathFromGitHubTree(ownerRepo, branch, relativePath);
+    if (resolvedPath) {
+      const url = `https://raw.githubusercontent.com/${ownerRepo}/${branch}/${resolvedPath}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        return { text: await res.text(), path: resolvedPath };
+      }
+    }
+    const matchedResult = await resolveSkillMarkdownFromFrontMatter(ownerRepo, branch, relativePath);
+    if (matchedResult) {
+      return matchedResult;
+    }
+  }
+  throw new Error("Failed to fetch SKILL.md");
+}
+
+type GitHubTreeItem = {
+  path?: string;
+  type?: string;
+};
+
+async function resolveSkillMarkdownPathFromGitHubTree(
+  ownerRepo: string,
+  branch: string,
+  skillId: string
+): Promise<string | null> {
+  const skillMarkdownPaths = await fetchGitHubSkillMarkdownPaths(ownerRepo, branch);
+  if (!skillMarkdownPaths.length) return null;
+
+  const prefixes = skillIdPrefixes(skillId);
+  return (
+    skillMarkdownPaths.find((path) => prefixes.some((prefix) => skillMarkdownDirectory(path) === prefix)) ??
+    null
+  );
+}
+
+function skillIdPrefixes(skillId: string): string[] {
+  const parts = skillId.split("-").filter(Boolean);
+  const prefixes: string[] = [];
+  for (let length = parts.length; length >= 1; length--) {
+    prefixes.push(parts.slice(0, length).join("-"));
+  }
+  return prefixes;
+}
+
+function skillMarkdownDirectory(path: string): string {
+  const parts = path.split("/");
+  return parts.length > 1 ? parts[parts.length - 2] ?? "" : "";
+}
+
+async function resolveSkillMarkdownFromFrontMatter(
+  ownerRepo: string,
+  branch: string,
+  skillId: string
+): Promise<StoreSkillMarkdownResult | null> {
+  const paths = await fetchGitHubSkillMarkdownPaths(ownerRepo, branch);
+  for (const path of paths) {
+    const url = `https://raw.githubusercontent.com/${ownerRepo}/${branch}/${path}`;
+    const res = await fetch(url);
+    if (!res.ok) continue;
+    const text = await res.text();
+    if (parseFrontMatter(text).metadata.name === skillId) {
+      return { text, path };
+    }
+  }
+  return null;
+}
+
+async function fetchGitHubSkillMarkdownPaths(ownerRepo: string, branch: string): Promise<string[]> {
+  const url = `https://api.github.com/repos/${ownerRepo}/git/trees/${branch}?recursive=1`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+
+  const data = (await res.json()) as { tree?: GitHubTreeItem[] };
+  return (data.tree ?? [])
+    .map((item) => item.path ?? "")
+    .filter((path) => path.endsWith("/SKILL.md") || path === "SKILL.md");
+}
+
+function markdownPathToSubdir(path: string): string | null {
+  return path.endsWith("/SKILL.md") ? path.slice(0, -"/SKILL.md".length) : null;
+}
+
+async function resolveStoreSkillImportSubdir(skill: StoreSkill): Promise<string | null> {
+  const key = storeSkillKey(skill);
+  const cachedPath = resolvedMarkdownPaths.get(key);
+  if (cachedPath) {
+    return markdownPathToSubdir(cachedPath);
+  }
+
+  try {
+    const result = await fetchStoreSkillMarkdown(skill.source, skill.skillId);
+    resolvedMarkdownPaths.set(key, result.path);
+    return markdownPathToSubdir(result.path);
+  } catch {
+    return null;
+  }
+}
 
 async function loadSkillMarkdown() {
-  if (!selectedStoreSkill.value) {
+  const requestId = ++markdownRequestId;
+  const skill = selectedStoreSkill.value;
+  const installedSkill = matchedInstalledSkill.value;
+  const relativePath = selectedSkillRelativePath.value;
+  if (!skill) {
     skillMarkdown.value = "";
     return;
   }
 
   isMarkdownLoading.value = true;
   try {
-    if (matchedInstalledSkill.value) {
-      const content = await api.readSkillFile(matchedInstalledSkill.value.id);
+    if (installedSkill) {
+      const content = await api.readSkillFile(installedSkill.id);
+      if (requestId !== markdownRequestId) return;
       skillMarkdown.value = content;
-    } else if (selectedSkillRelativePath.value) {
-      const ownerRepo = selectedStoreSkill.value.source;
-      const path = selectedSkillRelativePath.value;
-      const url = `https://raw.githubusercontent.com/${ownerRepo}/main/${path}/SKILL.md`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        const urlMaster = `https://raw.githubusercontent.com/${ownerRepo}/master/${path}/SKILL.md`;
-        const resMaster = await fetch(urlMaster);
-        if (resMaster.ok) {
-          skillMarkdown.value = await resMaster.text();
-          return;
-        }
-        throw new Error(`Failed to fetch SKILL.md`);
-      }
-      skillMarkdown.value = await res.text();
+    } else if (relativePath) {
+      const ownerRepo = skill.source;
+      const result = await fetchStoreSkillMarkdown(ownerRepo, relativePath);
+      if (requestId !== markdownRequestId) return;
+      resolvedMarkdownPaths.set(storeSkillKey(skill), result.path);
+      skillMarkdown.value = result.text;
     } else {
       skillMarkdown.value = "";
     }
   } catch (err) {
+    if (requestId !== markdownRequestId) return;
     console.error(err);
     skillMarkdown.value = t("store.loadMarkdownFailed");
   } finally {
-    isMarkdownLoading.value = false;
+    if (requestId === markdownRequestId) {
+      isMarkdownLoading.value = false;
+    }
   }
 }
 
@@ -444,9 +574,12 @@ const renderedMarkdown = computed(() => {
 
 const readmeMarkdown = ref("");
 const isReadmeLoading = ref(false);
+let readmeRequestId = 0;
 
 async function loadReadme() {
-  if (!selectedStoreSkill.value) {
+  const requestId = ++readmeRequestId;
+  const skill = selectedStoreSkill.value;
+  if (!skill) {
     readmeMarkdown.value = "";
     return;
   }
@@ -454,7 +587,7 @@ async function loadReadme() {
   isReadmeLoading.value = true;
   readmeMarkdown.value = "";
 
-  const ownerRepo = selectedStoreSkill.value.source;
+  const ownerRepo = skill.source;
   const urlMain = `https://raw.githubusercontent.com/${ownerRepo}/main/README.md`;
   const urlMaster = `https://raw.githubusercontent.com/${ownerRepo}/master/README.md`;
 
@@ -463,17 +596,24 @@ async function loadReadme() {
     if (!res.ok) {
       const resMaster = await fetch(urlMaster);
       if (resMaster.ok) {
-        readmeMarkdown.value = await resMaster.text();
+        const text = await resMaster.text();
+        if (requestId !== readmeRequestId) return;
+        readmeMarkdown.value = text;
         return;
       }
       throw new Error(`Failed to fetch readme: ${res.statusText}`);
     }
-    readmeMarkdown.value = await res.text();
+    const text = await res.text();
+    if (requestId !== readmeRequestId) return;
+    readmeMarkdown.value = text;
   } catch (err) {
+    if (requestId !== readmeRequestId) return;
     console.error(err);
     readmeMarkdown.value = t("store.loadReadmeFailed");
   } finally {
-    isReadmeLoading.value = false;
+    if (requestId === readmeRequestId) {
+      isReadmeLoading.value = false;
+    }
   }
 }
 
@@ -486,43 +626,6 @@ const renderedReadme = computed(() => {
     return readmeMarkdown.value;
   }
 });
-
-watch(
-  selectedStoreSkill,
-  async (newSkill) => {
-    selectedSkillRelativePath.value = null;
-    selectedSkillDescription.value = "";
-    previewError.value = null;
-    if (!newSkill) return;
-
-    if (matchedInstalledSkill.value) {
-      return;
-    }
-
-    loadingPreview.value = true;
-    try {
-      const preview = await api.previewImportSkills({
-        kind: "github",
-        url: `https://github.com/${newSkill.source}.git`,
-        ref: null,
-        subdir: null,
-      });
-      const match = preview.candidates.find((c) => c.id === newSkill.skillId);
-      if (match) {
-        selectedSkillRelativePath.value = match.relativePath;
-        selectedSkillDescription.value = match.description;
-      } else {
-        previewError.value = t("store.skillNotFound");
-      }
-    } catch (err) {
-      console.error(err);
-      previewError.value = t("store.getDetailFailed");
-    } finally {
-      loadingPreview.value = false;
-    }
-  },
-  { immediate: true }
-);
 
 watch(
   [selectedStoreSkill, selectedSkillRelativePath, activeDetailTab],
@@ -562,7 +665,7 @@ watch(board, (newBoard) => {
 });
 
 watch(query, () => {
-  void loadBoard();
+  scheduleSearchLoad();
 });
 </script>
 
@@ -638,7 +741,7 @@ watch(query, () => {
         :selected-skill="virtualSkill"
         :selected-references="selectedReferences"
         :selected-issues="selectedIssues"
-        :is-markdown-loading="isMarkdownLoading || loadingPreview"
+        :is-markdown-loading="isMarkdownLoading"
         :skill-markdown="skillMarkdown"
         :parsed-markdown="parsedMarkdown"
         :rendered-markdown="renderedMarkdown"
@@ -659,71 +762,6 @@ watch(query, () => {
       <div v-else class="content-empty">{{ t("store.selectDetail") }}</div>
     </template>
   </SplitPane>
-
-  <ModalDialog
-    v-if="importDialogOpen"
-    :title="t('store.importTitle')"
-    card-class="import-modal"
-    @close="importDialogOpen = false"
-  >
-    <div class="import-modal-body">
-      <section class="import-results">
-        <div class="import-results-head">
-          <label class="import-check-all">
-            <input
-              type="checkbox"
-              :checked="readyCandidates.length > 0 && selectedCandidateIds.length === readyCandidates.length"
-              :disabled="readyCandidates.length === 0 || importBusy"
-              @change="setAllCandidates(($event.target as HTMLInputElement).checked)"
-            />
-            <span>{{ t('importSkill.selectedCount', { selected: selectedCandidateIds.length, total: readyCandidates.length }) }}</span>
-          </label>
-        </div>
-
-        <div v-if="importCandidates.length" class="import-candidate-list">
-          <label
-            v-for="candidate in importCandidates"
-            :key="candidate.candidateId"
-            class="import-candidate-row"
-            :class="{ disabled: candidate.status !== 'ready' }"
-          >
-            <input
-              type="checkbox"
-              :checked="selectedCandidateIds.includes(candidate.candidateId)"
-              :disabled="candidate.status !== 'ready' || importBusy"
-              @change="selectCandidate(candidate.candidateId, ($event.target as HTMLInputElement).checked)"
-            />
-            <span class="import-candidate-main">
-              <span class="import-candidate-top">
-                <strong>{{ candidate.name }}</strong>
-                <StatusTag :type="candidate.status === 'ready' ? 'healthy' : candidate.status">
-                  {{ candidate.status === 'ready' ? t("importSkill.ready") : candidate.message }}
-                </StatusTag>
-              </span>
-              <span class="import-candidate-meta">
-                <code>{{ candidate.id }}</code>
-                <span>{{ candidate.relativePath }}</span>
-              </span>
-              <small v-if="candidate.description">{{ candidate.description }}</small>
-            </span>
-          </label>
-        </div>
-      </section>
-    </div>
-
-    <template #footer>
-      <div class="button-row button-row--end">
-        <button class="secondary-button" :disabled="importBusy" @click="importDialogOpen = false">
-          {{ t("dialog.cancel") }}
-        </button>
-        <button class="primary-button" :disabled="selectedCandidateIds.length === 0 || importBusy" @click="confirmImport">
-          <Loader2 v-if="importBusy" :size="15" class="spin-animation" />
-          <Download v-else :size="16" />
-          {{ importBusy ? t("importSkill.importing") : t("importSkill.import") }}
-        </button>
-      </div>
-    </template>
-  </ModalDialog>
 
   <!-- Dialogs -->
   <DeleteSkillDialog
