@@ -45,7 +45,10 @@ jobs:
         run: cargo test
 
       - name: Build Windows app
-        run: npm run tauri build -- --ci --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        run: npm run tauri build -- --ci
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
       - name: Collect Windows artifacts
         shell: bash
@@ -57,6 +60,8 @@ jobs:
           # Search for MSI and NSIS (.exe) installer files under targets
           MSI_PATH="$(find src-tauri/target -type f -name "*.msi" -print -quit)"
           EXE_PATH="$(find src-tauri/target -type f -name "*.exe" -not -path "*/target/release/deps/*" -not -path "*/target/release/build/*" -print -quit)"
+          ZIP_PATH="$(find src-tauri/target -type f -name "*.zip" -print -quit)"
+          SIG_PATH="$(find src-tauri/target -type f -name "*.zip.sig" -print -quit)"
 
           if [[ -n "${MSI_PATH}" ]]; then
             cp "${MSI_PATH}" "artifacts/SkillMaster_${VERSION}_x64_en-US.msi"
@@ -65,6 +70,19 @@ jobs:
           if [[ -n "${EXE_PATH}" ]]; then
             cp "${EXE_PATH}" "artifacts/SkillMaster_${VERSION}_x64-setup.exe"
           fi
+
+          if [[ -z "${ZIP_PATH}" ]]; then
+            echo "Windows updater archive (.zip) was not generated" >&2
+            exit 1
+          fi
+
+          if [[ -z "${SIG_PATH}" ]]; then
+            echo "Windows updater signature (.zip.sig) was not generated" >&2
+            exit 1
+          fi
+
+          cp "${ZIP_PATH}" "artifacts/SkillMaster_${VERSION}_x64.zip"
+          cp "${SIG_PATH}" "artifacts/SkillMaster_${VERSION}_x64.zip.sig"
 
           if [[ -z "${MSI_PATH}" && -z "${EXE_PATH}" ]]; then
             echo "No Windows installers (.msi or .exe) were found" >&2
@@ -91,3 +109,20 @@ jobs:
             gh release create "${RELEASE_TAG}" --title "SkillMaster ${RELEASE_TAG#v}" --notes "SkillMaster ${RELEASE_TAG#v} release."
           fi
           gh release upload "${RELEASE_TAG}" artifacts/* --clobber
+
+      - name: Publish updater manifest when all platform artifacts exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-signatures
+          mkdir -p release-signatures
+          gh release download "${RELEASE_TAG}" --pattern "*.sig" --dir release-signatures --clobber
+          gh release view "${RELEASE_TAG}" --json assets,body,publishedAt > release-assets.json
+          if node .github/scripts/build-latest-json.mjs release-assets.json release-signatures latest.json; then
+            gh release upload "${RELEASE_TAG}" latest.json --clobber
+          else
+            echo "Skipping latest.json upload until all updater artifacts are present."
+          fi

@@ -49,9 +49,10 @@ jobs:
           npm run tauri build --
           --target universal-apple-darwin
           --bundles app,dmg
-          --no-sign
           --ci
-          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
       - name: Collect macOS artifacts
         shell: bash
@@ -62,6 +63,8 @@ jobs:
 
           APP_PATH="$(find src-tauri/target -type d -path '*/bundle/macos/SkillMaster.app' -print -quit)"
           DMG_PATH="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print -quit)"
+          TAR_PATH="$(find src-tauri/target -type f -name "*.tar.gz" -print -quit)"
+          SIG_PATH="$(find src-tauri/target -type f -name "*.tar.gz.sig" -print -quit)"
 
           if [[ -z "${APP_PATH}" ]]; then
             echo "SkillMaster.app was not generated" >&2
@@ -73,6 +76,19 @@ jobs:
           if [[ -n "${DMG_PATH}" ]]; then
             cp "${DMG_PATH}" "artifacts/SkillMaster_${VERSION}_universal.dmg"
           fi
+
+          if [[ -z "${TAR_PATH}" ]]; then
+            echo "macOS updater archive (.tar.gz) was not generated" >&2
+            exit 1
+          fi
+
+          if [[ -z "${SIG_PATH}" ]]; then
+            echo "macOS updater signature (.tar.gz.sig) was not generated" >&2
+            exit 1
+          fi
+
+          cp "${TAR_PATH}" "artifacts/SkillMaster_${VERSION}_universal.app.tar.gz"
+          cp "${SIG_PATH}" "artifacts/SkillMaster_${VERSION}_universal.app.tar.gz.sig"
 
           shasum -a 256 artifacts/* > artifacts/SHA256SUMS.txt
 
@@ -93,3 +109,20 @@ jobs:
             gh release create "${RELEASE_TAG}" --title "SkillMaster ${RELEASE_TAG#v}" --notes "SkillMaster ${RELEASE_TAG#v} release."
           fi
           gh release upload "${RELEASE_TAG}" artifacts/* --clobber
+
+      - name: Publish updater manifest when all platform artifacts exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-signatures
+          mkdir -p release-signatures
+          gh release download "${RELEASE_TAG}" --pattern "*.sig" --dir release-signatures --clobber
+          gh release view "${RELEASE_TAG}" --json assets,body,publishedAt > release-assets.json
+          if node .github/scripts/build-latest-json.mjs release-assets.json release-signatures latest.json; then
+            gh release upload "${RELEASE_TAG}" latest.json --clobber
+          else
+            echo "Skipping latest.json upload until all updater artifacts are present."
+          fi
