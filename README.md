@@ -45,12 +45,11 @@ When you switch between projects, try different coding agents, download communit
 
 ### 1. Download an installer
 
-Open the [SkillMaster 1.0.0 release page](https://github.com/zacktian89/ai-skill-master/releases/tag/v1.0.0) and download the installer for your system.
+Open the [SkillMaster releases page](https://github.com/zacktian89/ai-skill-master/releases) and download the latest installer for your system.
 
-Windows users can download:
+Windows installers and macOS packages are attached to each release.
 
-- [SkillMaster_1.0.0_x64-setup.exe](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64-setup.exe)
-- [SkillMaster_1.0.0_x64_en-US.msi](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64_en-US.msi)
+The macOS build is not signed or notarized. On first launch, open it with Control-click or right-click, choose Open, and confirm the macOS security prompt.
 
 ### 2. Install and launch
 

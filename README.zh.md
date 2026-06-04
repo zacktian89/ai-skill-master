@@ -45,12 +45,11 @@ SkillMaster 是一个本地桌面应用，解决 agent skills 在日常使用中
 
 ### 1. 下载安装包
 
-打开 [SkillMaster 1.0.0 Release 页面](https://github.com/zacktian89/ai-skill-master/releases/tag/v1.0.0)，下载适合当前系统的安装包。
+打开 [SkillMaster Releases 页面](https://github.com/zacktian89/ai-skill-master/releases)，下载适合当前系统的最新安装包。
 
-Windows 用户可以直接下载：
+每个 Release 会附带 Windows 安装包和 macOS 分发包。
 
-- [SkillMaster_1.0.0_x64-setup.exe](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64-setup.exe)
-- [SkillMaster_1.0.0_x64_en-US.msi](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64_en-US.msi)
+macOS 版本未做签名和公证。首次启动时，请按住 Control 点击或右键点击应用，选择「打开」，再确认系统安全提示。
 
 ### 2. 安装并启动
 
