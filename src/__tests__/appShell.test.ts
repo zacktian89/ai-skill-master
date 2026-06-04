@@ -45,8 +45,18 @@ vi.mock("../api", () => ({
   readSkillFile: vi.fn().mockResolvedValue(""),
 }));
 
+const { checkForAppUpdateMock } = vi.hoisted(() => ({
+  checkForAppUpdateMock: vi.fn().mockResolvedValue({ status: "idle" }),
+}));
+
+vi.mock("../api/updater", () => ({
+  checkForAppUpdate: checkForAppUpdateMock,
+}));
+
 describe("App shell", () => {
   beforeEach(async () => {
+    checkForAppUpdateMock.mockReset();
+    checkForAppUpdateMock.mockResolvedValue({ status: "idle" });
     localStorage.clear();
     useI18n().locale.value = "zh";
     router.push("/");
@@ -137,6 +147,23 @@ describe("App shell", () => {
 
     expect(wrapper.text()).not.toContain("技能库");
     expect(wrapper.text()).not.toContain("Skill Detail");
+  });
+
+  it("uses the app modal style when an update is available", async () => {
+    checkForAppUpdateMock.mockImplementation(({ confirmInstall }) => confirmInstall("0.2.0"));
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+      },
+    });
+
+    await vi.dynamicImportSettled();
+
+    expect(wrapper.find(".modal-backdrop").exists()).toBe(true);
+    expect(wrapper.find(".modal-card").exists()).toBe(true);
+    expect(wrapper.text()).toContain("发现新版本");
+    expect(wrapper.text()).toContain("SkillMaster 0.2.0");
   });
 });
 
