@@ -2,25 +2,32 @@
 
 [中文](README.md)
 
-SkillMaster is a local desktop app for managing, importing, previewing, and distributing agent skills. It keeps `SKILL.md` folders in one local skill library, then syncs them into Codex, Claude Code, and other target directories through SkillMaster-managed references.
+SkillMaster is a local desktop app for the everyday mess around agent skills: scattered folders, duplicated copies, inconsistent project rules, and manual sync work. It keeps `SKILL.md` folders from Codex, Claude Code, project directories, and GitHub repositories in one local skill library, then distributes the same source skill through SkillMaster-managed references.
+
+When you switch between projects, try different coding agents, download community skills, or need the same rules in multiple directories, SkillMaster handles import, preview, linking, disabling, and cleanup so you do not have to copy folders by hand, chase stale versions, or risk deleting the original skill.
 
 ![Skills view](docs/screenshots/skills.png)
 
 ## Features
 
-- Skill library management: import skills from local folders or GitHub repositories, preview `SKILL.md` and README content, and review delete impact before removing a skill.
-- Skill references: add or remove managed references for a skill in user, project, or custom directories.
-- Project management: add local projects, scan existing project skills, and set per-project enable, disable, or inherit rules.
-- Agent management: register skill root directories for different agents and link skills into those agent directories.
-- Plugin inspection: view installed plugins, included skills, MCP services, and supported agents.
-- Store browsing: search or browse skills.sh leaderboards and start the download/import flow from a store entry.
-- Settings: switch dark/light theme, switch UI language, inspect storage paths, and migrate the local skill library.
+- Central library: import skills from local folders and GitHub repositories into one library, then preview `SKILL.md` and README content before using them.
+- Reuse one source: link the same skill into user, project, custom, or agent-specific skill directories through SkillMaster-managed references.
+- Project rules: set skills to enabled, disabled, or inherited per project to keep one project's rules from leaking into another.
+- Agent coverage: maintain skills roots for Codex, Claude Code, and other agents so different tools can share the same skill assets.
+- Plugin insight: inspect installed plugins, included skills, MCP services, and supported agents to understand what each plugin actually adds.
+- Store discovery: browse skills.sh leaderboards and start the download/import flow from a store entry instead of searching and copying manually.
+- Safer cleanup: review impact before deletion; removing a reference clears only the managed link and keeps the original skill in the library.
+- Local settings: switch theme and language, inspect storage paths, and migrate the skill library when needed.
 
 ## Screenshots
 
 ### Project Rules
 
 ![Projects view](docs/screenshots/projects.png)
+
+### Skill Store
+
+![Store view](docs/screenshots/store.png)
 
 ### Agent Directories
 

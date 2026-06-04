@@ -2,25 +2,32 @@
 
 [English](README.en.md)
 
-SkillMaster 是一个本地桌面应用，用来集中管理、导入、预览和分发 agent skills。它把分散在不同 agent 或项目里的 `SKILL.md` 目录统一收纳到本地技能库，再通过 SkillMaster 管理的引用链接同步到 Codex、Claude Code 等目标目录。
+SkillMaster 是一个本地桌面应用，解决 agent skills 在日常使用中分散、重复、难同步的问题。它把散落在 Codex、Claude Code、项目目录和 GitHub 仓库里的 `SKILL.md` 统一收纳到本地技能库，并通过托管引用把同一份 skill 分发到需要它的 agent 或项目中。
+
+当你频繁切换项目、试用不同 coding agent、从社区下载 skills，或需要在多个目录里保持规则一致时，SkillMaster 可以帮你完成导入、预览、关联、禁用和清理，避免手动复制目录、忘记同步版本或误删原始 skill。
 
 ![Skills view](docs/screenshots/skills.png)
 
 ## 功能介绍
 
-- 技能库管理：导入本地文件夹或 GitHub 仓库中的 skills，预览 `SKILL.md` 和 README 内容，删除前查看影响范围。
-- 技能引用：为单个 skill 添加或移除到用户目录、项目目录或自定义目录的托管引用。
-- 项目管理：添加本地项目，扫描项目内已有 skills，为项目设置启用、禁用或继承默认规则。
-- 智能体管理：维护不同 agent 的 skills 根目录，并把技能关联到对应 agent。
-- 插件查看：识别已安装插件，查看插件包含的 skills、MCP 服务和支持的 agent。
-- 商店浏览：搜索或查看 skills.sh 技能榜单，并从商店条目进入下载导入流程。
-- 系统设置：切换深色/浅色主题、切换界面语言、查看存储路径并迁移技能库。
+- 集中收纳：把本地文件夹和 GitHub 仓库中的 skills 导入同一个技能库，预览 `SKILL.md` 和 README 后再决定是否使用。
+- 一份多用：通过 SkillMaster 管理的引用，把同一份 skill 关联到用户目录、项目目录、自定义目录或不同 agent 的 skills 根目录。
+- 项目规则：为每个项目设置 skill 的启用、禁用或继承状态，减少项目之间规则互相污染的问题。
+- Agent 适配：维护 Codex、Claude Code 等 agent 的 skills 根目录，让不同工具共享同一套技能资产。
+- 插件洞察：查看已安装插件包含的 skills、MCP 服务和支持的 agent，快速判断插件到底带来了什么能力。
+- 商店发现：浏览 skills.sh 技能榜单，从商店条目进入下载和导入流程，减少手动查找与复制。
+- 安全清理：删除前查看影响范围；移除引用时只清理托管链接，保留技能库中的原始 skill。
+- 本地设置：切换主题和语言，查看存储路径，并在需要时迁移技能库。
 
 ## 截图
 
 ### 项目规则
 
 ![Projects view](docs/screenshots/projects.png)
+
+### 技能商店
+
+![Store view](docs/screenshots/store.png)
 
 ### 智能体目录
 
