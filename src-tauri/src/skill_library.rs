@@ -144,6 +144,7 @@ pub fn import_selected_skills(
     state: &mut crate::models::AppState,
     source: &ImportSkillSource,
     candidate_ids: &[String],
+    overwrite: bool,
 ) -> Result<()> {
     if candidate_ids.is_empty() {
         return Ok(());
@@ -156,11 +157,18 @@ pub fn import_selected_skills(
                 .iter()
                 .find(|entry| &entry.relative_path == candidate_id)
                 .ok_or_else(|| SkillMasterError::InvalidPath(candidate_id.clone()))?;
-            if candidate_status(state, &entry.metadata) != ImportSkillCandidateStatus::Ready {
+            let status = candidate_status(state, &entry.metadata);
+            if status != ImportSkillCandidateStatus::Ready
+                && !(overwrite && status == ImportSkillCandidateStatus::Duplicate)
+            {
                 return Err(SkillMasterError::DuplicateSkill(entry.metadata.id.clone()));
             }
             let source = source_for_candidate(resolved, entry);
-            import_skill_from_path(state, &entry.path, entry.metadata.clone(), source)?;
+            if overwrite && status == ImportSkillCandidateStatus::Duplicate {
+                overwrite_skill_from_path(state, &entry.path, entry.metadata.clone(), source)?;
+            } else {
+                import_skill_from_path(state, &entry.path, entry.metadata.clone(), source)?;
+            }
         }
         Ok(())
     })
@@ -191,6 +199,44 @@ fn import_skill_from_path(
         managed_links: ManagedLinks::default(),
         conflict: None,
     });
+    state.skills.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(())
+}
+
+fn overwrite_skill_from_path(
+    state: &mut crate::models::AppState,
+    source: &Path,
+    metadata: SkillMetadata,
+    skill_source: SkillSource,
+) -> Result<()> {
+    fs::create_dir_all(&state.skill_library_path)?;
+    let target = state.skill_library_path.join(&metadata.id);
+    if target.exists() {
+        fs::remove_dir_all(&target)?;
+    }
+    copy_dir_all(source, &target)?;
+    if let Some(existing) = state
+        .skills
+        .iter_mut()
+        .find(|skill| skill.id == metadata.id)
+    {
+        existing.name = metadata.name;
+        existing.description = metadata.description;
+        existing.library_path = target;
+        existing.source = skill_source;
+        existing.conflict = None;
+    } else {
+        state.skills.push(Skill {
+            id: metadata.id,
+            name: metadata.name,
+            description: metadata.description,
+            library_path: target,
+            source: skill_source,
+            references: Vec::new(),
+            managed_links: ManagedLinks::default(),
+            conflict: None,
+        });
+    }
     state.skills.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(())
 }
@@ -721,6 +767,7 @@ mod tests {
                 path: source_root.path().to_path_buf(),
             },
             &["writer".to_string()],
+            false,
         )
         .unwrap();
 
@@ -728,6 +775,56 @@ mod tests {
         assert_eq!(state.skills[0].id, "writer");
         assert!(library_root.path().join("writer").join("SKILL.md").exists());
         assert!(!library_root.path().join("reviewer").exists());
+    }
+
+    #[test]
+    fn overwrites_existing_skill_when_requested() {
+        let source_root = tempdir().unwrap();
+        let library_root = tempdir().unwrap();
+        let old_source = source_root.path().join("old").join("azure-deploy");
+        let new_source = source_root.path().join("new").join("azure-deploy");
+        fs::create_dir_all(&old_source).unwrap();
+        fs::create_dir_all(&new_source).unwrap();
+        fs::write(
+            old_source.join("SKILL.md"),
+            "---\nname: azure-deploy\ndescription: Old local copy\n---\nold",
+        )
+        .unwrap();
+        fs::write(
+            new_source.join("SKILL.md"),
+            "---\nname: azure-deploy\ndescription: Store copy\n---\nnew",
+        )
+        .unwrap();
+        fs::write(new_source.join("workflow.md"), "store workflow").unwrap();
+        let mut state = default_state(library_root.path().to_path_buf());
+        import_skill(&mut state, &old_source).unwrap();
+
+        import_selected_skills(
+            &mut state,
+            &ImportSkillSource::Local {
+                path: source_root.path().join("new"),
+            },
+            &["azure-deploy".to_string()],
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(state.skills.len(), 1);
+        assert_eq!(state.skills[0].description, "Store copy");
+        assert_eq!(
+            state.skills[0].source,
+            SkillSource::local(Some(new_source.clone()))
+        );
+        assert!(library_root
+            .path()
+            .join("azure-deploy")
+            .join("workflow.md")
+            .exists());
+        assert!(
+            fs::read_to_string(library_root.path().join("azure-deploy").join("SKILL.md"))
+                .unwrap()
+                .contains("Store copy")
+        );
     }
 
     #[test]

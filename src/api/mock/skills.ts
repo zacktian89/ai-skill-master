@@ -101,7 +101,11 @@ export function confirmImportSkills(request: ConfirmImportSkillsRequest): Promis
   const candidates = mockImportCandidates(request.source);
   const selected = new Set(request.candidateIds);
   for (const candidate of candidates) {
-    if (!selected.has(candidate.candidateId) || candidate.status !== "ready") continue;
+    if (!selected.has(candidate.candidateId)) continue;
+    if (candidate.status !== "ready" && !(request.overwrite && candidate.status === "duplicate")) continue;
+    if (request.overwrite) {
+      mockSnapshot.state.skills = mockSnapshot.state.skills.filter((skill) => skill.id !== candidate.id);
+    }
     mockSnapshot.state.skills.unshift({
       id: candidate.id,
       name: candidate.name,

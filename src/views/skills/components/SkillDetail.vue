@@ -27,6 +27,7 @@ const props = defineProps<{
   busy: boolean;
   isStoreMode?: boolean;
   isInstalled?: boolean;
+  localStoreMatch?: boolean;
   importBusy?: boolean;
 }>();
 
@@ -170,7 +171,7 @@ onBeforeUnmount(closeMoreMenu);
           <h2>{{ selectedSkill.name }}</h2>
           <div class="extension-meta">
             <code>{{ selectedSkill.id }}</code>
-            <span>{{ label }}</span>
+            <span v-if="!localStoreMatch">{{ label }}</span>
             <a
               v-if="selectedSkill.source?.kind === 'github' && formattedGithubUrl"
               :href="formattedGithubUrl"
@@ -199,7 +200,8 @@ onBeforeUnmount(closeMoreMenu);
             <Download v-else :size="14" />
             <span>{{ importBusy ? 'downloading...' : 'download' }}</span>
           </button>
-          <template v-else-if="isStoreMode && isInstalled">
+          <span v-if="isStoreMode && localStoreMatch && !isInstalled" class="store-local-tag">{{ t('skills.sourceLocal') }}</span>
+          <template v-if="isStoreMode && isInstalled">
             <button
               class="secondary-button secondary-button--sm"
               type="button"

@@ -125,6 +125,134 @@ describe("StoreView", () => {
     expect(wrapper.text()).toContain("已安装");
   });
 
+  it("treats a local same-id skill as downloadable instead of installed", async () => {
+    const localSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "azure-deploy",
+            name: "azure-deploy",
+            description: "Local Azure deploy skill",
+            libraryPath: "/library/azure-deploy",
+            source: {
+              kind: "local",
+              label: "本地",
+              path: "/library/azure-deploy",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+    vi.mocked(api.fetchStoreLeaderboard).mockResolvedValue([
+      {
+        id: "microsoft/azure-skills/azure-deploy",
+        skillId: "azure-deploy",
+        name: "azure-deploy",
+        source: "microsoft/azure-skills",
+        installs: 365000,
+      },
+    ]);
+
+    const wrapper = mount(StoreView, {
+      props: {
+        snapshot: localSnapshot,
+      },
+    });
+
+    await flushPromises();
+
+    expect(wrapper.find(".extension-meta").text()).not.toContain("本地");
+    expect(wrapper.find(".store-local-tag").text()).toBe("本地");
+    expect(wrapper.find(".store-local-icon").exists()).toBe(true);
+    expect(wrapper.text()).not.toContain("已安装");
+    expect(wrapper.find('button[aria-label="下载 Skill"]').exists()).toBe(true);
+  });
+
+  it("confirms and overwrites a local same-id skill when downloading from store", async () => {
+    const localSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "azure-deploy",
+            name: "azure-deploy",
+            description: "Local Azure deploy skill",
+            libraryPath: "/library/azure-deploy",
+            source: {
+              kind: "local",
+              label: "本地",
+              path: "/library/azure-deploy",
+            },
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+      },
+    };
+    vi.mocked(api.fetchStoreLeaderboard).mockResolvedValue([
+      {
+        id: "microsoft/azure-skills/azure-deploy",
+        skillId: "azure-deploy",
+        name: "azure-deploy",
+        source: "microsoft/azure-skills",
+        installs: 365000,
+      },
+    ]);
+    vi.mocked(api.previewImportSkills).mockResolvedValue({
+      candidates: [
+        {
+          candidateId: ".",
+          id: "azure-deploy",
+          name: "azure-deploy",
+          description: "Azure deploy from store",
+          relativePath: ".",
+          status: "duplicate",
+          message: "已存在",
+        },
+      ],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        statusText: "Not Found",
+        json: async () => ({ tree: [] }),
+        text: async () => "",
+      }))
+    );
+    const confirmMock = vi.fn(() => true);
+    vi.stubGlobal("confirm", confirmMock);
+
+    const wrapper = mount(StoreView, {
+      props: {
+        snapshot: localSnapshot,
+      },
+    });
+
+    await flushPromises();
+    await wrapper.find('button[aria-label="下载 Skill"]').trigger("click");
+    await flushPromises();
+
+    expect(confirmMock).toHaveBeenCalled();
+    expect(api.confirmImportSkills).toHaveBeenCalledWith({
+      source: {
+        kind: "github",
+        url: "https://github.com/microsoft/azure-skills.git",
+        ref: null,
+        subdir: null,
+      },
+      candidateIds: ["."],
+      overwrite: true,
+    });
+  });
+
   it("shows the initial loading animation before the first store response resolves", async () => {
     let resolveLeaderboard: ((value: StoreSkill[]) => void) | undefined;
     vi.mocked(api.fetchStoreLeaderboard).mockImplementation(

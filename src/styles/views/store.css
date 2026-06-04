@@ -108,3 +108,8 @@
   color: var(--brand-600);
   flex-shrink: 0;
 }
+
+.store-local-icon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}

@@ -57,15 +57,13 @@ fn write_state(path: &Path, state: &AppState, refresh_backup: bool) -> Result<()
     Ok(())
 }
 
-pub fn load_or_create_state(
-    path: &Path,
-    skill_library_path: &Path,
-) -> Result<LoadedState> {
+pub fn load_or_create_state(path: &Path, skill_library_path: &Path) -> Result<LoadedState> {
     fs::create_dir_all(skill_library_path)?;
     if path.exists() {
         return load_state_with_recovery(path, skill_library_path);
     }
-    let state = default_state(skill_library_path.to_path_buf());
+    let mut state = default_state(skill_library_path.to_path_buf());
+    repair_state_from_library(&mut state)?;
     save_state(path, &state)?;
     Ok(LoadedState {
         state,
@@ -73,29 +71,30 @@ pub fn load_or_create_state(
     })
 }
 
-pub fn rebuild_state_from_library(
-    skill_library_path: &Path,
-) -> Result<AppState> {
+pub fn rebuild_state_from_library(skill_library_path: &Path) -> Result<AppState> {
     fs::create_dir_all(skill_library_path)?;
     let mut state = default_state(skill_library_path.to_path_buf());
     state.skills = scan_skill_library(skill_library_path)?;
     Ok(state)
 }
 
-fn load_state_with_recovery(
-    path: &Path,
-    skill_library_path: &Path,
-) -> Result<LoadedState> {
+fn load_state_with_recovery(path: &Path, skill_library_path: &Path) -> Result<LoadedState> {
     match load_state(path) {
-        Ok(state) => Ok(LoadedState {
-            state,
-            load_status: StateLoadStatus::Clean,
-        }),
+        Ok(mut state) => {
+            if repair_state_from_library(&mut state)? {
+                write_state(path, &state, false)?;
+            }
+            Ok(LoadedState {
+                state,
+                load_status: StateLoadStatus::Clean,
+            })
+        }
         Err(main_error) => {
             let backup_path = state_backup_path(path);
             if backup_path.exists() {
                 match load_state(&backup_path) {
-                    Ok(state) => {
+                    Ok(mut state) => {
+                        repair_state_from_library(&mut state)?;
                         write_state(path, &state, false)?;
                         return Ok(LoadedState {
                             state,
@@ -109,8 +108,7 @@ fn load_state_with_recovery(
                         });
                     }
                     Err(backup_error) => {
-                        let state =
-                            rebuild_state_from_library(skill_library_path)?;
+                        let state = rebuild_state_from_library(skill_library_path)?;
                         return Ok(LoadedState {
                             state,
                             load_status: StateLoadStatus::RebuildRequired {
@@ -134,6 +132,40 @@ fn load_state_with_recovery(
             })
         }
     }
+}
+
+fn repair_state_from_library(state: &mut AppState) -> Result<bool> {
+    let scanned = scan_skill_library(&state.skill_library_path)?;
+    let mut changed = false;
+
+    for disk_skill in scanned {
+        if let Some(existing) = state
+            .skills
+            .iter_mut()
+            .find(|skill| skill.id == disk_skill.id)
+        {
+            if existing.name != disk_skill.name {
+                existing.name = disk_skill.name;
+                changed = true;
+            }
+            if existing.description != disk_skill.description {
+                existing.description = disk_skill.description;
+                changed = true;
+            }
+            if existing.library_path != disk_skill.library_path {
+                existing.library_path = disk_skill.library_path;
+                changed = true;
+            }
+        } else {
+            state.skills.push(disk_skill);
+            changed = true;
+        }
+    }
+
+    if changed {
+        state.skills.sort_by(|a, b| a.name.cmp(&b.name));
+    }
+    Ok(changed)
 }
 
 #[cfg(test)]
@@ -200,6 +232,53 @@ mod tests {
         assert!(state.state.skills.is_empty());
         assert!(path.exists());
         assert!(library.exists());
+    }
+
+    #[test]
+    fn repairs_state_with_skills_added_directly_to_library() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("skillmaster.json");
+        let library = dir.path().join("skills");
+        let unmanaged = library.join("unmanaged-writer");
+        fs::create_dir_all(&unmanaged).unwrap();
+        fs::write(
+            unmanaged.join("SKILL.md"),
+            "---\nname: Unmanaged Writer\ndescription: Added outside SkillMaster\n---\n",
+        )
+        .unwrap();
+        let state = default_state(library.clone());
+        save_state(&path, &state).unwrap();
+
+        let loaded = load_or_create_state(&path, &library).unwrap();
+        let saved = load_state(&path).unwrap();
+
+        assert_eq!(loaded.load_status, StateLoadStatus::Clean);
+        assert_eq!(loaded.state.skills.len(), 1);
+        assert_eq!(loaded.state.skills[0].id, "unmanaged-writer");
+        assert_eq!(loaded.state.skills[0].name, "Unmanaged Writer");
+        assert_eq!(loaded.state.skills[0].source, SkillSource::default());
+        assert_eq!(saved.skills, loaded.state.skills);
+    }
+
+    #[test]
+    fn creates_state_from_existing_library_when_file_is_missing() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("missing.json");
+        let library = dir.path().join("skills");
+        let unmanaged = library.join("existing-writer");
+        fs::create_dir_all(&unmanaged).unwrap();
+        fs::write(
+            unmanaged.join("SKILL.md"),
+            "---\nname: Existing Writer\n---\n",
+        )
+        .unwrap();
+
+        let loaded = load_or_create_state(&path, &library).unwrap();
+        let saved = load_state(&path).unwrap();
+
+        assert_eq!(loaded.state.skills.len(), 1);
+        assert_eq!(loaded.state.skills[0].id, "existing-writer");
+        assert_eq!(saved.skills, loaded.state.skills);
     }
 
     #[test]

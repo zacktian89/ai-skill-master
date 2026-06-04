@@ -246,6 +246,7 @@ export const en: TranslationKey = {
     openRepo: "Open Repository",
     download: "Download Skill",
     downloading: "Preparing import...",
+    overwriteLocalConfirm: "A local skill with this ID exists. Overwrite it?",
     refresh: "Refresh",
     sourceFilter: "Source filter",
     marketSource: "skills.sh",

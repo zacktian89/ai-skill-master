@@ -98,6 +98,7 @@ export interface ImportSkillPreview {
 export interface ConfirmImportSkillsRequest {
   source: ImportSkillSource;
   candidateIds: string[];
+  overwrite?: boolean;
 }
 
 export interface ProjectImpact {

@@ -32,6 +32,8 @@ use tauri::AppHandle;
 pub struct ConfirmImportSkillsRequest {
     pub source: ImportSkillSource,
     pub candidate_ids: Vec<String>,
+    #[serde(default)]
+    pub overwrite: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -120,6 +122,7 @@ pub fn confirm_import_skills(
         &mut command_state.state,
         &request.source,
         &request.candidate_ids,
+        request.overwrite,
     )
     .map_err(|error| error.to_string())?;
     snapshot_after_save(command_state)

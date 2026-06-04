@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref, watch, nextTick, onBeforeUnmount } from "vue";
-import { Download, Loader2, Search, Plus, Trash2, FolderOpen } from "lucide-vue-next";
+import { Download, Loader2, Search, Plus, Trash2, FolderOpen, Folder } from "lucide-vue-next";
 import { marked } from "marked";
 import { openPath } from "@tauri-apps/plugin-opener";
 import SplitPane from "../../components/SplitPane.vue";
@@ -92,6 +92,25 @@ function normalizeRepoName(url: string | null | undefined): string | null {
 
 function isInstalled(skill: StoreSkill): boolean {
   return installedKeys.value.has(`${skill.source}/${skill.skillId}`);
+}
+
+function isLocalStoreMatch(skill: StoreSkill | null): boolean {
+  if (!skill || isInstalled(skill)) return false;
+  return snapshot.value.state.skills.some((localSkill) => localSkill.id === skill.skillId);
+}
+
+function isExactStoreMatch(localSkill: Skill, storeSkill: StoreSkill): boolean {
+  const repoName = normalizeRepoName(localSkill.source?.url ?? null);
+  return repoName ? `${repoName}/${localSkill.id}` === `${storeSkill.source}/${storeSkill.skillId}` : false;
+}
+
+function findMatchingInstalledSkill(storeSkill: StoreSkill | null): Skill | null {
+  if (!storeSkill) return null;
+  return (
+    snapshot.value.state.skills.find((skill) => isExactStoreMatch(skill, storeSkill)) ??
+    snapshot.value.state.skills.find((skill) => skill.id === storeSkill.skillId) ??
+    null
+  );
 }
 
 function candidatesForStoreSkill(
@@ -198,7 +217,21 @@ async function prepareImport() {
     const preview = await api.previewImportSkills(source);
     const candidates = candidatesForStoreSkill(preview.candidates, skill, sourceSubdir);
     const candidate = candidates.find((candidate) => candidate.status === "ready");
+    const duplicateCandidate = candidates.find((candidate) => candidate.status === "duplicate");
     if (!candidate) {
+      if (
+        duplicateCandidate &&
+        matchedInstalledSkill.value &&
+        window.confirm(t("store.overwriteLocalConfirm"))
+      ) {
+        const nextSnapshot = await api.confirmImportSkills({
+          source,
+          candidateIds: [duplicateCandidate.candidateId],
+          overwrite: true,
+        });
+        applySnapshot(nextSnapshot);
+        return;
+      }
       throw new Error(candidates[0]?.message ?? t("store.skillNotFound"));
     }
     const nextSnapshot = await api.confirmImportSkills({ source, candidateIds: [candidate.candidateId] });
@@ -316,12 +349,7 @@ function cleanupStoreView() {
 onBeforeUnmount(cleanupStoreView);
 
 const matchedInstalledSkill = computed(() => {
-  if (!selectedStoreSkill.value) return null;
-  return snapshot.value.state.skills.find((skill) => {
-    const repoName = normalizeRepoName(skill.source?.url ?? null);
-    if (!repoName) return false;
-    return `${repoName}/${skill.id}` === `${selectedStoreSkill.value.source}/${selectedStoreSkill.value.skillId}`;
-  });
+  return findMatchingInstalledSkill(selectedStoreSkill.value);
 });
 
 const selectedSkillRelativePath = computed(() => selectedStoreSkill.value?.skillId ?? null);
@@ -722,6 +750,12 @@ watch(query, () => {
         >
           <div class="store-list-top">
             <strong>{{ skill.name }}</strong>
+            <Folder
+              v-if="isLocalStoreMatch(skill)"
+              :size="15"
+              class="store-local-icon"
+              :aria-label="t('skills.sourceLocal')"
+            />
             <svg v-if="isInstalled(skill)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="store-installed-icon">
               <circle cx="12" cy="12" r="10" />
               <path d="m7.5 12.5 3 3 6-6" stroke-width="3.5" />
@@ -755,6 +789,7 @@ watch(query, () => {
         :busy="importBusy || deleteDialogOpen || referenceDialogOpen"
         :is-store-mode="true"
         :is-installed="isInstalled(selectedStoreSkill)"
+        :local-store-match="isLocalStoreMatch(selectedStoreSkill)"
         :import-busy="importBusy"
         @update:active-detail-tab="activeDetailTab = $event"
         @download-click="prepareImport"

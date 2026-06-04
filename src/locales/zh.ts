@@ -244,6 +244,7 @@ export const zh = {
     openRepo: "打开仓库",
     download: "下载 Skill",
     downloading: "正在准备导入...",
+    overwriteLocalConfirm: "本地已有同名 Skill，是否覆盖？",
     refresh: "刷新",
     sourceFilter: "来源筛选",
     marketSource: "skills.sh",
