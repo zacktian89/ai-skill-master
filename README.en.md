@@ -38,12 +38,12 @@ SkillMaster is a local desktop app for managing, importing, previewing, and dist
 
 ### 1. Download an installer
 
-Open the [SkillMaster installer directory](https://github.com/zacktian89/ai-skill-master/tree/main/releases/v0.1.0) and download the installer for your system.
+Open the [SkillMaster 1.0.0 release page](https://github.com/zacktian89/ai-skill-master/releases/tag/v1.0.0) and download the installer for your system.
 
 Windows users can download:
 
-- [SkillMaster_0.1.0_x64-setup.exe](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v0.1.0/SkillMaster_0.1.0_x64-setup.exe)
-- [SkillMaster_0.1.0_x64_en-US.msi](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v0.1.0/SkillMaster_0.1.0_x64_en-US.msi)
+- [SkillMaster_1.0.0_x64-setup.exe](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64-setup.exe)
+- [SkillMaster_1.0.0_x64_en-US.msi](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64_en-US.msi)
 
 ### 2. Install and launch
 

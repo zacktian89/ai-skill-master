@@ -38,12 +38,12 @@ SkillMaster 是一个本地桌面应用，用来集中管理、导入、预览�
 
 ### 1. 下载安装包
 
-打开 [SkillMaster 安装包目录](https://github.com/zacktian89/ai-skill-master/tree/main/releases/v0.1.0)，下载适合当前系统的安装包。
+打开 [SkillMaster 1.0.0 Release 页面](https://github.com/zacktian89/ai-skill-master/releases/tag/v1.0.0)，下载适合当前系统的安装包。
 
 Windows 用户可以直接下载：
 
-- [SkillMaster_0.1.0_x64-setup.exe](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v0.1.0/SkillMaster_0.1.0_x64-setup.exe)
-- [SkillMaster_0.1.0_x64_en-US.msi](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v0.1.0/SkillMaster_0.1.0_x64_en-US.msi)
+- [SkillMaster_1.0.0_x64-setup.exe](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64-setup.exe)
+- [SkillMaster_1.0.0_x64_en-US.msi](https://github.com/zacktian89/ai-skill-master/raw/main/releases/v1.0.0/SkillMaster_1.0.0_x64_en-US.msi)
 
 ### 2. 安装并启动
 

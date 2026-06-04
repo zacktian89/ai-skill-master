@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "notes": "SkillMaster 1.0.0 release.",
+  "pub_date": "2026-06-04T08:05:52Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRd2NreWxEeGx1Q2xIenRkMGxWai9OOUV2ejJtemNhK2E4VmJYSEgrM3o5ZUxhWElycWtoSGVleGYyNzE1Z2c1eDlYUHdjdENQMVFuKzBUcHptVlZTSUh5UWNOWWNtUlFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwNTYwMzQwCWZpbGU6U2tpbGxNYXN0ZXJfMS4wLjBfeDY0LXNldHVwLmV4ZQpROC9hSmJnWDFtd1NPUFJ0SzljVTR5MXFicnVpWTBvYXE2UG5MNUE0enRYRkZFUFd6SGpYYjJWOEVrSVFJTVdKQURDMFZ2Ly9FZHhjOGJZMCtFU2FCUT09Cg==",
+      "url": "https://github.com/zacktian89/ai-skill-master/releases/download/v1.0.0/SkillMaster_1.0.0_x64-setup.exe"
+    }
+  }
+}
