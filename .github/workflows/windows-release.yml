@@ -1,0 +1,93 @@
+name: Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub release tag to publish artifacts to"
+        required: true
+        default: "v1.0.0"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Build Windows app
+        run: npm run tauri build -- --ci --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Collect Windows artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          mkdir -p artifacts
+
+          # Search for MSI and NSIS (.exe) installer files under targets
+          MSI_PATH="$(find src-tauri/target -type f -name "*.msi" -print -quit)"
+          EXE_PATH="$(find src-tauri/target -type f -name "*.exe" -not -path "*/target/release/deps/*" -not -path "*/target/release/build/*" -print -quit)"
+
+          if [[ -n "${MSI_PATH}" ]]; then
+            cp "${MSI_PATH}" "artifacts/SkillMaster_${VERSION}_x64_en-US.msi"
+          fi
+
+          if [[ -n "${EXE_PATH}" ]]; then
+            cp "${EXE_PATH}" "artifacts/SkillMaster_${VERSION}_x64-setup.exe"
+          fi
+
+          if [[ -z "${MSI_PATH}" && -z "${EXE_PATH}" ]]; then
+            echo "No Windows installers (.msi or .exe) were found" >&2
+            exit 1
+          fi
+
+          # Calculate SHA-256 checksums
+          sha256sum artifacts/* > artifacts/SHA256SUMS.txt
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillmaster-windows-${{ inputs.release_tag || github.ref_name }}
+          path: artifacts/*
+
+      - name: Publish artifacts to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" --title "SkillMaster ${RELEASE_TAG#v}" --notes "SkillMaster ${RELEASE_TAG#v} release."
+          fi
+          gh release upload "${RELEASE_TAG}" artifacts/* --clobber
