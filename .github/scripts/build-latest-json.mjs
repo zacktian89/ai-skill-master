@@ -25,7 +25,7 @@ if (!releaseTag || !repository) {
 
 const expected = {
   macos: `SkillMaster_${version}_universal.app.tar.gz`,
-  windows: `SkillMaster_${version}_x64.zip`,
+  windows: `SkillMaster_${version}_x64-setup.exe`,
 };
 
 const byName = new Map(assets.map((asset) => [asset.name, asset]));
