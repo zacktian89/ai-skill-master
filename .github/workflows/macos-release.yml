@@ -1,0 +1,95 @@
+name: macOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub release tag to publish artifacts to"
+        required: true
+        default: "v1.0.0"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build unsigned macOS package
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: Build unsigned universal macOS app
+        run: >
+          npm run tauri build --
+          --target universal-apple-darwin
+          --bundles app,dmg
+          --no-sign
+          --ci
+          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Collect macOS artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          mkdir -p artifacts
+
+          APP_PATH="$(find src-tauri/target -type d -path '*/bundle/macos/SkillMaster.app' -print -quit)"
+          DMG_PATH="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print -quit)"
+
+          if [[ -z "${APP_PATH}" ]]; then
+            echo "SkillMaster.app was not generated" >&2
+            exit 1
+          fi
+
+          ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "artifacts/SkillMaster_${VERSION}_universal.app.zip"
+
+          if [[ -n "${DMG_PATH}" ]]; then
+            cp "${DMG_PATH}" "artifacts/SkillMaster_${VERSION}_universal.dmg"
+          fi
+
+          shasum -a 256 artifacts/* > artifacts/SHA256SUMS.txt
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillmaster-macos-${{ inputs.release_tag || github.ref_name }}
+          path: artifacts/*
+
+      - name: Publish artifacts to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" --title "SkillMaster ${RELEASE_TAG#v}" --notes "SkillMaster ${RELEASE_TAG#v} release."
+          fi
+          gh release upload "${RELEASE_TAG}" artifacts/* --clobber
