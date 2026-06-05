@@ -57,11 +57,11 @@ jobs:
           VERSION="$(node -p "require('./package.json').version")"
           mkdir -p artifacts
 
-          # Search for MSI and NSIS (.exe) installer files under targets
-          MSI_PATH="$(find src-tauri/target -type f -name "*.msi" -print -quit)"
-          EXE_PATH="$(find src-tauri/target -type f -name "*.exe" -not -path "*/target/release/deps/*" -not -path "*/target/release/build/*" -print -quit)"
-          ZIP_PATH="$(find src-tauri/target -type f -name "*.zip" -print -quit)"
-          SIG_PATH="$(find src-tauri/target -type f -name "*.zip.sig" -print -quit)"
+          # Search for MSI and NSIS installer files under bundle outputs.
+          MSI_PATH="$(find src-tauri/target -type f -path "*/bundle/msi/*.msi" -print -quit)"
+          EXE_PATH="$(find src-tauri/target -type f -path "*/bundle/nsis/*.exe" -print -quit)"
+          MSI_SIG_PATH="$(find src-tauri/target -type f -path "*/bundle/msi/*.msi.sig" -print -quit)"
+          EXE_SIG_PATH="$(find src-tauri/target -type f -path "*/bundle/nsis/*.exe.sig" -print -quit)"
 
           if [[ -n "${MSI_PATH}" ]]; then
             cp "${MSI_PATH}" "artifacts/SkillMaster_${VERSION}_x64_en-US.msi"
@@ -71,18 +71,23 @@ jobs:
             cp "${EXE_PATH}" "artifacts/SkillMaster_${VERSION}_x64-setup.exe"
           fi
 
-          if [[ -z "${ZIP_PATH}" ]]; then
-            echo "Windows updater archive (.zip) was not generated" >&2
+          if [[ -n "${MSI_SIG_PATH}" ]]; then
+            cp "${MSI_SIG_PATH}" "artifacts/SkillMaster_${VERSION}_x64_en-US.msi.sig"
+          fi
+
+          if [[ -n "${EXE_SIG_PATH}" ]]; then
+            cp "${EXE_SIG_PATH}" "artifacts/SkillMaster_${VERSION}_x64-setup.exe.sig"
+          fi
+
+          if [[ -z "${EXE_PATH}" ]]; then
+            echo "Windows NSIS installer (.exe) was not generated" >&2
             exit 1
           fi
 
-          if [[ -z "${SIG_PATH}" ]]; then
-            echo "Windows updater signature (.zip.sig) was not generated" >&2
+          if [[ -z "${EXE_SIG_PATH}" ]]; then
+            echo "Windows updater signature (.exe.sig) was not generated" >&2
             exit 1
           fi
-
-          cp "${ZIP_PATH}" "artifacts/SkillMaster_${VERSION}_x64.zip"
-          cp "${SIG_PATH}" "artifacts/SkillMaster_${VERSION}_x64.zip.sig"
 
           if [[ -z "${MSI_PATH}" && -z "${EXE_PATH}" ]]; then
             echo "No Windows installers (.msi or .exe) were found" >&2

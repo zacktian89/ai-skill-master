@@ -29,10 +29,6 @@ SkillMaster 是一个本地桌面应用，解决 agent skills 在日常使用中
 
 ![Store view](docs/screenshots/store.png)
 
-### 智能体目录
-
-![Agents view](docs/screenshots/agents.png)
-
 ### 插件详情
 
 ![Plugins view](docs/screenshots/plugins.png)
@@ -129,3 +125,7 @@ src-tauri/           Tauri 与 Rust 后端命令
 docs/                设计文档、验证记录和 README 截图
 public/              图标和静态资源
 ```
+
+## 开源协议
+
+SkillMaster 使用 GNU General Public License v3.0 only（GPL-3.0-only）开源协议。详情见 [LICENSE](LICENSE)。
