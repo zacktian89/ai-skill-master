@@ -2,6 +2,7 @@ use crate::agent_state::{
     add_agent_to_state, delete_agent_from_state, scan_agent_skills as scan_agent_skills_from_state,
     set_agent_rule_in_state, SetAgentRuleRequest,
 };
+use crate::codex_config::{set_plugin_enabled_default, set_skill_enabled_default};
 use crate::command_context::{load_command_state, persist};
 use crate::project_state::{
     add_project_to_state, delete_project_from_state, reset_project_rules_in_state,
@@ -70,6 +71,38 @@ fn snapshot_after_save(
 
 #[tauri::command]
 pub fn get_snapshot(app: AppHandle) -> Result<AppSnapshot, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &command_state.load_status,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn set_codex_plugin_enabled(
+    app: AppHandle,
+    plugin_key: String,
+    enabled: bool,
+) -> Result<AppSnapshot, String> {
+    set_plugin_enabled_default(&plugin_key, enabled).map_err(|error| error.to_string())?;
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    build_snapshot(
+        &command_state.paths,
+        command_state.state,
+        &command_state.load_status,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn set_codex_skill_enabled(
+    app: AppHandle,
+    skill_name: String,
+    enabled: bool,
+) -> Result<AppSnapshot, String> {
+    set_skill_enabled_default(&skill_name, enabled).map_err(|error| error.to_string())?;
     let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
     build_snapshot(
         &command_state.paths,

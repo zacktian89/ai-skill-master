@@ -1,5 +1,6 @@
 pub mod agent_state;
 pub mod app_paths;
+pub mod codex_config;
 pub mod command_context;
 pub mod commands;
 pub mod effective_state;
@@ -55,7 +56,9 @@ pub fn run() {
             commands::add_agent,
             commands::delete_agent,
             commands::set_agent_rule,
-            commands::scan_agent_skills
+            commands::scan_agent_skills,
+            commands::set_codex_plugin_enabled,
+            commands::set_codex_skill_enabled
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SkillMaster");

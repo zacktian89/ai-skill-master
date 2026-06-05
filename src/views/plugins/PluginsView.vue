@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject, nextTick, onBeforeUnmount } from "vue";
-import { Puzzle, Terminal, Cpu, Folder, User, Tag, MoreHorizontal, Trash2, FolderOpen } from "lucide-vue-next";
+import { Puzzle, Terminal, Cpu, Folder, User, Tag, MoreHorizontal, Trash2, FolderOpen, Power, PowerOff } from "lucide-vue-next";
 import { openPath } from "@tauri-apps/plugin-opener";
+import * as api from "../../api";
 import SplitPane from "../../components/SplitPane.vue";
 import ListPanel from "../../components/ListPanel.vue";
 import SearchInput from "../../components/SearchInput.vue";
-import SwitchToggle from "../../components/SwitchToggle.vue";
 import ModalDialog from "../../components/ModalDialog.vue";
 import { useI18n } from "../../composables/useI18n";
-import type { AppSnapshot } from "../../types";
+import type { AppSnapshot, Plugin, Skill } from "../../types";
 import { AppStoreKey } from "../../stores/useAppStore";
 
 const { t } = useI18n();
@@ -48,6 +48,7 @@ const fallbackMenuWidth = 148;
 
 // Dialog State
 const deleteDialogOpen = ref(false);
+const pluginBusy = ref(false);
 
 // Clean up listener on unmount
 onBeforeUnmount(closeMoreMenu);
@@ -107,13 +108,36 @@ function getAgentBadgeClass(agent: string): string {
 }
 
 // Enable/Disable toggle logic
-function handleTogglePlugin() {
-  if (!selectedPlugin.value || !appStore?.snapshot.value) return;
-  const cloned = JSON.parse(JSON.stringify(appStore.snapshot.value)) as AppSnapshot;
-  const plugin = cloned.state.plugins?.find((p) => p.id === selectedPlugin.value?.id);
-  if (plugin) {
-    plugin.enabled = !plugin.enabled;
-    appStore.applySnapshot(cloned);
+async function setPluginEnabled(plugin: Plugin | null | undefined, enabled: boolean) {
+  if (!plugin || !appStore) return;
+  const pluginKey = plugin.configKey;
+  if (!pluginKey) return;
+  pluginBusy.value = true;
+  try {
+    const next = await api.setCodexPluginEnabled(pluginKey, enabled);
+    appStore.applySnapshot(next);
+  } catch (cause) {
+    appStore.setError(String(cause));
+  } finally {
+    pluginBusy.value = false;
+  }
+}
+
+function isPluginSkillEnabled(skillId: string, plugin = selectedPlugin.value): boolean {
+  return !(plugin?.disabledSkillIds ?? []).includes(skillId);
+}
+
+async function setPluginSkillEnabled(plugin: Plugin | null | undefined, skill: Skill | null | undefined, enabled: boolean) {
+  if (!plugin || !skill || !appStore) return;
+  const skillName = `${plugin.name}:${skill.id}`;
+  pluginBusy.value = true;
+  try {
+    const next = await api.setCodexSkillEnabled(skillName, enabled);
+    appStore.applySnapshot(next);
+  } catch (cause) {
+    appStore.setError(String(cause));
+  } finally {
+    pluginBusy.value = false;
   }
 }
 
@@ -190,6 +214,9 @@ async function openPluginDirectory(path?: string) {
 const contextMenuOpen = ref<{ x: number; y: number; plugin: any } | null>(null);
 const contextMenuRef = ref<HTMLElement | null>(null);
 let contextMenuCloseTimer: number | null = null;
+const skillMenuOpen = ref<{ x: number; y: number; skill: Skill } | null>(null);
+const skillMenuRef = ref<HTMLElement | null>(null);
+let skillMenuCloseTimer: number | null = null;
 
 function closeContextMenu() {
   contextMenuOpen.value = null;
@@ -236,6 +263,50 @@ function runContextMenuAction(action: () => void) {
 }
 
 onBeforeUnmount(closeContextMenu);
+
+function closeSkillMenu() {
+  skillMenuOpen.value = null;
+  if (skillMenuCloseTimer !== null) {
+    window.clearTimeout(skillMenuCloseTimer);
+    skillMenuCloseTimer = null;
+  }
+  document.removeEventListener("click", closeSkillMenu);
+  document.removeEventListener("keydown", skillMenuOnEscape);
+}
+
+function skillMenuOnEscape(event: KeyboardEvent) {
+  if (event.key === "Escape") closeSkillMenu();
+}
+
+async function openSkillMenu(event: MouseEvent, skill: Skill, align: "left" | "right" = "right") {
+  event.preventDefault();
+  closeSkillMenu();
+  const initialX = align === "right" ? event.clientX - fallbackMenuWidth : event.clientX;
+  const initialPosition = clampMenuPosition(initialX, event.clientY, fallbackMenuWidth, 0);
+  skillMenuOpen.value = { ...initialPosition, skill };
+
+  await nextTick();
+  const menuRect = skillMenuRef.value?.getBoundingClientRect();
+  if (skillMenuOpen.value && menuRect) {
+    const menuWidth = menuRect.width || fallbackMenuWidth;
+    const x = align === "right" ? event.clientX - menuWidth : event.clientX;
+    const position = clampMenuPosition(x, event.clientY, menuWidth, menuRect.height);
+    skillMenuOpen.value = { ...position, skill };
+  }
+
+  skillMenuCloseTimer = window.setTimeout(() => {
+    skillMenuCloseTimer = null;
+    document.addEventListener("click", closeSkillMenu);
+    document.addEventListener("keydown", skillMenuOnEscape);
+  });
+}
+
+function runSkillMenuAction(action: () => void) {
+  action();
+  closeSkillMenu();
+}
+
+onBeforeUnmount(closeSkillMenu);
 </script>
 
 <template>
@@ -314,16 +385,9 @@ onBeforeUnmount(closeContextMenu);
 
           <div class="extension-command-panel">
             <div class="extension-actions" style="align-items: center; gap: 12px; display: flex;">
-              <!-- Switch Status Label -->
               <span v-if="!selectedPlugin.enabled" class="toggle-status-text" style="font-size: var(--font-size-xs); color: var(--text-muted); font-weight: var(--font-weight-medium);">
                 {{ t('agents.disabledBadge') }}
               </span>
-              <!-- Toggle Switch Component -->
-              <SwitchToggle
-                :checked="selectedPlugin.enabled"
-                :title="selectedPlugin.enabled ? '停用插件' : '启用插件'"
-                @change="handleTogglePlugin"
-              />
               <!-- More Actions Menu Trigger -->
               <button
                 class="ghost-icon-button"
@@ -347,6 +411,19 @@ onBeforeUnmount(closeContextMenu);
               role="menu"
               @click.stop
             >
+              <button
+                v-if="selectedPlugin.configKey"
+                type="button"
+                role="menuitem"
+                class="global-context-menu-item"
+                :disabled="pluginBusy"
+                @click="runMoreMenuAction(() => setPluginEnabled(selectedPlugin, !selectedPlugin.enabled))"
+              >
+                <Power v-if="!selectedPlugin.enabled" :size="15" />
+                <PowerOff v-else :size="15" />
+                <span>{{ selectedPlugin.enabled ? t('dialog.close') : t('skills.open') }}</span>
+              </button>
+
               <button
                 type="button"
                 role="menuitem"
@@ -457,12 +534,17 @@ onBeforeUnmount(closeContextMenu);
                 v-for="skill in selectedPlugin.skills"
                 :key="skill.id"
                 class="associated-skill-card"
+                :class="{ disabled: !isPluginSkillEnabled(skill.id) }"
+                @contextmenu.prevent="openSkillMenu($event, skill, 'left')"
               >
                 <div class="project-skill-main">
                   <div class="project-skill-header">
                     <div class="project-skill-title-row">
                       <Folder class="project-skill-title-icon" :size="15" />
                       <strong>{{ skill.name }}</strong>
+                      <span v-if="!isPluginSkillEnabled(skill.id)" class="plugin-item-disabled-tag">
+                        {{ t('agents.disabledBadge') }}
+                      </span>
                     </div>
                   </div>
                   <div class="project-skill-meta">
@@ -472,6 +554,16 @@ onBeforeUnmount(closeContextMenu);
                     {{ skill.description }}
                   </div>
                 </div>
+                <button
+                  class="ghost-icon-button"
+                  type="button"
+                  :disabled="pluginBusy"
+                  :aria-label="t('skills.moreSkillActions')"
+                  :title="t('skills.moreSkillActions')"
+                  @click.stop="openSkillMenu($event, skill)"
+                >
+                  <MoreHorizontal :size="16" />
+                </button>
               </div>
             </div>
             <div v-else class="empty-embedded">
@@ -549,6 +641,19 @@ onBeforeUnmount(closeContextMenu);
       @click.stop
     >
       <button
+        v-if="contextMenuOpen?.plugin?.configKey"
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="pluginBusy"
+        @click="runContextMenuAction(() => setPluginEnabled(contextMenuOpen?.plugin, !contextMenuOpen?.plugin?.enabled))"
+      >
+        <Power v-if="!contextMenuOpen?.plugin?.enabled" :size="15" />
+        <PowerOff v-else :size="15" />
+        <span>{{ contextMenuOpen?.plugin?.enabled ? t('dialog.close') : t('skills.open') }}</span>
+      </button>
+
+      <button
         type="button"
         role="menuitem"
         class="global-context-menu-item delete-action-btn"
@@ -566,6 +671,29 @@ onBeforeUnmount(closeContextMenu);
       >
         <FolderOpen :size="15" />
         <span>{{ t('skills.openDirectory') }}</span>
+      </button>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="skillMenuOpen"
+      ref="skillMenuRef"
+      class="global-context-menu"
+      :style="{ left: `${skillMenuOpen.x}px`, top: `${skillMenuOpen.y}px` }"
+      role="menu"
+      @click.stop
+    >
+      <button
+        type="button"
+        role="menuitem"
+        class="global-context-menu-item"
+        :disabled="pluginBusy"
+        @click="runSkillMenuAction(() => setPluginSkillEnabled(selectedPlugin, skillMenuOpen?.skill, !isPluginSkillEnabled(skillMenuOpen?.skill?.id || '')))"
+      >
+        <Power v-if="!isPluginSkillEnabled(skillMenuOpen?.skill?.id || '')" :size="15" />
+        <PowerOff v-else :size="15" />
+        <span>{{ isPluginSkillEnabled(skillMenuOpen?.skill?.id || '') ? t('dialog.close') : t('skills.open') }}</span>
       </button>
     </div>
   </Teleport>

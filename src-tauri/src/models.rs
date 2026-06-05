@@ -227,6 +227,10 @@ pub struct Plugin {
     pub author: Option<String>,
     pub agent_targets: Vec<String>,
     pub skills: Vec<Skill>,
+    #[serde(default)]
+    pub config_key: Option<String>,
+    #[serde(default)]
+    pub disabled_skill_ids: Vec<String>,
     pub mcp_servers: Option<Vec<String>>,
     pub mcp_config: Option<serde_json::Value>,
     pub r#type: String, // "standard" | "mcp"

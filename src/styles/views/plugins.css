@@ -271,12 +271,24 @@
 }
 
 .associated-skill-card {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
   padding: var(--spacing-md);
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-panel-muted);
   cursor: default;
+}
+
+.associated-skill-card.disabled {
+  opacity: 0.65;
+}
+
+.associated-skill-card .project-skill-main {
+  min-width: 0;
+  flex: 1;
 }
 
 .empty-embedded {
@@ -388,5 +400,4 @@
   padding: 0 var(--spacing-lg);
   margin-top: -8px;
 }
-
 
