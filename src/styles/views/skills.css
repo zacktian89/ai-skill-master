@@ -1,6 +1,6 @@
 .skills-view .list-search-row {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 30px;
+  grid-template-columns: 34px minmax(0, 1fr) 34px 30px;
   gap: 8px;
   align-items: center;
 }
@@ -84,4 +84,68 @@
   padding-left: var(--spacing-xs);
   border-left: 1px solid var(--border-default);
   margin-left: 16px;
+}
+
+.batch-selection-bar {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.batch-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batch-delete-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.batch-delete-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-panel-muted);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.batch-delete-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(420px, 52vh);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.batch-delete-item {
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--bg-panel-muted);
+}
+
+.batch-delete-item summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.batch-delete-item summary strong {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.batch-delete-item .detail-kv {
+  padding: 0 12px 12px;
 }

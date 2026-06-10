@@ -42,6 +42,33 @@
   background: var(--bg-selected-row);
 }
 
+.list-row--selectable {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.list-row--selectable.selected {
+  border-color: var(--brand-500);
+}
+
+.list-row-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-height: 22px;
+  cursor: pointer;
+}
+
+.list-row-check input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--brand-600);
+}
+
 .list-row-copy {
   min-width: 0;
   flex: 1;

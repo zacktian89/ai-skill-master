@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, inject, nextTick, onBeforeUnmount } from "vue";
-import { Plus, Folder, Github, FolderGit, ChevronRight, FolderOpen, Trash2 } from "lucide-vue-next";
+import { Plus, Folder, Github, FolderGit, ChevronRight, FolderOpen, Trash2, ListChecks, CheckSquare, X } from "lucide-vue-next";
 import { marked } from "marked";
 import { openPath } from "@tauri-apps/plugin-opener";
 import SplitPane from "../../components/SplitPane.vue";
@@ -12,6 +12,7 @@ import SkillListItem from "./components/SkillListItem.vue";
 import SkillDetail from "./components/SkillDetail.vue";
 import ImportSkillDialog from "./components/ImportSkillDialog.vue";
 import DeleteSkillDialog from "./components/DeleteSkillDialog.vue";
+import BatchDeleteSkillsDialog from "./components/BatchDeleteSkillsDialog.vue";
 import ReferenceDialogs from "./components/ReferenceDialogs.vue";
 
 import type {
@@ -66,12 +67,15 @@ const { busy } = useAsyncAction({
 });
 
 const deleteDialogOpen = ref(false);
+const batchDeleteDialogOpen = ref(false);
 const importDialogOpen = ref(false);
 const referenceDialogOpen = ref(false);
 const referenceDialogMode = ref<"add" | "delete">("add");
 const referenceToDelete = ref<SkillReferenceDetail | null>(null);
 
 const activeDetailTab = ref<DetailTab>("description");
+const batchSelectionMode = ref(false);
+const selectedSkillIds = ref<Set<string>>(new Set());
 
 // Composable for Markdown
 const {
@@ -117,6 +121,14 @@ watch(groupByGitHub, (newVal) => {
     localStorage.setItem(storageKey, String(newVal));
   }
 });
+
+watch(
+  () => snapshot.value.state.skills.map((skill) => skill.id).join("\n"),
+  () => {
+    const available = new Set(snapshot.value.state.skills.map((skill) => skill.id));
+    selectedSkillIds.value = new Set([...selectedSkillIds.value].filter((skillId) => available.has(skillId)));
+  }
+);
 
 function getGitHubRepo(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -184,6 +196,16 @@ const selectedSkill = computed(
   () => skills.value.find((skill) => skill.id === selectedSkillId.value) ?? skills.value[0] ?? null,
 );
 
+const selectedSkills = computed(() => {
+  const selected = selectedSkillIds.value;
+  return [...snapshot.value.state.skills]
+    .filter((skill) => selected.has(skill.id))
+    .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
+});
+
+const selectedSkillIdList = computed(() => selectedSkills.value.map((skill) => skill.id));
+const selectedSkillCount = computed(() => selectedSkillIdList.value.length);
+
 const selectedIssues = computed(() => {
   if (!selectedSkill.value) return [];
   return actionsForSkill(selectedSkill.value.id)
@@ -217,6 +239,41 @@ function referencesForSkill(skill: Skill): SkillReferenceDetail[] {
 function handleSnapshotSuccess(nextSnapshot: AppSnapshot) {
   if (appStore) appStore.applySnapshot(nextSnapshot);
   else emit("snapshot", nextSnapshot);
+}
+
+function toggleBatchSelectionMode() {
+  batchSelectionMode.value = !batchSelectionMode.value;
+  if (!batchSelectionMode.value) {
+    selectedSkillIds.value = new Set();
+  }
+}
+
+function toggleSkillSelection(skillId: string) {
+  const next = new Set(selectedSkillIds.value);
+  if (next.has(skillId)) next.delete(skillId);
+  else next.add(skillId);
+  selectedSkillIds.value = next;
+}
+
+function selectAllVisibleSkills() {
+  const next = new Set(selectedSkillIds.value);
+  for (const skill of skills.value) {
+    next.add(skill.id);
+  }
+  selectedSkillIds.value = next;
+}
+
+function clearSelectedSkills() {
+  selectedSkillIds.value = new Set();
+}
+
+function handleBatchDeleteSuccess(nextSnapshot: AppSnapshot) {
+  handleSnapshotSuccess(nextSnapshot);
+  selectedSkillIds.value = new Set();
+  batchSelectionMode.value = false;
+  if (!nextSnapshot.state.skills.some((skill) => skill.id === selectedSkillId.value)) {
+    selectedSkillId.value = nextSnapshot.state.skills[0]?.id ?? null;
+  }
 }
 
 function openAddReferenceDialog() {
@@ -401,6 +458,16 @@ watch(
             </button>
             <SearchInput v-model="query" :placeholder="t('skills.searchPlaceholder')" />
             <button
+              class="ghost-icon-button"
+              :class="{ active: batchSelectionMode }"
+              type="button"
+              :title="t('skills.batchManage')"
+              :aria-label="t('skills.batchManage')"
+              @click="toggleBatchSelectionMode"
+            >
+              <ListChecks :size="18" />
+            </button>
+            <button
               class="icon-button"
               type="button"
               :disabled="busy"
@@ -409,6 +476,39 @@ watch(
             >
               <Plus :size="18" />
             </button>
+          </div>
+          <div v-if="batchSelectionMode" class="batch-selection-bar">
+            <span>{{ t('skills.batchSelectedCount', { count: selectedSkillCount }) }}</span>
+            <div class="batch-selection-actions">
+              <button
+                class="secondary-button secondary-button--sm"
+                type="button"
+                :disabled="!skills.length"
+                @click="selectAllVisibleSkills"
+              >
+                <CheckSquare :size="14" />
+                {{ t('skills.selectCurrentList') }}
+              </button>
+              <button
+                class="secondary-button secondary-button--sm"
+                type="button"
+                :disabled="selectedSkillCount === 0"
+                @click="clearSelectedSkills"
+              >
+                <X :size="14" />
+                {{ t('skills.clearSelection') }}
+              </button>
+              <button
+                class="danger-button danger-button--sm"
+                type="button"
+                :disabled="busy || selectedSkillCount === 0"
+                :aria-label="t('skills.batchDelete')"
+                @click="batchDeleteDialogOpen = true"
+              >
+                <Trash2 :size="14" />
+                {{ t('skills.batchDelete') }}
+              </button>
+            </div>
           </div>
         </template>
 
@@ -438,7 +538,10 @@ watch(
                 :skill="skill"
                 :is-active="selectedSkill?.id === skill.id"
                 :is-referenced="isReferenced(skill)"
+                :selectable="batchSelectionMode"
+                :selected="selectedSkillIds.has(skill.id)"
                 @select="selectedSkillId = skill.id"
+                @toggle-selected="toggleSkillSelection(skill.id)"
                 @contextmenu="handleContextMenu($event, skill)"
               />
             </div>
@@ -451,7 +554,10 @@ watch(
             :skill="skill"
             :is-active="selectedSkill?.id === skill.id"
             :is-referenced="isReferenced(skill)"
+            :selectable="batchSelectionMode"
+            :selected="selectedSkillIds.has(skill.id)"
             @select="selectedSkillId = skill.id"
+            @toggle-selected="toggleSkillSelection(skill.id)"
             @contextmenu="handleContextMenu($event, skill)"
           />
         </template>
@@ -498,6 +604,14 @@ watch(
     :skill-name="selectedSkill.name"
     @close="deleteDialogOpen = false"
     @success="handleSnapshotSuccess"
+  />
+
+  <BatchDeleteSkillsDialog
+    v-if="batchDeleteDialogOpen && selectedSkillIdList.length"
+    :show="batchDeleteDialogOpen"
+    :skill-ids="selectedSkillIdList"
+    @close="batchDeleteDialogOpen = false"
+    @success="handleBatchDeleteSuccess"
   />
 
   <ReferenceDialogs
@@ -554,5 +668,3 @@ watch(
     </div>
   </Teleport>
 </template>
-
-

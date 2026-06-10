@@ -13,13 +13,14 @@ use crate::skill_files::{
     read_skill_file_at_path as read_skill_markdown_at_path, read_skill_file_from_state,
 };
 use crate::skill_library::{
-    delete_skill as delete_skill_from_library, import_selected_skills,
-    import_skill as import_skill_into_library, migrate_skill_library,
+    delete_skill as delete_skill_from_library, delete_skills as delete_skills_from_library,
+    import_selected_skills, import_skill as import_skill_into_library, migrate_skill_library,
     preview_import_skills as preview_import_source, ImportSkillPreview, ImportSkillSource,
 };
 use crate::skill_references::{
-    add_skill_reference_to_state, delete_preview_from_state, remove_skill_reference_from_state,
-    AddSkillReferenceRequest, DeleteSkillPreview,
+    add_skill_reference_to_state, delete_preview_from_state, delete_previews_from_state,
+    remove_skill_reference_from_state, AddSkillReferenceRequest, DeleteSkillPreview,
+    DeleteSkillsPreview,
 };
 use crate::snapshot::{build_snapshot, AppSnapshot};
 use crate::state_store::StateLoadStatus;
@@ -171,9 +172,26 @@ pub fn preview_delete_skill(
 }
 
 #[tauri::command]
+pub fn preview_delete_skills(
+    app: AppHandle,
+    skill_ids: Vec<String>,
+) -> Result<DeleteSkillsPreview, String> {
+    let command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    delete_previews_from_state(&command_state.state, &skill_ids).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub fn delete_skill(app: AppHandle, skill_id: String) -> Result<AppSnapshot, String> {
     let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
     delete_skill_from_library(&mut command_state.state, &skill_id)
+        .map_err(|error| error.to_string())?;
+    snapshot_after_save(command_state)
+}
+
+#[tauri::command]
+pub fn delete_skills(app: AppHandle, skill_ids: Vec<String>) -> Result<AppSnapshot, String> {
+    let mut command_state = load_command_state(&app).map_err(|error| error.to_string())?;
+    delete_skills_from_library(&mut command_state.state, &skill_ids)
         .map_err(|error| error.to_string())?;
     snapshot_after_save(command_state)
 }

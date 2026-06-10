@@ -101,7 +101,8 @@ button:disabled {
 }
 
 .primary-button--sm,
-.secondary-button--sm {
+.secondary-button--sm,
+.danger-button--sm {
   min-height: 28px;
   padding: 0 10px;
   font-size: 12px;

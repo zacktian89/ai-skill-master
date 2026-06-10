@@ -49,6 +49,11 @@ export const en: TranslationKey = {
     groupByGithub: "Group by GitHub repository",
     localGroup: "Others / Local",
     tabReadme: "Readme",
+    batchManage: "Batch Manage",
+    batchSelectedCount: "{count} selected",
+    selectCurrentList: "Select All",
+    clearSelection: "Clear",
+    batchDelete: "Delete",
   },
   projects: {
     empty: "No matching projects.",
@@ -114,6 +119,11 @@ export const en: TranslationKey = {
     affectedProjects: "Affected Projects",
     none: "None",
     confirmDelete: "Confirm Delete",
+    batchTitle: "Batch Delete Skills",
+    batchNote: "{count} skills will be deleted. No files will be modified until confirmed.",
+    batchManagedLinks: "{count} managed links",
+    batchAffectedProjects: "{count} project rules",
+    confirmBatchDelete: "Delete {count} Items",
   },
   importSkill: {
     title: "Add Skill",

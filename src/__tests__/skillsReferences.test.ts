@@ -13,6 +13,15 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: vi.fn(),
 }));
 
+vi.mock("../api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../api")>();
+  return {
+    ...actual,
+    previewDeleteSkills: vi.fn(),
+    deleteSkills: vi.fn(),
+  };
+});
+
 
 const snapshot: AppSnapshot = {
   state: {
@@ -626,5 +635,132 @@ describe("SkillsView references tab", () => {
 
     // Verify localStorage has been updated
     expect(localStorage.getItem("skillmaster-group-by-github")).toBe("false");
+  });
+
+  it("selects skills and confirms batch deletion from the list toolbar", async () => {
+    const multiSnapshot: AppSnapshot = {
+      ...snapshot,
+      state: {
+        ...snapshot.state,
+        skills: [
+          {
+            id: "writer-pro",
+            name: "Writer Pro",
+            description: "长文写作与风格控制",
+            libraryPath: "/library/writer-pro",
+            references: [
+              {
+                id: "ref-claude-writer-pro",
+                targetName: "Claude Code",
+                targetPath: "/claude/skills/writer-pro",
+                scope: "user",
+                status: "healthy",
+              },
+            ],
+            managedLinks: {},
+            conflict: null,
+          },
+          {
+            id: "reviewer-pro",
+            name: "Reviewer Pro",
+            description: "审阅与反馈",
+            libraryPath: "/library/reviewer-pro",
+            references: [],
+            managedLinks: {},
+            conflict: null,
+          },
+        ],
+        projects: [
+          {
+            id: "project-1",
+            name: "Demo Project",
+            path: "/projects/demo",
+            rules: {
+              "writer-pro": "enable",
+            },
+          },
+        ],
+      },
+    };
+    const nextSnapshot: AppSnapshot = {
+      ...multiSnapshot,
+      state: {
+        ...multiSnapshot.state,
+        skills: [],
+        projects: [
+          {
+            id: "project-1",
+            name: "Demo Project",
+            path: "/projects/demo",
+            rules: {},
+          },
+        ],
+      },
+    };
+    (api as any).previewDeleteSkills.mockResolvedValue({
+      items: [
+        {
+          skillId: "writer-pro",
+          skillName: "Writer Pro",
+          libraryPath: "/library/writer-pro",
+          managedLinkTargets: ["/claude/skills/writer-pro"],
+          affectedProjects: [
+            {
+              projectId: "project-1",
+              projectName: "Demo Project",
+              projectPath: "/projects/demo",
+            },
+          ],
+        },
+        {
+          skillId: "reviewer-pro",
+          skillName: "Reviewer Pro",
+          libraryPath: "/library/reviewer-pro",
+          managedLinkTargets: [],
+          affectedProjects: [],
+        },
+      ],
+      totalManagedLinkTargets: 1,
+      totalAffectedProjects: 1,
+    });
+    (api as any).deleteSkills.mockResolvedValue(nextSnapshot);
+
+    const wrapper = mount(SkillsView, {
+      props: {
+        snapshot: multiSnapshot,
+        selectedSkillId: "writer-pro",
+      },
+    });
+
+    await wrapper.find('button[aria-label="批量管理"]').trigger("click");
+    expect(wrapper.text()).toContain("全选");
+    expect(wrapper.text()).toContain("取消");
+    expect(wrapper.text()).toContain("删除");
+    expect(wrapper.text()).not.toContain("全选当前列表");
+    expect(wrapper.text()).not.toContain("取消选择");
+    const checkboxes = wrapper.findAll('input[type="checkbox"]');
+    await checkboxes[0].setValue(true);
+    await checkboxes[1].setValue(true);
+
+    expect(wrapper.text()).toContain("已选 2 项");
+
+    await wrapper.find('button[aria-label="删除"]').trigger("click");
+    await flushPromises();
+
+    expect((api as any).previewDeleteSkills).toHaveBeenCalledWith(["reviewer-pro", "writer-pro"]);
+    expect(wrapper.text()).toContain("批量删除 Skill");
+    expect(wrapper.text()).toContain("将删除 2 个 skill");
+    expect(wrapper.text()).toContain("托管链接 1 个");
+    expect(wrapper.text()).toContain("项目规则 1 个");
+
+    await wrapper.find("summary").trigger("click");
+    expect(wrapper.text()).toContain("/library/writer-pro");
+    expect(wrapper.text()).toContain("/claude/skills/writer-pro");
+    expect(wrapper.text()).toContain("Demo Project");
+
+    await wrapper.findAll("button").find((button) => button.text() === "确认删除 2 项")!.trigger("click");
+    await flushPromises();
+
+    expect((api as any).deleteSkills).toHaveBeenCalledWith(["reviewer-pro", "writer-pro"]);
   });
 });

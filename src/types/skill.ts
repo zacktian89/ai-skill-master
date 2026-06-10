@@ -114,3 +114,9 @@ export interface DeleteSkillPreview {
   managedLinkTargets: string[];
   affectedProjects: ProjectImpact[];
 }
+
+export interface DeleteSkillsPreview {
+  items: DeleteSkillPreview[];
+  totalManagedLinkTargets: number;
+  totalAffectedProjects: number;
+}

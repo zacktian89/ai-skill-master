@@ -31,6 +31,14 @@ pub struct DeleteSkillPreview {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DeleteSkillsPreview {
+    pub items: Vec<DeleteSkillPreview>,
+    pub total_managed_link_targets: usize,
+    pub total_affected_projects: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectImpact {
     pub project_id: String,
     pub project_name: String,
@@ -79,6 +87,24 @@ pub fn delete_preview_from_state(state: &AppState, skill_id: &str) -> Result<Del
             .map(|reference| reference.target_path.clone())
             .collect(),
         affected_projects,
+    })
+}
+
+pub fn delete_previews_from_state(
+    state: &AppState,
+    skill_ids: &[String],
+) -> Result<DeleteSkillsPreview> {
+    let mut items = Vec::with_capacity(skill_ids.len());
+    for skill_id in skill_ids {
+        items.push(delete_preview_from_state(state, skill_id)?);
+    }
+    Ok(DeleteSkillsPreview {
+        total_managed_link_targets: items
+            .iter()
+            .map(|item| item.managed_link_targets.len())
+            .sum(),
+        total_affected_projects: items.iter().map(|item| item.affected_projects.len()).sum(),
+        items,
     })
 }
 
@@ -216,6 +242,56 @@ mod tests {
         assert_eq!(preview.skill_name, "Writer");
         assert_eq!(preview.managed_link_targets.len(), 1);
         assert_eq!(preview.affected_projects.len(), 1);
+    }
+
+    #[test]
+    fn delete_skills_preview_aggregates_each_selected_skill() {
+        let dir = tempdir().unwrap();
+        let mut state = default_state(dir.path().join("skills"));
+        state.skills.push(Skill {
+            id: "writer".to_string(),
+            name: "Writer".to_string(),
+            description: String::new(),
+            library_path: dir.path().join("skills").join("writer"),
+            source: Default::default(),
+            references: vec![SkillReference {
+                id: "ref-writer".to_string(),
+                target_name: "Claude".to_string(),
+                target_path: dir.path().join("codex").join("writer"),
+                scope: ReferenceScope::User,
+                status: ReferenceStatus::Healthy,
+            }],
+            managed_links: ManagedLinks {},
+            conflict: None,
+        });
+        state.skills.push(Skill {
+            id: "reviewer".to_string(),
+            name: "Reviewer".to_string(),
+            description: String::new(),
+            library_path: dir.path().join("skills").join("reviewer"),
+            source: Default::default(),
+            references: Vec::new(),
+            managed_links: ManagedLinks {},
+            conflict: None,
+        });
+        let mut rules = BTreeMap::new();
+        rules.insert("writer".to_string(), ProjectRule::Enable);
+        state.projects.push(Project {
+            id: "p1".to_string(),
+            name: "Demo".to_string(),
+            path: dir.path().join("demo"),
+            rules,
+        });
+
+        let preview =
+            delete_previews_from_state(&state, &["writer".to_string(), "reviewer".to_string()])
+                .unwrap();
+
+        assert_eq!(preview.items.len(), 2);
+        assert_eq!(preview.total_managed_link_targets, 1);
+        assert_eq!(preview.total_affected_projects, 1);
+        assert_eq!(preview.items[0].skill_id, "writer");
+        assert_eq!(preview.items[1].skill_id, "reviewer");
     }
 
     #[test]

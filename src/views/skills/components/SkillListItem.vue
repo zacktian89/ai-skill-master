@@ -7,10 +7,13 @@ const props = defineProps<{
   skill: Skill;
   isActive: boolean;
   isReferenced: boolean;
+  selectable?: boolean;
+  selected?: boolean;
 }>();
 
 defineEmits<{
   select: [];
+  "toggle-selected": [];
   contextmenu: [event: MouseEvent];
 }>();
 
@@ -35,12 +38,28 @@ const icon = computed(() => sourceIcons[sourceKind.value]);
 </script>
 
 <template>
-  <button
+  <div
     class="list-row"
-    :class="{ active: isActive }"
+    :class="{ active: isActive, 'list-row--selectable': selectable, selected }"
+    role="button"
+    tabindex="0"
     @click="$emit('select')"
+    @keydown.enter="$emit('select')"
+    @keydown.space.prevent="$emit('select')"
     @contextmenu.prevent="$emit('contextmenu', $event)"
   >
+    <label
+      v-if="selectable"
+      class="list-row-check"
+      :aria-label="selected ? '取消选择' : '选择'"
+      @click.stop
+    >
+      <input
+        type="checkbox"
+        :checked="selected"
+        @change="$emit('toggle-selected')"
+      />
+    </label>
     <div class="list-row-main">
       <div class="list-row-top">
         <strong>{{ skill.name }}</strong>
@@ -59,5 +78,5 @@ const icon = computed(() => sourceIcons[sourceKind.value]);
         <code class="skill-id-badge">{{ skill.id }}</code>
       </div>
     </div>
-  </button>
+  </div>
 </template>

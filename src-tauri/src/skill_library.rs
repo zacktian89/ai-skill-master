@@ -290,6 +290,18 @@ pub fn delete_skill(state: &mut crate::models::AppState, skill_id: &str) -> Resu
     Ok(())
 }
 
+pub fn delete_skills(state: &mut crate::models::AppState, skill_ids: &[String]) -> Result<()> {
+    for skill_id in skill_ids {
+        if !state.skills.iter().any(|skill| skill.id == *skill_id) {
+            return Err(SkillMasterError::SkillNotFound(skill_id.clone()));
+        }
+    }
+    for skill_id in skill_ids {
+        delete_skill(state, skill_id)?;
+    }
+    Ok(())
+}
+
 pub fn migrate_skill_library(
     state: &mut crate::models::AppState,
     target_root: &Path,
@@ -883,5 +895,46 @@ mod tests {
 
         assert!(state.skills.is_empty());
         assert!(!state.projects[0].rules.contains_key("writer"));
+    }
+
+    #[test]
+    fn delete_skills_removes_multiple_skills_and_project_rules() {
+        let source_root = tempdir().unwrap();
+        let library_root = tempdir().unwrap();
+        let writer_dir = source_root.path().join("writer");
+        let reviewer_dir = source_root.path().join("reviewer");
+        let keeper_dir = source_root.path().join("keeper");
+        fs::create_dir_all(&writer_dir).unwrap();
+        fs::create_dir_all(&reviewer_dir).unwrap();
+        fs::create_dir_all(&keeper_dir).unwrap();
+        fs::write(writer_dir.join("SKILL.md"), "---\nname: writer\n---\n").unwrap();
+        fs::write(reviewer_dir.join("SKILL.md"), "---\nname: reviewer\n---\n").unwrap();
+        fs::write(keeper_dir.join("SKILL.md"), "---\nname: keeper\n---\n").unwrap();
+
+        let mut state: AppState = default_state(library_root.path().to_path_buf());
+        import_skill(&mut state, &writer_dir).unwrap();
+        import_skill(&mut state, &reviewer_dir).unwrap();
+        import_skill(&mut state, &keeper_dir).unwrap();
+        let mut rules = BTreeMap::new();
+        rules.insert("writer".to_string(), crate::models::ProjectRule::Disable);
+        rules.insert("reviewer".to_string(), crate::models::ProjectRule::Enable);
+        rules.insert("keeper".to_string(), crate::models::ProjectRule::Enable);
+        state.projects.push(Project {
+            id: "p1".to_string(),
+            name: "Project".to_string(),
+            path: library_root.path().join("project"),
+            rules,
+        });
+
+        delete_skills(&mut state, &["writer".to_string(), "reviewer".to_string()]).unwrap();
+
+        assert_eq!(state.skills.len(), 1);
+        assert_eq!(state.skills[0].id, "keeper");
+        assert!(!library_root.path().join("writer").exists());
+        assert!(!library_root.path().join("reviewer").exists());
+        assert!(library_root.path().join("keeper").exists());
+        assert!(!state.projects[0].rules.contains_key("writer"));
+        assert!(!state.projects[0].rules.contains_key("reviewer"));
+        assert!(state.projects[0].rules.contains_key("keeper"));
     }
 }

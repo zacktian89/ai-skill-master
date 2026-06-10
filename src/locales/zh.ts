@@ -47,6 +47,11 @@ export const zh = {
     groupByGithub: "按 GitHub 仓库聚合",
     localGroup: "其他 / 本地",
     tabReadme: "说明",
+    batchManage: "批量管理",
+    batchSelectedCount: "已选 {count} 项",
+    selectCurrentList: "全选",
+    clearSelection: "取消",
+    batchDelete: "删除",
   },
   projects: {
     empty: "没有匹配的项目。",
@@ -112,6 +117,11 @@ export const zh = {
     affectedProjects: "项目规则影响",
     none: "无",
     confirmDelete: "确认删除",
+    batchTitle: "批量删除 Skill",
+    batchNote: "将删除 {count} 个 skill。确认前不会修改任何文件。",
+    batchManagedLinks: "托管链接 {count} 个",
+    batchAffectedProjects: "项目规则 {count} 个",
+    confirmBatchDelete: "确认删除 {count} 项",
   },
   importSkill: {
     title: "新增 Skill",

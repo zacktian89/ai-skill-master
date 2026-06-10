@@ -5,6 +5,7 @@ import type {
   ImportSkillCandidate,
   ConfirmImportSkillsRequest,
   DeleteSkillPreview,
+  DeleteSkillsPreview,
   AddSkillReferenceRequest,
   StoreLeaderboardType,
   StoreSkill,
@@ -142,6 +143,17 @@ export function deleteSkill(skillId: string): Promise<AppSnapshot> {
   return snapshot();
 }
 
+export function deleteSkills(skillIds: string[]): Promise<AppSnapshot> {
+  const selected = new Set(skillIds);
+  mockSnapshot.state.skills = mockSnapshot.state.skills.filter((skill) => !selected.has(skill.id));
+  for (const project of mockSnapshot.state.projects) {
+    for (const skillId of selected) {
+      delete project.rules[skillId];
+    }
+  }
+  return snapshot();
+}
+
 export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview> {
   const skill = mockSnapshot.state.skills.find((item) => item.id === skillId);
   if (!skill) {
@@ -160,6 +172,15 @@ export function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview>
         projectPath: project.path,
       })),
   });
+}
+
+export async function previewDeleteSkills(skillIds: string[]): Promise<DeleteSkillsPreview> {
+  const items = await Promise.all(skillIds.map((skillId) => previewDeleteSkill(skillId)));
+  return {
+    items,
+    totalManagedLinkTargets: items.reduce((sum, item) => sum + item.managedLinkTargets.length, 0),
+    totalAffectedProjects: items.reduce((sum, item) => sum + item.affectedProjects.length, 0),
+  };
 }
 
 function referenceId(path: string): string {

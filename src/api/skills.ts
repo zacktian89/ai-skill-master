@@ -4,6 +4,7 @@ import type {
   ImportSkillPreview,
   ConfirmImportSkillsRequest,
   DeleteSkillPreview,
+  DeleteSkillsPreview,
   AddSkillReferenceRequest,
 } from "../types";
 import { resolveInvoke, autoSync } from "./client";
@@ -36,9 +37,24 @@ export async function deleteSkill(skillId: string): Promise<AppSnapshot> {
   return autoSync(next);
 }
 
+export async function deleteSkills(skillIds: string[]): Promise<AppSnapshot> {
+  const invoke = await resolveInvoke();
+  const next = invoke
+    ? await invoke<AppSnapshot>("delete_skills", { skillIds })
+    : await mockSkills.deleteSkills(skillIds);
+  return autoSync(next);
+}
+
 export async function previewDeleteSkill(skillId: string): Promise<DeleteSkillPreview> {
   const invoke = await resolveInvoke();
   return invoke ? invoke<DeleteSkillPreview>("preview_delete_skill", { skillId }) : mockSkills.previewDeleteSkill(skillId);
+}
+
+export async function previewDeleteSkills(skillIds: string[]): Promise<DeleteSkillsPreview> {
+  const invoke = await resolveInvoke();
+  return invoke
+    ? invoke<DeleteSkillsPreview>("preview_delete_skills", { skillIds })
+    : mockSkills.previewDeleteSkills(skillIds);
 }
 
 export async function addSkillReference(request: AddSkillReferenceRequest): Promise<AppSnapshot> {
